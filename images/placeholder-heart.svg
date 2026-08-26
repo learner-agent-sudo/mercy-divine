@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-label="仁慈聖心">
+  <defs>
+    <linearGradient id="h-ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2A1E2A"/>
+      <stop offset="100%" stop-color="#171015"/>
+    </linearGradient>
+    <radialGradient id="h-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#E8A08C" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="#E8A08C" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#h-ground)"/>
+  <g transform="translate(400 520)">
+    <circle r="300" fill="url(#h-glow)"/>
+    <g opacity=".5" stroke="#E8C88A" stroke-width="3" fill="none">
+      <circle r="212"/><circle r="248"/>
+    </g>
+    <path d="M0 128 C-118 40 -168 -30 -168 -84 C-168 -140 -124 -172 -80 -172 C-44 -172 -14 -150 0 -122 C14 -150 44 -172 80 -172 C124 -172 168 -140 168 -84 C168 -30 118 40 0 128 Z"
+          fill="#B3352E" stroke="#E8C88A" stroke-width="5"/>
+    <g stroke="#F4E3C2" stroke-width="10" stroke-linecap="round">
+      <line x1="0" y1="-236" x2="0" y2="-116"/>
+      <line x1="-40" y1="-192" x2="40" y2="-192"/>
+    </g>
+  </g>
+</svg>

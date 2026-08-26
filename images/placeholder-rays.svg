@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-label="慈悲光芒">
+  <defs>
+    <radialGradient id="r-ground" cx="50%" cy="34%" r="78%">
+      <stop offset="0%" stop-color="#3A2C26"/>
+      <stop offset="100%" stop-color="#1C1512"/>
+    </radialGradient>
+    <linearGradient id="r-pale" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#CFE3EF" stop-opacity=".85"/>
+      <stop offset="100%" stop-color="#CFE3EF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="r-red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#C4453C" stop-opacity=".85"/>
+      <stop offset="100%" stop-color="#C4453C" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="r-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#F4E3C2" stop-opacity=".95"/>
+      <stop offset="60%" stop-color="#E8C88A" stop-opacity=".25"/>
+      <stop offset="100%" stop-color="#E8C88A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#r-ground)"/>
+  <g transform="translate(400 340)">
+    <path d="M0 0 L-232 660 L-36 660 Z" fill="url(#r-pale)"/>
+    <path d="M0 0 L232 660 L36 660 Z" fill="url(#r-red)"/>
+    <circle r="200" fill="url(#r-glow)"/>
+    <g stroke="#F0DDB8" stroke-width="9" stroke-linecap="round" opacity=".92">
+      <line x1="0" y1="-96" x2="0" y2="104"/>
+      <line x1="-62" y1="-30" x2="62" y2="-30"/>
+    </g>
+  </g>
+</svg>

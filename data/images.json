@@ -1,0 +1,8 @@
+{
+  "note": "在此登記聖像圖片。把圖片檔放進 images/ 資料夾，然後在下面加一行。file 是檔名，caption 是圖下的短句（可留空）。改完記得同時更新 sw.js 內的版本號，讓手機重新下載。",
+  "images": [
+    { "file": "images/placeholder-rays.svg",  "caption": "耶穌，我信賴祢" },
+    { "file": "images/placeholder-heart.svg", "caption": "仁慈的聖心" },
+    { "file": "images/placeholder-dawn.svg",  "caption": "祢的慈悲永遠常存" }
+  ]
+}

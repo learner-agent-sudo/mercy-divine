@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>救主慈悲串經</title>
+<meta name="description" content="離線可用的救主慈悲串經誦念與紀錄。">
+<meta name="theme-color" content="#14100E" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F7F2E9" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="慈悲串經">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="boot" class="boot">
+  <p class="boot-msg">載入中⋯</p>
+</div>
+
+<div id="update-bar" class="update-bar" hidden>
+  <span>已有新版本</span>
+  <button type="button" id="update-apply" class="btn btn-tiny">重新載入</button>
+</div>
+
+<main id="app" class="app" hidden>
+
+  <!-- ── 首頁 ───────────────────────────────────────── -->
+  <section id="view-home" class="view" aria-label="首頁">
+    <header class="home-head">
+      <h1 class="home-title">救主慈悲串經</h1>
+      <p class="home-date" id="home-date"></p>
+    </header>
+
+    <figure class="plate">
+      <img id="home-image" alt="" width="800" height="1000">
+      <figcaption id="home-caption"></figcaption>
+    </figure>
+
+    <p class="today-state" id="today-state"></p>
+
+    <button type="button" id="start-btn" class="btn btn-primary btn-block btn-lg">開始祈禱</button>
+
+    <div class="stats" id="home-stats"></div>
+
+    <nav class="home-nav">
+      <button type="button" class="btn btn-quiet" data-go="history">祈禱紀錄</button>
+      <button type="button" class="btn btn-quiet" data-go="settings">設定</button>
+    </nav>
+  </section>
+
+  <!-- ── 祈禱 ───────────────────────────────────────── -->
+  <section id="view-prayer" class="view view-full" aria-label="祈禱">
+    <header class="bar">
+      <button type="button" id="prayer-exit" class="icon-btn" aria-label="結束並返回">✕</button>
+      <div class="bar-title" id="prayer-stage">救主慈悲串經</div>
+      <button type="button" id="mode-toggle" class="btn btn-tiny">全文</button>
+    </header>
+
+    <div class="progress" role="progressbar" aria-label="進度" aria-valuemin="0" aria-valuemax="100">
+      <span id="progress-fill"></span>
+    </div>
+
+    <div class="scroll" id="prayer-scroll">
+
+      <!-- 引導模式 -->
+      <div id="guided" class="guided">
+        <figure class="plate plate-sm">
+          <img id="guided-image" alt="" width="800" height="1000">
+        </figure>
+        <div class="step-head">
+          <h2 class="step-name" id="step-name"></h2>
+          <p class="step-count" id="step-count"></p>
+        </div>
+        <p class="prayer-text" id="step-text"></p>
+        <div class="beads" id="beads" aria-hidden="true"></div>
+        <p class="tap-hint" id="tap-hint">輕觸畫面繼續</p>
+      </div>
+
+      <!-- 全文模式 -->
+      <div id="full" class="full" hidden>
+        <figure class="plate plate-sm">
+          <img id="full-image" alt="" width="800" height="1000">
+        </figure>
+        <div id="full-body"></div>
+      </div>
+
+    </div>
+
+    <footer class="actions" id="prayer-actions">
+      <button type="button" id="step-prev" class="btn btn-quiet">上一步</button>
+      <button type="button" id="step-next" class="btn btn-primary btn-grow">下一步</button>
+    </footer>
+  </section>
+
+  <!-- ── 完成 ───────────────────────────────────────── -->
+  <section id="view-done" class="view" aria-label="誦畢">
+    <figure class="plate">
+      <img id="done-image" alt="" width="800" height="1000">
+      <figcaption id="done-caption"></figcaption>
+    </figure>
+    <h2 class="done-title">阿們</h2>
+    <p class="done-meta" id="done-meta"></p>
+    <label class="field">
+      <span class="field-label">意向（可留空）</span>
+      <input type="text" id="done-note" maxlength="80" placeholder="為誰祈禱、或今日的意向" autocomplete="off">
+    </label>
+    <button type="button" id="done-home" class="btn btn-primary btn-block">回首頁</button>
+    <button type="button" id="done-undo" class="btn btn-quiet btn-block">刪除這筆紀錄</button>
+  </section>
+
+  <!-- ── 紀錄 ───────────────────────────────────────── -->
+  <section id="view-history" class="view" aria-label="祈禱紀錄">
+    <header class="bar">
+      <button type="button" class="icon-btn" data-go="home" aria-label="返回">‹</button>
+      <div class="bar-title">祈禱紀錄</div>
+      <span class="bar-spacer"></span>
+    </header>
+
+    <div class="stats" id="history-stats"></div>
+
+    <div class="cal">
+      <div class="cal-head">
+        <button type="button" id="cal-prev" class="icon-btn" aria-label="上個月">‹</button>
+        <h2 id="cal-label"></h2>
+        <button type="button" id="cal-next" class="icon-btn" aria-label="下個月">›</button>
+      </div>
+      <div class="cal-dow" aria-hidden="true"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+    <h2 class="section-title">近期</h2>
+    <ul class="log" id="log"></ul>
+    <p class="empty" id="log-empty" hidden>還沒有紀錄。誦念一次串經後，這裡就會留下記號。</p>
+  </section>
+
+  <!-- ── 設定 ───────────────────────────────────────── -->
+  <section id="view-settings" class="view" aria-label="設定">
+    <header class="bar">
+      <button type="button" class="icon-btn" data-go="home" aria-label="返回">‹</button>
+      <div class="bar-title">設定</div>
+      <span class="bar-spacer"></span>
+    </header>
+
+    <div class="card">
+      <h2 class="section-title">誦念</h2>
+      <label class="field">
+        <span class="field-label">預設模式</span>
+        <select id="set-mode">
+          <option value="guided">引導模式（逐珠計數）</option>
+          <option value="full">全文模式（整篇捲動）</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">字體大小 <output id="set-font-out"></output></span>
+        <input type="range" id="set-font" min="85" max="180" step="5">
+      </label>
+      <p class="sample" id="font-sample">因祂的至悲慘苦難，求您垂憐我們及普世。</p>
+      <label class="switch">
+        <input type="checkbox" id="set-wake">
+        <span>祈禱時保持螢幕不熄</span>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">外觀</h2>
+      <label class="field">
+        <span class="field-label">主題</span>
+        <select id="set-theme">
+          <option value="auto">跟隨系統</option>
+          <option value="light">淺色</option>
+          <option value="dark">深色</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">備份</h2>
+      <p class="hint">紀錄只存在這部手機裡。請不時匯出備份，以免清除瀏覽器資料時遺失。</p>
+      <button type="button" id="export-btn" class="btn btn-block">匯出備份檔</button>
+      <button type="button" id="import-btn" class="btn btn-block">匯入備份檔</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+      <p class="hint" id="storage-state"></p>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">關於</h2>
+      <p class="hint" id="about-text"></p>
+      <button type="button" id="check-update" class="btn btn-block">檢查更新</button>
+      <p class="hint" id="update-state"></p>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

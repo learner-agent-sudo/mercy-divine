@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-label="慈悲的曙光">
+  <defs>
+    <linearGradient id="d-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1A2230"/>
+      <stop offset="55%" stop-color="#5A3D3A"/>
+      <stop offset="100%" stop-color="#C98A5E"/>
+    </linearGradient>
+    <radialGradient id="d-sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FBF0D6"/>
+      <stop offset="45%" stop-color="#F2CE8E" stop-opacity=".7"/>
+      <stop offset="100%" stop-color="#F2CE8E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#d-sky)"/>
+  <circle cx="400" cy="720" r="300" fill="url(#d-sun)"/>
+  <g opacity=".3" stroke="#FBF0D6" stroke-width="2">
+    <line x1="0" y1="720" x2="800" y2="720"/>
+    <line x1="0" y1="756" x2="800" y2="756"/>
+  </g>
+  <g transform="translate(400 640)" stroke="#2A1C18" stroke-width="14" stroke-linecap="square" opacity=".85">
+    <line x1="0" y1="-150" x2="0" y2="130"/>
+    <line x1="-76" y1="-70" x2="76" y2="-70"/>
+  </g>
+</svg>

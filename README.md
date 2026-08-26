@@ -1,0 +1,93 @@
+# 救主慈悲串經 — Divine Mercy Chaplet
+
+An offline prayer app for praying the Chaplet of Divine Mercy in Traditional Chinese,
+with a record of every time you finish.
+
+Once installed on your phone it works **entirely offline** — no signal, no wifi, no
+account. Your prayer records are stored on the phone only and are never uploaded
+anywhere.
+
+## Installing on your phone
+
+1. Turn on GitHub Pages for this repository: **Settings → Pages → Source: Deploy from a
+   branch**, pick this branch and the `/ (root)` folder. GitHub gives you a URL like
+   `https://learner-agent-sudo.github.io/mercy-divine/`.
+2. Open that URL **in Chrome** on the phone, once, with internet.
+   (Use Chrome rather than Mi Browser — Chrome installs it as a real app; Mi Browser
+   only makes a bookmark.)
+3. Chrome menu **⋮ → Add to Home screen → Install**.
+4. Done. From now on you can open it from the home screen icon with no internet at all.
+
+### Two things worth knowing on HyperOS
+
+- **Don't let a cleaner wipe it.** Chrome's *Clear browsing data*, and HyperOS's deep
+  clean, can erase the prayer records along with site data. Export a backup now and
+  then (設定 → 匯出備份檔).
+- The app asks Android for persistent storage on first use, which helps but is not a
+  guarantee. The export file is the real safety net.
+
+## Using it
+
+- **開始祈禱** starts a session. Two modes, switchable at any time with the button in
+  the top-right corner:
+  - **引導模式** — one prayer at a time, tap anywhere to advance. It counts the beads
+    and decades for you, so you don't need a physical chaplet.
+  - **全文模式** — the whole chaplet on one scrolling page, as in a prayer book.
+- **我已誦畢** at the end records the session — date, time, how long it took, and an
+  optional intention.
+- **祈禱紀錄** shows a calendar of the days you prayed, your streak, and every session.
+- The screen stays awake while praying, and the text size is adjustable in 設定.
+
+## Changing the content
+
+**The prayers** live in [`data/prayers.json`](data/prayers.json) — plain text, no code.
+Edit the wording, add or remove an opening prayer, change how many decades or beads
+there are; the app rebuilds itself from that file.
+
+**The pictures** go in [`images/`](images/), listed in
+[`data/images.json`](data/images.json):
+
+```json
+{ "file": "images/jesus-1.jpg", "caption": "耶穌，我信賴祢" }
+```
+
+The three `placeholder-*.svg` files are stand-ins — replace them with your own pictures
+and delete them. Images are shown on the home screen, above the text while praying (a
+different one for each decade, cycling through the list), and on the completion screen.
+Keep each under about 300 KB so the app stays quick to install.
+
+**After changing anything, bump `VERSION` in [`sw.js`](sw.js)** (`v1` → `v2`). That is
+what tells already-installed phones to fetch the new version — without it they keep
+serving the old cached copy. The app shows a 已有新版本 banner when an update is ready.
+
+## Backups
+
+設定 → **匯出備份檔** writes a `.json` file to Downloads with every record. **匯入備份檔**
+reads one back, skipping anything already present — so it is safe to import the same
+file twice, and it works for moving to a new phone.
+
+## Running it locally
+
+The app loads its content with `fetch`, so it needs to be served over HTTP rather than
+opened as a file:
+
+```sh
+python3 -m http.server 8765     # then open http://localhost:8765/
+```
+
+## Layout
+
+```
+index.html              app shell — all five screens
+app.js                  logic: prayer flow, records, calendar, settings
+styles.css              theme, light + dark
+sw.js                   service worker — the offline cache
+manifest.webmanifest    home-screen install metadata
+data/prayers.json       the prayer text
+data/images.json        the picture list
+images/                 the pictures
+icons/                  app icon
+scripts/make-icons.mjs  regenerates the icons (node scripts/make-icons.mjs)
+```
+
+No frameworks and no build step: what is in the repository is exactly what runs.
