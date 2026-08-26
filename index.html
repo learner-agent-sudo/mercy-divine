@@ -165,6 +165,13 @@
     </div>
 
     <div class="card">
+      <h2 class="section-title">聖像</h2>
+      <p class="hint">可直接從手機相簿選圖，指定給每一段經文。圖片只存在這部手機，會一併寫入備份檔。</p>
+      <ul class="slots" id="slots"></ul>
+      <input type="file" id="pic-file" accept="image/*" hidden>
+    </div>
+
+    <div class="card">
       <h2 class="section-title">外觀</h2>
       <label class="field">
         <span class="field-label">主題</span>
@@ -178,7 +185,7 @@
 
     <div class="card" id="backup-card">
       <h2 class="section-title">備份</h2>
-      <p class="hint">紀錄只存在這部手機裡。請不時匯出備份，以免清除瀏覽器資料時遺失。</p>
+      <p class="hint">紀錄與自訂聖像都只存在這部手機裡。請不時匯出備份，以免清除瀏覽器資料時遺失；換手機時匯入同一個檔案即可完整還原。</p>
       <button type="button" id="export-btn" class="btn btn-block">匯出備份檔</button>
       <button type="button" id="import-btn" class="btn btn-block">匯入備份檔</button>
       <input type="file" id="import-file" accept="application/json,.json" hidden>

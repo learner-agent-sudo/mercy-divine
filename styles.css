@@ -222,6 +222,21 @@ img { max-width: 100%; height: auto; display: block; }
 .log .meta { color: var(--muted); font-size: .78rem; white-space: nowrap; }
 .log button { background: none; border: 0; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 0 .3rem; }
 
+/* ── 聖像設定 ────────────────────────────────────────── */
+.slots { list-style: none; margin: 0; padding: 0; }
+.slot {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .55rem 0; border-bottom: 1px solid var(--line);
+}
+.slot:last-child { border-bottom: 0; }
+.slot-thumb {
+  width: 2.75rem; height: 2.75rem; flex: none; border-radius: .5rem;
+  object-fit: cover; background: var(--sunken); border: 1px solid var(--line);
+}
+.slot-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.slot-name { font-size: .95rem; }
+.slot-state { font-size: .72rem; color: var(--muted); }
+
 /* ── 提示與更新 ──────────────────────────────────────── */
 .toast {
   position: fixed; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); transform: translateX(-50%);

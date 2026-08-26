@@ -33,7 +33,20 @@ const store = {
   },
 };
 
-const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true };
+const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, pictures: {} };
+
+// 可在程式內指定聖像的九個位置。
+const IMAGE_SLOTS = [
+  ['home', '首頁'],
+  ['our-father', '天主經'],
+  ['hail-mary', '聖母經'],
+  ['creed', '信經'],
+  ['eternal-father', '大珠'],
+  ['passion', '小珠'],
+  ['holy-god', '結束祈禱'],
+  ['jesus-king', '信賴禱詞'],
+  ['done', '誦畢'],
+];
 let settings = { ...DEFAULTS, ...store.read(K_SETTINGS, {}) };
 let records = store.read(K_RECORDS, []);
 
@@ -117,13 +130,17 @@ function buildImageRoles() {
   }
 }
 
+// 取不到的檔案記下來，同一次使用中不再重試。
+const failedImages = new Set();
+
 function setImage(imgNode, capNode, candidates) {
   const list = [].concat(candidates || []).filter(Boolean);
   const plate = imgNode.closest('.plate');
   const show = (i) => {
+    while (i < list.length && failedImages.has(list[i].file)) i++;
     if (i >= list.length) { if (plate) plate.hidden = true; return; }
     if (plate) plate.hidden = false;
-    imgNode.onerror = () => show(i + 1);
+    imgNode.onerror = () => { failedImages.add(list[i].file); show(i + 1); };
     imgNode.src = list[i].file;
     imgNode.alt = list[i].caption || '';
     if (capNode) capNode.textContent = list[i].caption || '';
@@ -131,7 +148,12 @@ function setImage(imgNode, capNode, candidates) {
   show(0);
 }
 
-const rolesFor = (role) => imageRoles.get(role) || [];
+// 自訂聖像排最前面，其後才是 data/images.json 列出的圖片。
+const rolesFor = (role) => {
+  const listed = imageRoles.get(role) || [];
+  const custom = customFor(role);
+  return custom ? [custom, ...listed] : listed;
+};
 
 // 先找指定給這段經文的聖像；沒有指定就沿用依端數輪流的方式。
 function imageForStep(step) {
@@ -439,6 +461,7 @@ function applySettings() {
 }
 
 function renderSettings() {
+  renderSlots();
   $('#set-mode').value = settings.mode;
   $('#set-font').value = settings.font;
   $('#set-font-out').textContent = `${settings.font}%`;
@@ -458,10 +481,169 @@ function renderSettings() {
   }
 }
 
+/* ── 自訂聖像 ──────────────────────────────────────── */
+// 使用者從相簿選的圖存在 IndexedDB；settings.pictures 記錄哪個位置用哪張。
+// 以內容雜湊當作鍵值，同一張圖指定給多個位置時只會存一份。
+const DB_NAME = 'mercy-pictures';
+const DB_STORE = 'blobs';
+
+const openDB = () => new Promise((resolve, reject) => {
+  const req = indexedDB.open(DB_NAME, 1);
+  req.onupgradeneeded = () => req.result.createObjectStore(DB_STORE);
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+
+async function dbOp(mode, run) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, mode);
+    const req = run(tx.objectStore(DB_STORE));
+    tx.oncomplete = () => { db.close(); resolve(req ? req.result : undefined); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+const putBlob = (id, blob) => dbOp('readwrite', (s) => s.put(blob, id));
+const getBlob = (id) => dbOp('readonly', (s) => s.get(id));
+const dropBlob = (id) => dbOp('readwrite', (s) => s.delete(id));
+const allBlobIds = () => dbOp('readonly', (s) => s.getAllKeys());
+
+// 相機照片動輒數 MB，縮到長邊 1600 像素即足夠，也讓備份檔不致過大。
+async function shrink(file, max = 1600, quality = 0.82) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    if (bitmap.close) bitmap.close();
+    return await new Promise((r) => canvas.toBlob((b) => r(b || file), 'image/jpeg', quality));
+  } catch {
+    return file; // 無法解碼時原樣存入，總比失敗好
+  }
+}
+
+async function blobId(blob) {
+  if (crypto.subtle) {
+    const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+    return [...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  return `${blob.size}-${blob.type}-${Date.now()}`;
+}
+
+const pictureUrls = new Map(); // id → object URL
+
+async function loadPictures() {
+  if (!('indexedDB' in window)) return;
+  try {
+    const wanted = new Set(Object.values(settings.pictures || {}));
+    for (const id of wanted) {
+      if (pictureUrls.has(id)) continue;
+      const blob = await getBlob(id);
+      if (blob) pictureUrls.set(id, URL.createObjectURL(blob));
+    }
+    // 清掉已無位置引用的圖檔，避免佔空間
+    for (const id of (await allBlobIds()) || []) if (!wanted.has(id)) await dropBlob(id);
+  } catch { /* 無法使用 IndexedDB 時就只用內建聖像 */ }
+}
+
+function customFor(role) {
+  const id = (settings.pictures || {})[role];
+  const url = id && pictureUrls.get(id);
+  if (!url) return null;
+  const listed = imageRoles.get(role) || [];
+  return { file: url, caption: listed.length ? listed[0].caption : '' };
+}
+
+async function assignPicture(role, file) {
+  try {
+    const blob = await shrink(file);
+    const id = await blobId(blob);
+    await putBlob(id, blob);
+    settings.pictures = { ...(settings.pictures || {}), [role]: id };
+    saveSettings();
+    if (!pictureUrls.has(id)) pictureUrls.set(id, URL.createObjectURL(blob));
+    await loadPictures();
+    renderSlots();
+    renderHome();
+    toast(`已設定「${(IMAGE_SLOTS.find((s) => s[0] === role) || [, role])[1]}」的聖像`);
+  } catch {
+    toast('無法儲存圖片，可能是空間不足');
+  }
+}
+
+async function clearPicture(role) {
+  const pictures = { ...(settings.pictures || {}) };
+  delete pictures[role];
+  settings.pictures = pictures;
+  saveSettings();
+  await loadPictures();
+  renderSlots();
+  renderHome();
+}
+
+let slotTarget = null;
+function renderSlots() {
+  const list = $('#slots');
+  list.textContent = '';
+  for (const [role, label] of IMAGE_SLOTS) {
+    const custom = customFor(role);
+    const listed = imageRoles.get(role) || [];
+    const li = el('li', 'slot');
+
+    const thumb = document.createElement('img');
+    thumb.className = 'slot-thumb';
+    // 與正式畫面共用同一套遞補與失敗記憶
+    setImage(thumb, null, custom ? [custom, ...listed] : listed);
+    li.appendChild(thumb);
+
+    const text = el('div', 'slot-text');
+    text.appendChild(el('span', 'slot-name', label));
+    text.appendChild(el('span', 'slot-state', custom ? '自訂圖片' : '預設'));
+    li.appendChild(text);
+
+    const pick = el('button', 'btn btn-tiny', custom ? '更換' : '選圖');
+    pick.type = 'button';
+    pick.addEventListener('click', () => { slotTarget = role; $('#pic-file').click(); });
+    li.appendChild(pick);
+
+    if (custom) {
+      const reset = el('button', 'btn btn-tiny btn-quiet', '還原');
+      reset.type = 'button';
+      reset.addEventListener('click', () => clearPicture(role));
+      li.appendChild(reset);
+    }
+    list.appendChild(li);
+  }
+}
+
 /* ── 匯出與匯入 ────────────────────────────────────── */
-function exportRecords() {
-  if (!records.length) { toast('尚無紀錄可匯出'); return; }
-  const payload = { app: 'mercy-divine', version: 1, exportedAt: new Date().toISOString(), records };
+const blobToDataUrl = (blob) => new Promise((resolve) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => resolve(null);
+  reader.readAsDataURL(blob);
+});
+
+async function exportRecords() {
+  if (!records.length && !Object.keys(settings.pictures || {}).length) { toast('尚無紀錄可匯出'); return; }
+  const payload = { app: 'mercy-divine', version: 2, exportedAt: new Date().toISOString(), records };
+
+  // 自訂聖像一併帶走，換手機或清除資料後可完整還原
+  const pictures = {};
+  for (const id of new Set(Object.values(settings.pictures || {}))) {
+    const blob = await getBlob(id).catch(() => null);
+    if (blob) {
+      const url = await blobToDataUrl(blob);
+      if (url) pictures[id] = url;
+    }
+  }
+  if (Object.keys(pictures).length) {
+    payload.pictures = pictures;
+    payload.pictureRoles = settings.pictures;
+  }
+
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -471,12 +653,16 @@ function exportRecords() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast(`已匯出 ${records.length} 筆紀錄`);
+  const shots = Object.keys(payload.pictures || {}).length;
+  toast(`已匯出 ${records.length} 筆紀錄${shots ? ` 與 ${shots} 張聖像` : ''}`);
 }
+
+// data: 網址轉回 Blob，供匯入聖像使用
+const dataUrlToBlob = (url) => fetch(url).then((r) => r.blob());
 
 function importRecords(file) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     let incoming;
     try {
       const parsed = JSON.parse(reader.result);
@@ -493,9 +679,23 @@ function importRecords(file) {
       added++;
     }
     saveRecords();
+
+    let shots = 0;
+    const parsed = JSON.parse(reader.result);
+    if (parsed && parsed.pictures && parsed.pictureRoles) {
+      for (const [id, url] of Object.entries(parsed.pictures)) {
+        try { await putBlob(id, await dataUrlToBlob(url)); shots++; } catch { /* 略過壞掉的圖 */ }
+      }
+      settings.pictures = { ...(settings.pictures || {}), ...parsed.pictureRoles };
+      saveSettings();
+      await loadPictures();
+      renderSlots();
+    }
+
     renderHome();
     renderHistory();
-    toast(added ? `已匯入 ${added} 筆紀錄` : '沒有新的紀錄可匯入');
+    const parts = [added ? `${added} 筆紀錄` : '', shots ? `${shots} 張聖像` : ''].filter(Boolean);
+    toast(parts.length ? `已匯入 ${parts.join('、')}` : '沒有新的內容可匯入');
   };
   reader.onerror = () => toast('無法讀取檔案');
   reader.readAsText(file);
@@ -567,6 +767,13 @@ function bind() {
     applySettings();
   });
   $('#set-font').addEventListener('change', saveSettings);
+
+  $('#pic-file').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file && slotTarget) assignPicture(slotTarget, file);
+    slotTarget = null;
+    e.target.value = '';
+  });
 
   $('#export-btn').addEventListener('click', exportRecords);
   $('#import-btn').addEventListener('click', () => $('#import-file').click());
@@ -666,6 +873,7 @@ async function init() {
   $('.home-title').textContent = PRAYERS.title;
   bind();
   if (INLINE) applyPreviewLimits();
+  await loadPictures();
   renderHome();
   go('home');
   $('#boot').hidden = true;
