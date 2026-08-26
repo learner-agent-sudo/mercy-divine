@@ -109,7 +109,7 @@ function setImage(imgNode, capNode, image) {
 
 function imageForStep(step) {
   if (!IMAGES.length) return null;
-  if (step.kind === 'large' || step.kind === 'small') return imageAt(step.decade);
+  if (step.kind === 'large' || step.kind === 'small') return imageAt(step.decade - 1); // 第一端配第一張
   if (step.kind === 'closing') return imageAt(IMAGES.length - 1);
   return imageAt(0);
 }
