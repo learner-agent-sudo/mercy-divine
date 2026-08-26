@@ -104,38 +104,49 @@ const imageAt = (i) => (IMAGES.length ? IMAGES[((i % IMAGES.length) + IMAGES.len
 // data/images.json 內的 for 欄位可把某張聖像指定給某段經文，
 // 例如 "for": ["hail-mary"] 就會在唸聖母經時顯示。
 // 另有 home（首頁）與 done（誦畢）兩個特別名稱。
+// 同一段經文可登記多張，依清單順序遞補：排前面的檔案若不存在，
+// 自動改用下一張，全部都取不到才收起圖框。
 let imageRoles = new Map();
 function buildImageRoles() {
   imageRoles = new Map();
   for (const image of IMAGES) {
     for (const role of image.for || []) {
-      if (!imageRoles.has(role)) imageRoles.set(role, image);
+      if (!imageRoles.has(role)) imageRoles.set(role, []);
+      imageRoles.get(role).push(image);
     }
   }
 }
 
-function setImage(imgNode, capNode, image) {
+function setImage(imgNode, capNode, candidates) {
+  const list = [].concat(candidates || []).filter(Boolean);
   const plate = imgNode.closest('.plate');
-  if (!image) { if (plate) plate.hidden = true; return; }
-  if (plate) plate.hidden = false;
-  // 檔案缺失時整個圖框收起，不留破圖。
-  imgNode.onerror = () => { if (plate) plate.hidden = true; };
-  imgNode.src = image.file;
-  imgNode.alt = image.caption || '';
-  if (capNode) capNode.textContent = image.caption || '';
+  const show = (i) => {
+    if (i >= list.length) { if (plate) plate.hidden = true; return; }
+    if (plate) plate.hidden = false;
+    imgNode.onerror = () => show(i + 1);
+    imgNode.src = list[i].file;
+    imgNode.alt = list[i].caption || '';
+    if (capNode) capNode.textContent = list[i].caption || '';
+  };
+  show(0);
 }
+
+const rolesFor = (role) => imageRoles.get(role) || [];
 
 // 先找指定給這段經文的聖像；沒有指定就沿用依端數輪流的方式。
 function imageForStep(step) {
-  if (!IMAGES.length) return null;
-  const matched = imageRoles.get(step.id);
-  if (matched) return matched;
-  if (step.kind === 'large' || step.kind === 'small') return imageAt(step.decade - 1); // 第一端配第一張
-  if (step.kind === 'closing') return imageAt(IMAGES.length - 1);
-  return imageAt(0);
+  if (!IMAGES.length) return [];
+  const matched = rolesFor(step.id);
+  if (matched.length) return matched;
+  if (step.kind === 'large' || step.kind === 'small') return [imageAt(step.decade - 1)]; // 第一端配第一張
+  if (step.kind === 'closing') return [imageAt(IMAGES.length - 1)];
+  return [imageAt(0)];
 }
 
-const imageForRole = (role, fallbackIndex) => imageRoles.get(role) || imageAt(fallbackIndex);
+const imageForRole = (role, fallbackIndex) => {
+  const matched = rolesFor(role);
+  return matched.length ? matched : [imageAt(fallbackIndex)];
+};
 
 /* ── 畫面切換 ──────────────────────────────────────── */
 const VIEWS = ['home', 'prayer', 'done', 'history', 'settings'];

@@ -1,7 +1,7 @@
 {
-  "note": "把圖片檔放進 images/ 資料夾，然後在下面加一行。file 是檔名，caption 是圖下的短句（可留空）。",
+  "note": "把圖片檔放進 images/ 資料夾，然後在下面加一行。file 是檔名，caption 是圖下的短句（可留空）。同一個 for 名稱可登記多張，排在前面的優先；若檔案不存在會自動改用下一張，方便先放暫代圖。",
   "roles": {
-    "說明": "for 欄位可指定這張聖像在哪段經文出現；一張圖可負責多段。留空不寫則依端數輪流顯示。",
+    "說明": "for 欄位指定這張聖像在哪段經文出現；一張圖可負責多段。完全不寫 for 則依端數輪流顯示。",
     "home": "首頁",
     "our-father": "天主經",
     "hail-mary": "聖母經",
@@ -14,19 +14,36 @@
   },
   "images": [
     {
-      "file": "images/placeholder-rays.svg",
+      "file": "images/divine-mercy.jpg",
       "caption": "耶穌，我信賴祢",
-      "for": ["home", "done", "jesus-king", "passion"]
+      "for": ["home", "passion", "jesus-king", "done"]
     },
     {
-      "file": "images/placeholder-heart.svg",
-      "caption": "仁慈的聖心",
-      "for": ["hail-mary", "holy-god"]
+      "file": "images/mary-angels.jpg",
+      "caption": "聖母與眾天使",
+      "for": ["our-father"]
     },
     {
-      "file": "images/placeholder-dawn.svg",
-      "caption": "祢的慈悲永遠常存",
-      "for": ["our-father", "creed", "eternal-father"]
-    }
+      "file": "images/hail-mary.jpg",
+      "caption": "聖母無玷聖心",
+      "for": ["hail-mary"]
+    },
+    {
+      "file": "images/gethsemane.jpg",
+      "caption": "山園祈禱",
+      "for": ["eternal-father"]
+    },
+    {
+      "file": "images/divine-mercy-glass.jpg",
+      "caption": "慈悲耶穌",
+      "for": ["creed", "holy-god"]
+    },
+
+    { "file": "images/placeholder-rays.svg",  "caption": "耶穌，我信賴祢",
+      "for": ["home", "done", "jesus-king", "passion"] },
+    { "file": "images/placeholder-heart.svg", "caption": "仁慈的聖心",
+      "for": ["hail-mary", "holy-god"] },
+    { "file": "images/placeholder-dawn.svg",  "caption": "祢的慈悲永遠常存",
+      "for": ["our-father", "creed", "eternal-father"] }
   ]
 }
