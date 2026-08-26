@@ -93,6 +93,13 @@ opened as a file:
 python3 -m http.server 8765     # then open http://localhost:8765/
 ```
 
+## Previewing without installing
+
+`node scripts/build-preview.mjs preview.html` bundles the whole app — text, images,
+styles and code — into one self-contained HTML file that runs from anywhere, including
+straight off disk. Useful for a quick look on a desktop or for sharing a link. It is a
+preview only: backup export/import and offline install need the real deployment above.
+
 ## Layout
 
 ```

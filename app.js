@@ -577,8 +577,21 @@ function bind() {
 }
 
 /* ── Service worker ───────────────────────────────── */
+// 單檔預覽版無法下載檔案，也沒有 service worker，相關功能改為說明文字。
+function applyPreviewLimits() {
+  $('#export-btn').hidden = true;
+  $('#import-btn').hidden = true;
+  $('#import-file').hidden = true;
+  $('#backup-card').querySelector('.hint').textContent =
+    '這是線上預覽版，匯出與匯入備份僅在安裝到手機後可用。此處的紀錄只存在這個瀏覽器分頁所屬的網站資料中。';
+}
+
 function initServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
+  if (INLINE || !('serviceWorker' in navigator)) {
+    $('#check-update').hidden = true;
+    $('#update-state').textContent = INLINE ? '此為單檔預覽版，更新請見正式安裝版。' : '';
+    return;
+  }
   navigator.serviceWorker.register('sw.js').then((reg) => {
     const watch = (worker) => {
       if (!worker) return;
@@ -611,13 +624,24 @@ function initServiceWorker() {
 }
 
 /* ── 啟動 ─────────────────────────────────────────── */
+// 單檔預覽版會把經文與圖片直接嵌在頁面裡，此時不必也無法用 fetch 取得。
+let INLINE = false;
+const inlineJSON = (id) => {
+  const node = document.getElementById(id);
+  return node ? JSON.parse(node.textContent) : null;
+};
+
 async function init() {
   applySettings();
   try {
-    const [prayers, images] = await Promise.all([
-      fetch('data/prayers.json').then((r) => r.json()),
-      fetch('data/images.json').then((r) => r.json()).catch(() => ({ images: [] })),
-    ]);
+    const embedded = inlineJSON('data-prayers');
+    INLINE = embedded !== null;
+    const [prayers, images] = INLINE
+      ? [embedded, inlineJSON('data-images') || { images: [] }]
+      : await Promise.all([
+          fetch('data/prayers.json').then((r) => r.json()),
+          fetch('data/images.json').then((r) => r.json()).catch(() => ({ images: [] })),
+        ]);
     PRAYERS = prayers;
     IMAGES = images.images || [];
     buildImageRoles();
@@ -630,6 +654,7 @@ async function init() {
   document.title = PRAYERS.title;
   $('.home-title').textContent = PRAYERS.title;
   bind();
+  if (INLINE) applyPreviewLimits();
   renderHome();
   go('home');
   $('#boot').hidden = true;
