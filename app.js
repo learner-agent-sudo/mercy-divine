@@ -80,19 +80,20 @@ let STEPS = [];
 function buildSteps(p) {
   const steps = [];
   for (const item of p.opening) {
-    steps.push({ kind: 'opening', name: item.name, text: item.text, stage: '開始' });
+    steps.push({ kind: 'opening', id: item.id, name: item.name, text: item.text, stage: '開始' });
   }
   const { count, large, small } = p.decades;
   for (let d = 1; d <= count; d++) {
     const stage = `第${CN_NUM[d]}端`;
-    steps.push({ kind: 'large', name: large.name, text: large.text, stage, decade: d, bead: 0 });
+    steps.push({ kind: 'large', id: large.id, name: large.name, text: large.text, stage, decade: d, bead: 0 });
     for (let b = 1; b <= small.count; b++) {
-      steps.push({ kind: 'small', name: small.name, text: small.text, stage, decade: d, bead: b });
+      steps.push({ kind: 'small', id: small.id, name: small.name, text: small.text, stage, decade: d, bead: b });
     }
   }
   for (const item of p.closing) {
     for (let r = 1; r <= (item.repeat || 1); r++) {
-      steps.push({ kind: 'closing', name: item.name, text: item.text, stage: '結束', rep: r, of: item.repeat || 1 });
+      steps.push({ kind: 'closing', id: item.id, name: item.name, text: item.text, stage: '結束',
+                   rep: r, of: item.repeat || 1 });
     }
   }
   return steps;
@@ -100,19 +101,41 @@ function buildSteps(p) {
 
 const imageAt = (i) => (IMAGES.length ? IMAGES[((i % IMAGES.length) + IMAGES.length) % IMAGES.length] : null);
 
+// data/images.json 內的 for 欄位可把某張聖像指定給某段經文，
+// 例如 "for": ["hail-mary"] 就會在唸聖母經時顯示。
+// 另有 home（首頁）與 done（誦畢）兩個特別名稱。
+let imageRoles = new Map();
+function buildImageRoles() {
+  imageRoles = new Map();
+  for (const image of IMAGES) {
+    for (const role of image.for || []) {
+      if (!imageRoles.has(role)) imageRoles.set(role, image);
+    }
+  }
+}
+
 function setImage(imgNode, capNode, image) {
-  if (!image) return;
+  const plate = imgNode.closest('.plate');
+  if (!image) { if (plate) plate.hidden = true; return; }
+  if (plate) plate.hidden = false;
+  // 檔案缺失時整個圖框收起，不留破圖。
+  imgNode.onerror = () => { if (plate) plate.hidden = true; };
   imgNode.src = image.file;
   imgNode.alt = image.caption || '';
   if (capNode) capNode.textContent = image.caption || '';
 }
 
+// 先找指定給這段經文的聖像；沒有指定就沿用依端數輪流的方式。
 function imageForStep(step) {
   if (!IMAGES.length) return null;
+  const matched = imageRoles.get(step.id);
+  if (matched) return matched;
   if (step.kind === 'large' || step.kind === 'small') return imageAt(step.decade - 1); // 第一端配第一張
   if (step.kind === 'closing') return imageAt(IMAGES.length - 1);
   return imageAt(0);
 }
+
+const imageForRole = (role, fallbackIndex) => imageRoles.get(role) || imageAt(fallbackIndex);
 
 /* ── 畫面切換 ──────────────────────────────────────── */
 const VIEWS = ['home', 'prayer', 'done', 'history', 'settings'];
@@ -173,7 +196,7 @@ function applyMode() {
   else {
     $('#prayer-stage').textContent = '救主慈悲串經';
     $('#progress-fill').style.width = '100%';
-    setImage($('#full-image'), null, imageAt(0));
+    setImage($('#full-image'), null, imageForRole('home', 0));
   }
 }
 
@@ -271,7 +294,7 @@ function finishPrayer() {
   saveRecords();
   lastRecordId = record.id;
 
-  setImage($('#done-image'), $('#done-caption'), imageAt(records.length));
+  setImage($('#done-image'), $('#done-caption'), imageForRole('done', records.length));
   $('#done-meta').textContent = `${fmtFullDate(now)}　${fmtTime(now)}　歷時 ${fmtDuration(secs)}`;
   $('#done-note').value = '';
   session = null;
@@ -295,7 +318,7 @@ function leavePrayer() {
 function renderHome() {
   const today = new Date();
   $('#home-date').textContent = fmtFullDate(today);
-  setImage($('#home-image'), $('#home-caption'), imageAt(records.length));
+  setImage($('#home-image'), $('#home-caption'), imageForRole('home', records.length));
 
   const todayCount = dayCounts().get(dayKey(today)) || 0;
   const state = $('#today-state');
@@ -597,6 +620,7 @@ async function init() {
     ]);
     PRAYERS = prayers;
     IMAGES = images.images || [];
+    buildImageRoles();
     STEPS = buildSteps(PRAYERS);
   } catch {
     $('.boot-msg').textContent = '無法載入經文檔案，請確認 data/prayers.json 存在。';

@@ -48,13 +48,31 @@ there are; the app rebuilds itself from that file.
 [`data/images.json`](data/images.json):
 
 ```json
-{ "file": "images/jesus-1.jpg", "caption": "耶穌，我信賴祢" }
+{ "file": "images/jesus-1.jpg", "caption": "耶穌，我信賴祢", "for": ["hail-mary"] }
 ```
 
-The three `placeholder-*.svg` files are stand-ins — replace them with your own pictures
-and delete them. Images are shown on the home screen, above the text while praying (a
-different one for each decade, cycling through the list), and on the completion screen.
-Keep each under about 300 KB so the app stays quick to install.
+`for` matches a picture to the prayer being said, so the image changes as you move
+through the chaplet. One picture can cover several prayers. The names are:
+
+| name             | shown during                        |
+|------------------|-------------------------------------|
+| `home`           | the home screen                     |
+| `our-father`     | 天主經                               |
+| `hail-mary`      | 聖母經                               |
+| `creed`          | 信經                                 |
+| `eternal-father` | 大珠 — 永生之父⋯                      |
+| `passion`        | 小珠 — 因祂的至悲慘苦難⋯                |
+| `holy-god`       | 結束祈禱 — 至聖天主⋯                   |
+| `jesus-king`     | 信賴禱詞 — 主耶穌，慈悲的君王⋯          |
+| `done`           | the completion screen               |
+
+Leave `for` out entirely and the pictures simply cycle by decade instead — the first
+picture for the first decade, and so on.
+
+Pictures are shown whole, never cropped, so portrait icons and wide paintings both work.
+A file listed here but missing from disk hides its frame rather than showing a broken
+image. The three `placeholder-*.svg` files are stand-ins — replace them with your own and
+delete them. Keep each under about 300 KB so the app stays quick to install.
 
 **After changing anything, bump `VERSION` in [`sw.js`](sw.js)** (`v1` → `v2`). That is
 what tells already-installed phones to fetch the new version — without it they keep

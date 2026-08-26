@@ -1,8 +1,32 @@
 {
-  "note": "在此登記聖像圖片。把圖片檔放進 images/ 資料夾，然後在下面加一行。file 是檔名，caption 是圖下的短句（可留空）。清單順序即為五端的順序：第一端配第一張，依此類推。改完記得同時更新 sw.js 內的版本號，讓手機重新下載。",
+  "note": "把圖片檔放進 images/ 資料夾，然後在下面加一行。file 是檔名，caption 是圖下的短句（可留空）。",
+  "roles": {
+    "說明": "for 欄位可指定這張聖像在哪段經文出現；一張圖可負責多段。留空不寫則依端數輪流顯示。",
+    "home": "首頁",
+    "our-father": "天主經",
+    "hail-mary": "聖母經",
+    "creed": "信經",
+    "eternal-father": "每端大珠（永生之父⋯）",
+    "passion": "每端小珠（因祂的至悲慘苦難⋯）",
+    "holy-god": "結束祈禱（至聖天主⋯）",
+    "jesus-king": "信賴禱詞（主耶穌，慈悲的君王⋯）",
+    "done": "誦畢畫面"
+  },
   "images": [
-    { "file": "images/placeholder-rays.svg",  "caption": "耶穌，我信賴祢" },
-    { "file": "images/placeholder-heart.svg", "caption": "仁慈的聖心" },
-    { "file": "images/placeholder-dawn.svg",  "caption": "祢的慈悲永遠常存" }
+    {
+      "file": "images/placeholder-rays.svg",
+      "caption": "耶穌，我信賴祢",
+      "for": ["home", "done", "jesus-king", "passion"]
+    },
+    {
+      "file": "images/placeholder-heart.svg",
+      "caption": "仁慈的聖心",
+      "for": ["hail-mary", "holy-god"]
+    },
+    {
+      "file": "images/placeholder-dawn.svg",
+      "caption": "祢的慈悲永遠常存",
+      "for": ["our-father", "creed", "eternal-father"]
+    }
   ]
 }
