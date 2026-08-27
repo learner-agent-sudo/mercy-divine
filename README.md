@@ -128,6 +128,7 @@ Five suites cover the things that would hurt most if they broke:
 | `images` | the image follows the prayer, missing files fall back, gallery picks are scaled, de-duplicated and persist |
 | `backup-roundtrip` | export, wipe the device, import, and get records *and* pictures back; re-importing does not duplicate |
 | `update-flow` | a new version reaches an installed phone, old content serves until accepted, stale caches are cleared |
+| `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
 
 The suites drive a real browser at phone size and fail on any console error.
 

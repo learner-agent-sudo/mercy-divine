@@ -657,8 +657,13 @@ async function exportRecords() {
   toast(`已匯出 ${records.length} 筆紀錄${shots ? ` 與 ${shots} 張聖像` : ''}`);
 }
 
-// data: 網址轉回 Blob，供匯入聖像使用
-const dataUrlToBlob = (url) => fetch(url).then((r) => r.blob());
+// 只接受內嵌的 data: 圖片。備份檔可能來自他處，若其中放的是 http 網址，
+// fetch 會向外連線；本程式不應在任何情況下對外送出請求。
+const IMAGE_DATA_URL = /^data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/;
+const dataUrlToBlob = (url) => {
+  if (typeof url !== 'string' || !IMAGE_DATA_URL.test(url)) throw new Error('不是內嵌圖片');
+  return fetch(url).then((r) => r.blob());
+};
 
 function importRecords(file) {
   const reader = new FileReader();
@@ -673,8 +678,14 @@ function importRecords(file) {
     const seen = new Set(records.map((r) => r.id));
     let added = 0;
     for (const r of incoming) {
-      if (!r || !r.ts || (r.id && seen.has(r.id))) continue;
-      records.push({ id: r.id || newId(), ts: r.ts, mode: r.mode || 'guided', secs: r.secs || 0, note: r.note || '' });
+      if (!r || !r.ts || Number.isNaN(Date.parse(r.ts)) || (r.id && seen.has(r.id))) continue;
+      records.push({
+        id: String(r.id || newId()).slice(0, 64),
+        ts: r.ts,
+        mode: r.mode === 'full' ? 'full' : 'guided',
+        secs: Number.isFinite(r.secs) ? Math.max(0, Math.min(r.secs, 86400)) : 0,
+        note: typeof r.note === 'string' ? r.note.slice(0, 80) : '',
+      });
       if (r.id) seen.add(r.id);
       added++;
     }
@@ -683,10 +694,17 @@ function importRecords(file) {
     let shots = 0;
     const parsed = JSON.parse(reader.result);
     if (parsed && parsed.pictures && parsed.pictureRoles) {
+      // 只有確實存進來的圖片才算數，被擋下的網址不應留下對應關係。
+      const stored = new Set();
       for (const [id, url] of Object.entries(parsed.pictures)) {
-        try { await putBlob(id, await dataUrlToBlob(url)); shots++; } catch { /* 略過壞掉的圖 */ }
+        try { await putBlob(id, await dataUrlToBlob(url)); stored.add(id); shots++; } catch { /* 略過壞掉的圖 */ }
       }
-      settings.pictures = { ...(settings.pictures || {}), ...parsed.pictureRoles };
+      const known = new Set(IMAGE_SLOTS.map(([role]) => role));
+      const roles = {};
+      for (const [role, id] of Object.entries(parsed.pictureRoles)) {
+        if (known.has(role) && typeof id === 'string' && stored.has(id)) roles[role] = id;
+      }
+      settings.pictures = { ...(settings.pictures || {}), ...roles };
       saveSettings();
       await loadPictures();
       renderSlots();
