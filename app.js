@@ -33,7 +33,7 @@ const store = {
   },
 };
 
-const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, pictures: {} };
+const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, haptic: true, pictures: {} };
 
 // 可在程式內指定聖像的九個位置。
 const IMAGE_SLOTS = [
@@ -257,7 +257,7 @@ function renderStep() {
 
   $('#step-prev').disabled = session.index === 0;
   $('#step-next').textContent = last ? '我已誦畢' : '下一步';
-  $('#tap-hint').textContent = last ? '輕觸畫面完成' : '輕觸畫面繼續';
+  $('#tap-hint').textContent = last ? '輕觸畫面任一處完成' : '輕觸畫面任一處繼續';
   $('#prayer-scroll').scrollTop = 0;
 }
 
@@ -276,7 +276,14 @@ function renderBeads(step) {
 }
 const makeBead = (cls) => el('span', cls);
 
+// 每數一珠給一下輕微震動，如同撥動念珠。
+function tick() {
+  if (!settings.haptic || !navigator.vibrate) return;
+  try { navigator.vibrate(12); } catch { /* 系統不允許時忽略 */ }
+}
+
 function advance() {
+  tick();
   if (session.index >= STEPS.length - 1) finishPrayer();
   else { session.index++; renderStep(); }
 }
@@ -468,6 +475,8 @@ function renderSettings() {
   $('#set-theme').value = settings.theme;
   $('#set-wake').checked = settings.wake;
   $('#set-wake').disabled = !('wakeLock' in navigator);
+  $('#set-haptic').checked = settings.haptic;
+  $('#set-haptic').disabled = !navigator.vibrate;
 
   $('#about-text').textContent =
     `經文共 ${STEPS.length} 步，聖像 ${IMAGES.length} 張。所有紀錄只存在此裝置，不會上傳。`;
@@ -732,18 +741,30 @@ function bind() {
     $('#prayer-scroll').scrollTop = 0;
   });
 
-  // 輕觸經文卡片前進；拖曳或長按則視為捲動，不前進。
+  // 輕觸整個經文區域前進。判斷只看手指有沒有移動，不看按了多久——
+  // 唸經時手指常會停在畫面上，用時間判斷會讓慢的觸碰算不到。
+  const scroll = $('#prayer-scroll');
   let down = null;
-  const guided = $('#guided');
-  guided.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, t: Date.now() }; });
-  guided.addEventListener('pointerup', (e) => {
-    if (!down) return;
-    const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
-    const quick = Date.now() - down.t < 500;
-    down = null;
-    if (moved < 10 && quick && !window.getSelection().toString()) advance();
+  let lastStep = 0;
+  scroll.addEventListener('pointerdown', (e) => {
+    if (!session || session.mode !== 'guided' || e.target.closest('button, a, input, select')) { down = null; return; }
+    down = { x: e.clientX, y: e.clientY, top: scroll.scrollTop };
   });
-  guided.addEventListener('pointercancel', () => { down = null; });
+  scroll.addEventListener('pointerup', (e) => {
+    if (!down) return;
+    const start = down;
+    down = null;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 14) return; // 拖曳
+    if (Math.abs(scroll.scrollTop - start.top) > 4) return;                // 捲動
+    if (Date.now() - lastStep < 200) return;   // 同一次觸碰的重複事件，避免一觸算兩珠
+    lastStep = Date.now();
+    advance();
+  });
+  scroll.addEventListener('pointercancel', () => { down = null; });
+  // 長按圖片會跳出「儲存圖片」，會打斷祈禱
+  scroll.addEventListener('contextmenu', (e) => {
+    if (session && session.mode === 'guided') e.preventDefault();
+  });
 
   for (const btn of document.querySelectorAll('[data-go]')) {
     btn.addEventListener('click', () => {
@@ -779,6 +800,7 @@ function bind() {
     saveSettings();
     if (!settings.wake) releaseWake();
   });
+  $('#set-haptic').addEventListener('change', (e) => { settings.haptic = e.target.checked; saveSettings(); tick(); });
   $('#set-font').addEventListener('input', (e) => {
     settings.font = Number(e.target.value);
     $('#set-font-out').textContent = `${settings.font}%`;

@@ -151,9 +151,18 @@ img { max-width: 100%; height: auto; display: block; }
 .progress { height: 3px; background: var(--line); }
 .progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
 
-.scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1.15rem 1.15rem 1.5rem; display: flex; flex-direction: column; }
+.scroll {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding: 1.15rem 1.15rem 1.5rem; display: flex; flex-direction: column;
+  touch-action: manipulation;   /* 去掉連點兩下放大，觸碰才不會延遲或被吃掉 */
+}
 /* 短的經文垂直置中；長的（如信經）則從頂端開始，safe 可避免溢出時被切掉開頭。 */
-.guided { flex: 1; display: flex; flex-direction: column; justify-content: safe center; }
+/* 引導模式整片都是觸碰區：關掉選字與長按選單，
+   否則手指稍微停久一點就會叫出反白或「儲存圖片」，那一觸就數不到。 */
+.guided {
+  flex: 1; display: flex; flex-direction: column; justify-content: safe center;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
 .full { flex: 1; }
 
 .step-head { text-align: center; margin-bottom: 1rem; }
@@ -169,19 +178,32 @@ img { max-width: 100%; height: auto; display: block; }
   max-width: 30rem;
 }
 
-.beads { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .55rem; margin-top: 1.8rem; }
-.bead { width: .62rem; height: .62rem; border-radius: 50%; background: var(--line); transition: background .2s ease, transform .2s ease; }
-.bead.lg { width: 1rem; height: 1rem; margin-right: .35rem; }
+.beads { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .62rem; margin-top: 1.8rem; }
+.bead { width: .72rem; height: .72rem; border-radius: 50%; background: var(--line); transition: background .2s ease; }
+.bead.lg { width: 1.15rem; height: 1.15rem; margin-right: .4rem; }
 .bead.on { background: var(--gold); }
-.bead.now { background: var(--accent); transform: scale(1.45); }
+/* 目前這一珠加上外環並輕輕彈一下，讓人確定剛才那一觸有算到。 */
+.bead.now {
+  background: var(--accent);
+  box-shadow: 0 0 0 .22rem color-mix(in srgb, var(--accent) 28%, transparent);
+  animation: beadTick .28s cubic-bezier(.34, 1.56, .64, 1);
+}
+@keyframes beadTick {
+  0%   { transform: scale(1); }
+  55%  { transform: scale(1.7); }
+  100% { transform: scale(1.35); }
+}
+.bead.now { transform: scale(1.35); }
 
 .tap-hint { text-align: center; color: var(--muted); font-size: .78rem; letter-spacing: .1em; margin-top: 1.6rem; opacity: .75; }
 
 .actions {
-  display: flex; gap: .6rem; align-items: center;
+  display: flex; gap: 1.1rem; align-items: center;
   padding: .7rem 1.15rem calc(.7rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line); background: var(--bg);
 }
+/* 「上一步」刻意做小並拉開距離：誤觸會倒退一珠，比漏數更擾人。 */
+#step-prev { flex: none; padding-inline: .5rem; font-size: .85rem; }
 
 /* 全文模式 */
 .full-sec { margin-bottom: 2rem; }
@@ -257,5 +279,6 @@ img { max-width: 100%; height: auto; display: block; }
 .cal-day:focus-visible, .plate:focus-visible { outline-offset: -2px; }
 
 @media (prefers-reduced-motion: reduce) {
+  .bead.now { animation: none; }
   * { transition: none !important; }
 }

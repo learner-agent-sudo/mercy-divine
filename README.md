@@ -75,7 +75,8 @@ image. The three `placeholder-*.svg` files are stand-ins — replace them with y
 delete them. Keep each under about 300 KB so the app stays quick to install.
 
 Pictures listed here are part of the site: every device that opens it sees them, and
-they are cached for offline use. They are also what the service worker downloads on
+they are cached for offline use. The nine currently in `images/` come to about 2.5 MB
+in total, downloaded once when the app installs. They are also what the service worker downloads on
 install, so keep the set to a few MB in total or the first install gets slow.
 
 ### Or just pick them on the phone
@@ -138,6 +139,7 @@ Five suites cover the things that would hurt most if they broke:
 | `images` | the image follows the prayer, missing files fall back, gallery picks are scaled, de-duplicated and persist |
 | `backup-roundtrip` | export, wipe the device, import, and get records *and* pictures back; re-importing does not duplicate |
 | `update-flow` | a new version reaches an installed phone, old content serves until accepted, stale caches are cleared |
+| `tap` | a slow or slightly wobbly touch counts as one bead; drags, swipes and momentum scrolling do not |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
 
 The suites drive a real browser at phone size and fail on any console error.
