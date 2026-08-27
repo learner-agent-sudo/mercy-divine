@@ -74,6 +74,10 @@ A file listed here but missing from disk hides its frame rather than showing a b
 image. The three `placeholder-*.svg` files are stand-ins — replace them with your own and
 delete them. Keep each under about 300 KB so the app stays quick to install.
 
+Pictures listed here are part of the site: every device that opens it sees them, and
+they are cached for offline use. They are also what the service worker downloads on
+install, so keep the set to a few MB in total or the first install gets slow.
+
 ### Or just pick them on the phone
 
 You don't have to touch the repository at all. **設定 → 聖像** lists the nine places a
@@ -84,6 +88,12 @@ included in the backup file, so they survive a new phone. 還原 puts the built-
 Pictures picked this way are scaled down to 1600px on the long edge and re-encoded, so a
 4000px phone photo becomes a few tens of KB. The same picture assigned to several places
 is stored once, not once per place.
+
+**They stay on that one device.** Browser storage is per-device and per-browser, so a
+picture chosen on a laptop does not appear on a phone. To carry them across, export a
+backup on the first device and import it on the second. To have every device show the
+same pictures without any of that, put the files in `images/` as above — that is the
+copy that belongs to the site itself.
 
 **After changing anything, bump `VERSION` in [`sw.js`](sw.js)** (`v1` → `v2`). That is
 what tells already-installed phones to fetch the new version — without it they keep

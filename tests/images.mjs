@@ -4,6 +4,10 @@ const ok = (l, p) => { console.log(`${p ? 'PASS' : 'FAIL ***'}  ${l}`); if (!p) 
 let failures = 0;
 
 const { browser, page, errors } = await launch();
+// 清單中可能列出尚未上傳的檔案，這些請求應該每個檔案只發生一次
+let missed = [];
+page.on('load', () => { missed = []; });   // 每次載入頁面重新計算
+page.on('response', (r) => { if (r.status() === 404) missed.push(new URL(r.url()).pathname); });
 await page.goto(BASE, { waitUntil: 'networkidle' });
 
 const src = async (sel) => page.evaluate(async (s) => {
@@ -73,6 +77,10 @@ await page.waitForTimeout(400);
 ok('還原 puts the built-in image back', await row.locator('.slot-state').textContent() === '預設');
 await page.click('#view-settings [data-go="home"]');
 ok('home shows the built-in image again', !(await src('#home-image')).blob);
+
+const repeats = missed.filter((p, i) => missed.indexOf(p) !== i);
+ok('a missing file is retried at most once per page load', repeats.length === 0);
+console.log(`        ${new Set(missed).size} listed file(s) not yet uploaded, ${missed.length} request(s) this page`);
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();

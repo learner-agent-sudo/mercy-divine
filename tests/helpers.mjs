@@ -15,6 +15,10 @@ export async function launch(opts = {}) {
   let auto = true;
   page.on('dialog', (d) => { if (auto) d.accept().catch(() => {}); });
   page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push('CONSOLE: ' + m.text()); });
+  // 資源載入失敗不是程式錯誤（清單可能列出尚未上傳的聖像）；
+  // 要檢查這類請求的測試請自行監聽 response。
+  page.on('console', (m) => {
+    if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('CONSOLE: ' + m.text());
+  });
   return { browser, context, page, errors, autoDialog: (on) => { auto = on; } };
 }
