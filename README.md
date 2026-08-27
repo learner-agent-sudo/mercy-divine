@@ -111,6 +111,26 @@ styles and code — into one self-contained HTML file that runs from anywhere, i
 straight off disk. Useful for a quick look on a desktop or for sharing a link. It is a
 preview only: backup export/import and offline install need the real deployment above.
 
+## Tests
+
+```sh
+npm install        # once — pulls in Playwright
+npm test           # runs every suite against a local server
+npm test offline   # or just one
+```
+
+Five suites cover the things that would hurt most if they broke:
+
+| suite | proves |
+|---|---|
+| `prayer-flow` | both modes, bead counting, the completion button, records, calendar, streak |
+| `offline` | installs, then works with the network cut — cold start, praying, recording — and that reconnecting changes nothing |
+| `images` | the image follows the prayer, missing files fall back, gallery picks are scaled, de-duplicated and persist |
+| `backup-roundtrip` | export, wipe the device, import, and get records *and* pictures back; re-importing does not duplicate |
+| `update-flow` | a new version reaches an installed phone, old content serves until accepted, stale caches are cleared |
+
+The suites drive a real browser at phone size and fail on any console error.
+
 ## Layout
 
 ```
