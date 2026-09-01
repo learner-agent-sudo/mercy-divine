@@ -122,6 +122,27 @@ styles and code — into one self-contained HTML file that runs from anywhere, i
 straight off disk. Useful for a quick look on a desktop or for sharing a link. It is a
 preview only: backup export/import and offline install need the real deployment above.
 
+## Praying with your eyes closed
+
+The count is carried by vibration, so it can be followed without looking. Five signals,
+each distinguishable from the others by length and rhythm:
+
+| when you tap | you feel | meaning |
+|---|---|---|
+| an opening prayer | one medium pulse | still in 天主經 / 聖母經 / 信經 |
+| beads 1–8 | one short pulse | another bead counted |
+| bead 9 | one longer pulse | the next one is the tenth |
+| bead 10 | five pulses | that decade is complete |
+| the last repetition | five long pulses | the whole chaplet is finished |
+
+The two closing prayers said three times each are counted the same way, with their own
+three beads on screen and 第 N 遍，共 3 遍 in words. Finishing a decade also flashes
+第一端 圓滿 on screen for anyone who opens their eyes.
+
+Turn it off in 設定, where **試一下震動** plays the sequence so you can confirm the phone
+is actually vibrating — Android silences it system-wide in some modes, which no web page
+can override.
+
 ## Tests
 
 ```sh
@@ -140,6 +161,7 @@ Five suites cover the things that would hurt most if they broke:
 | `backup-roundtrip` | export, wipe the device, import, and get records *and* pictures back; re-importing does not duplicate |
 | `update-flow` | a new version reaches an installed phone, old content serves until accepted, stale caches are cleared |
 | `tap` | a slow or slightly wobbly touch counts as one bead; drags, swipes and momentum scrolling do not |
+| `haptics` | the five vibration signals stay distinguishable, and the three-times prayers are counted |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
 
 The suites drive a real browser at phone size and fail on any console error.

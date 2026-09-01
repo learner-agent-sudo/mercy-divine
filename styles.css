@@ -259,6 +259,25 @@ img { max-width: 100%; height: auto; display: block; }
 .slot-name { font-size: .95rem; }
 .slot-state { font-size: .72rem; color: var(--muted); }
 
+/* 一端唸畢的提示：蓋在經文上方，短暫出現後淡出。 */
+.flash {
+  position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
+  z-index: 20; pointer-events: none;
+  background: var(--accent); color: var(--accent-ink);
+  padding: .8rem 1.6rem; border-radius: 999px;
+  font-size: 1.15rem; font-weight: 600; letter-spacing: .18em;
+  box-shadow: var(--shadow); opacity: 0;
+}
+.flash.show { animation: flashIn 1.6s ease forwards; }
+@keyframes flashIn {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.85); }
+  12%  { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  22%  { transform: translate(-50%, -50%) scale(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.view-full.active { position: relative; }   /* flash 以祈禱畫面為定位基準 */
+
 /* ── 提示與更新 ──────────────────────────────────────── */
 .toast {
   position: fixed; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -280,5 +299,6 @@ img { max-width: 100%; height: auto; display: block; }
 
 @media (prefers-reduced-motion: reduce) {
   .bead.now { animation: none; }
+  .flash.show { animation: none; opacity: 1; }
   * { transition: none !important; }
 }

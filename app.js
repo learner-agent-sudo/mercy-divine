@@ -183,6 +183,19 @@ function go(name) {
   if (name === 'prayer' && scroll) scroll.scrollTop = 0;
 }
 
+// 一端唸畢時在畫面中央短暫顯示，與底部的一般提示區隔開來。
+let flashTimer;
+function flash(text) {
+  const node = $('#flash');
+  node.textContent = text;
+  node.hidden = false;
+  node.classList.remove('show');
+  void node.offsetWidth;          // 重新觸發動畫
+  node.classList.add('show');
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { node.hidden = true; node.classList.remove('show'); }, 1600);
+}
+
 let toastTimer;
 function toast(msg) {
   const t = $('#toast');
@@ -261,33 +274,65 @@ function renderStep() {
   $('#prayer-scroll').scrollTop = 0;
 }
 
+// 珠子的位置圖：一端是大珠加十顆小珠；結束禱詞則畫出三遍的進度。
 function renderBeads(step) {
   const wrap = $('#beads');
   wrap.textContent = '';
-  if (step.kind !== 'large' && step.kind !== 'small') return;
-  const total = PRAYERS.decades.small.count;
-  wrap.appendChild(makeBead('bead lg' + (step.bead === 0 ? ' now' : ' on')));
-  for (let b = 1; b <= total; b++) {
-    let cls = 'bead';
-    if (b < step.bead) cls += ' on';
-    else if (b === step.bead) cls += ' now';
-    wrap.appendChild(makeBead(cls));
-  }
+  const dots = (total, current, withLarge) => {
+    if (withLarge) wrap.appendChild(makeBead('bead lg' + (current === 0 ? ' now' : ' on')));
+    for (let i = 1; i <= total; i++) {
+      wrap.appendChild(makeBead('bead' + (i < current ? ' on' : i === current ? ' now' : '')));
+    }
+  };
+  if (step.kind === 'large' || step.kind === 'small') dots(PRAYERS.decades.small.count, step.bead, true);
+  else if (step.kind === 'closing' && step.of > 1) dots(step.of, step.rep, false);
 }
 const makeBead = (cls) => el('span', cls);
 
-// 每數一珠給一下輕微震動，如同撥動念珠。
-function tick() {
+// 震動語彙：閉著眼睛唸經時，這是唯一能知道「數到哪裡」的訊號，
+// 所以每一種節奏都要能分辨。太短的震動手機不會真的震，故最短 25 毫秒。
+const BUZZ = {
+  bead:       [25],                        // 一顆小珠
+  lastBead:   [45],                        // 第十珠，這一端最後一顆
+  decadeDone: [55, 80, 55, 80, 55],        // 十珠唸畢，進入下一端
+  decade:     [45, 90, 45],                // 新的一端開始
+  opening:    [35],                        // 開始的經文
+  closing:    [25],                        // 結束禱詞的每一遍
+  back:       [15],                        // 退回一步
+  finish:     [70, 100, 70, 100, 180],     // 全部誦畢
+};
+
+function buzz(pattern) {
   if (!settings.haptic || !navigator.vibrate) return;
-  try { navigator.vibrate(12); } catch { /* 系統不允許時忽略 */ }
+  try { navigator.vibrate(pattern); } catch { /* 系統不允許時忽略 */ }
+}
+
+// 依「剛離開哪一步」與「即將到哪一步」挑選節奏。
+// 一端唸畢的訊號優先於其他，因為那是最需要察覺的轉折。
+function buzzFor(prev, next) {
+  if (!next) return BUZZ.finish;
+  const perDecade = PRAYERS.decades.small.count;
+  if (prev && prev.kind === 'small' && prev.bead === perDecade) return BUZZ.decadeDone;
+  if (next.kind === 'large') return BUZZ.decade;
+  if (next.kind === 'small') return next.bead === perDecade ? BUZZ.lastBead : BUZZ.bead;
+  if (next.kind === 'closing') return BUZZ.closing;
+  return BUZZ.opening;
 }
 
 function advance() {
-  tick();
-  if (session.index >= STEPS.length - 1) finishPrayer();
-  else { session.index++; renderStep(); }
+  const last = session.index >= STEPS.length - 1;
+  const prev = STEPS[session.index];
+  buzz(buzzFor(prev, last ? null : STEPS[session.index + 1]));
+  if (last) { finishPrayer(); return; }
+  session.index++;
+  renderStep();
+  // 一端唸畢時明白顯示一下，睜眼時也看得出剛才過了一端
+  if (prev.kind === 'small' && prev.bead === PRAYERS.decades.small.count) {
+    flash(`${prev.stage} 圓滿`);
+  }
 }
 function back() {
+  buzz(BUZZ.back);
   if (session.index > 0) { session.index--; renderStep(); }
 }
 
@@ -800,7 +845,17 @@ function bind() {
     saveSettings();
     if (!settings.wake) releaseWake();
   });
-  $('#set-haptic').addEventListener('change', (e) => { settings.haptic = e.target.checked; saveSettings(); tick(); });
+  $('#set-haptic').addEventListener('change', (e) => {
+    settings.haptic = e.target.checked;
+    saveSettings();
+    if (settings.haptic) buzz(BUZZ.bead);
+  });
+  // 手機可能整機關閉震動，讓使用者當場確認得到
+  $('#test-haptic').addEventListener('click', () => {
+    if (!navigator.vibrate) { toast('這個瀏覽器不支援震動'); return; }
+    navigator.vibrate([25, 120, 25, 120, 55, 150, 55, 80, 55, 80, 55]);
+    toast('一珠、一珠、第十珠、一端圓滿');
+  });
   $('#set-font').addEventListener('input', (e) => {
     settings.font = Number(e.target.value);
     $('#set-font-out').textContent = `${settings.font}%`;

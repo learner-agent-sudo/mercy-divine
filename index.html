@@ -66,6 +66,8 @@
     <div class="scroll" id="prayer-scroll">
 
       <!-- 引導模式 -->
+      <div id="flash" class="flash" role="status" aria-live="polite" hidden></div>
+
       <div id="guided" class="guided">
         <figure class="plate plate-sm">
           <img id="guided-image" alt="">
@@ -164,8 +166,10 @@
       </label>
       <label class="switch">
         <input type="checkbox" id="set-haptic">
-        <span>每數一珠輕微震動</span>
+        <span>用震動報數（閉眼誦念時可分辨）</span>
       </label>
+      <p class="hint">小珠一下、第十珠較長、一端唸畢連震三下、全部誦畢最長。若感覺不到，請確認手機未關閉震動。</p>
+      <button type="button" id="test-haptic" class="btn btn-block">試一下震動</button>
     </div>
 
     <div class="card">
