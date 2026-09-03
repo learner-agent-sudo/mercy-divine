@@ -33,7 +33,7 @@ const store = {
   },
 };
 
-const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, haptic: true, pictures: {} };
+const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, haptic: true, hapticStrength: 'strong', pictures: {} };
 
 // 可在程式內指定聖像的九個位置。
 const IMAGE_SLOTS = [
@@ -171,7 +171,7 @@ const imageForRole = (role, fallbackIndex) => {
 };
 
 /* ── 畫面切換 ──────────────────────────────────────── */
-const VIEWS = ['home', 'prayer', 'done', 'history', 'settings'];
+const VIEWS = ['home', 'prayer', 'done', 'manual', 'history', 'settings'];
 let current = 'home';
 
 function go(name) {
@@ -291,20 +291,27 @@ const makeBead = (cls) => el('span', cls);
 
 // 震動語彙：閉著眼睛唸經時，這是唯一能知道「數到哪裡」的訊號，
 // 所以每一種節奏都要能分辨。太短的震動手機不會真的震，故最短 25 毫秒。
+// 手機無法調整震動「強度」，只能給長度與節奏，所以：
+// 想更明顯就拉長，想更好分辨就改變下數——人分辨「幾下」遠比分辨「多長」容易。
 const BUZZ = {
-  bead:       [25],                        // 一顆小珠
-  lastBead:   [45],                        // 第十珠，這一端最後一顆
-  decadeDone: [55, 80, 55, 80, 55],        // 十珠唸畢，進入下一端
-  decade:     [45, 90, 45],                // 新的一端開始
-  opening:    [35],                        // 開始的經文
-  closing:    [25],                        // 結束禱詞的每一遍
-  back:       [15],                        // 退回一步
-  finish:     [70, 100, 70, 100, 180],     // 全部誦畢
+  opening:    [35],                              // 開始的經文：一下輕
+  bead:       [55],                              // 一顆小珠：一下
+  lastBead:   [45, 70, 45],                      // 兩下 → 下一顆就是第十珠
+  decade:     [70],                              // 新的一端開始：一下長
+  decadeDone: [80, 90, 80, 90, 80],              // 三下 → 一端圓滿
+  closing:    [55],                              // 結束禱詞的每一遍
+  back:       [20],                              // 退回一步
+  finish:     [100, 110, 100, 110, 100, 110, 240], // 四下 → 全部誦畢
 };
+
+// 各廠牌馬達差異很大，讓使用者自己調整倍率；只放大震動段，停頓維持原樣才不會走味。
+const STRENGTH = { soft: 0.6, normal: 1, strong: 1.7 };
 
 function buzz(pattern) {
   if (!settings.haptic || !navigator.vibrate) return;
-  try { navigator.vibrate(pattern); } catch { /* 系統不允許時忽略 */ }
+  const k = STRENGTH[settings.hapticStrength] || 1;
+  try { navigator.vibrate(pattern.map((ms, i) => (i % 2 === 0 ? Math.round(ms * k) : ms))); }
+  catch { /* 系統不允許時忽略 */ }
 }
 
 // 依「剛離開哪一步」與「即將到哪一步」挑選節奏。
@@ -432,6 +439,54 @@ function renderStats(node, pairs) {
   }
 }
 
+/* ── 補記 ─────────────────────────────────────────── */
+// 用念珠或經本唸的沒有經過程式，補記讓紀錄保持完整。
+const localTime = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+function renderManual() {
+  const now = new Date();
+  $('#manual-date').value = dayKey(now);
+  $('#manual-date').max = dayKey(now);   // 還沒發生的祈禱記不了
+  $('#manual-time').value = localTime(now);
+  $('#manual-note').value = '';
+  $('#manual-error').hidden = true;
+  renderManualLog();
+}
+
+function renderManualLog() {
+  const list = $('#manual-log');
+  list.textContent = '';
+  const logged = records.filter((r) => r.mode === 'offline')
+    .sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 10);
+  $('#manual-empty').hidden = logged.length > 0;
+  for (const r of logged) list.appendChild(logRow(r, () => { renderManual(); renderHome(); }));
+}
+
+function saveManual() {
+  const date = $('#manual-date').value;
+  const time = $('#manual-time').value;
+  const error = $('#manual-error');
+  const fail = (msg) => { error.textContent = msg; error.hidden = false; };
+
+  if (!date || !time) return fail('請填上日期與時間。');
+  const when = new Date(`${date}T${time}`);
+  if (Number.isNaN(when.getTime())) return fail('日期或時間不正確。');
+  if (when.getTime() > Date.now() + 60000) return fail('不能補記還沒到的時間。');
+
+  records.push({
+    id: newId(),
+    ts: when.toISOString(),
+    mode: 'offline',
+    secs: 0,
+    note: $('#manual-note').value.trim(),
+  });
+  saveRecords();
+  buzz(BUZZ.bead);
+  toast(`已補記 ${when.getMonth() + 1}/${when.getDate()} 的祈禱`);
+  renderManual();
+  renderHome();
+}
+
 /* ── 紀錄 ─────────────────────────────────────────── */
 let calMonth = new Date();
 
@@ -472,37 +527,39 @@ function renderCalendar(days) {
   }
 }
 
+// 一列紀錄。補記的沒有實際用時，改標示來源。
+function logRow(r, afterDelete) {
+  const d = new Date(r.ts);
+  const li = document.createElement('li');
+
+  const time = document.createElement('time');
+  time.dateTime = r.ts;
+  time.textContent = `${d.getMonth() + 1}/${d.getDate()} ${fmtTime(d)}`;
+  li.appendChild(time);
+
+  li.appendChild(el('span', 'note', r.note || ''));
+  li.appendChild(el('span', 'meta' + (r.mode === 'offline' ? ' tag' : ''),
+                    r.mode === 'offline' ? '補記' : fmtDuration(r.secs)));
+
+  const del = el('button', null, '×');
+  del.type = 'button';
+  del.setAttribute('aria-label', '刪除這筆紀錄');
+  del.addEventListener('click', () => {
+    if (!confirm('刪除這筆紀錄？')) return;
+    records = records.filter((x) => x.id !== r.id);
+    saveRecords();
+    afterDelete();
+  });
+  li.appendChild(del);
+  return li;
+}
+
 function renderLog() {
   const list = $('#log');
   list.textContent = '';
   const recent = [...records].sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 60);
   $('#log-empty').hidden = recent.length > 0;
-
-  for (const r of recent) {
-    const d = new Date(r.ts);
-    const li = document.createElement('li');
-
-    const time = document.createElement('time');
-    time.dateTime = r.ts;
-    time.textContent = `${d.getMonth() + 1}/${d.getDate()} ${fmtTime(d)}`;
-    li.appendChild(time);
-
-    li.appendChild(el('span', 'note', r.note || ''));
-    li.appendChild(el('span', 'meta', fmtDuration(r.secs)));
-
-    const del = el('button', null, '×');
-    del.type = 'button';
-    del.setAttribute('aria-label', '刪除這筆紀錄');
-    del.addEventListener('click', () => {
-      if (!confirm('刪除這筆紀錄？')) return;
-      records = records.filter((x) => x.id !== r.id);
-      saveRecords();
-      renderHistory();
-    });
-    li.appendChild(del);
-
-    list.appendChild(li);
-  }
+  for (const r of recent) list.appendChild(logRow(r, renderHistory));
 }
 
 /* ── 設定 ─────────────────────────────────────────── */
@@ -522,6 +579,7 @@ function renderSettings() {
   $('#set-wake').disabled = !('wakeLock' in navigator);
   $('#set-haptic').checked = settings.haptic;
   $('#set-haptic').disabled = !navigator.vibrate;
+  $('#set-haptic-strength').value = settings.hapticStrength;
 
   $('#about-text').textContent =
     `經文共 ${STEPS.length} 步，聖像 ${IMAGES.length} 張。所有紀錄只存在此裝置，不會上傳。`;
@@ -736,7 +794,7 @@ function importRecords(file) {
       records.push({
         id: String(r.id || newId()).slice(0, 64),
         ts: r.ts,
-        mode: r.mode === 'full' ? 'full' : 'guided',
+        mode: ['guided', 'full', 'offline'].includes(r.mode) ? r.mode : 'guided',
         secs: Number.isFinite(r.secs) ? Math.max(0, Math.min(r.secs, 86400)) : 0,
         note: typeof r.note === 'string' ? r.note.slice(0, 80) : '',
       });
@@ -822,6 +880,13 @@ function bind() {
     });
   }
 
+  $('#manual-btn').addEventListener('click', () => {
+    renderManual();
+    history.pushState({ view: 'manual' }, '');
+    go('manual');
+  });
+  $('#manual-save').addEventListener('click', saveManual);
+
   $('#done-home').addEventListener('click', () => history.back());
   $('#done-note').addEventListener('input', (e) => {
     const rec = records.find((r) => r.id === lastRecordId);
@@ -850,11 +915,17 @@ function bind() {
     saveSettings();
     if (settings.haptic) buzz(BUZZ.bead);
   });
+  $('#set-haptic-strength').addEventListener('change', (e) => {
+    settings.hapticStrength = e.target.value;
+    saveSettings();
+    buzz(BUZZ.bead);
+  });
   // 手機可能整機關閉震動，讓使用者當場確認得到
   $('#test-haptic').addEventListener('click', () => {
     if (!navigator.vibrate) { toast('這個瀏覽器不支援震動'); return; }
-    navigator.vibrate([25, 120, 25, 120, 55, 150, 55, 80, 55, 80, 55]);
-    toast('一珠、一珠、第十珠、一端圓滿');
+    const demo = [...BUZZ.bead, 350, ...BUZZ.bead, 350, ...BUZZ.lastBead, 350, ...BUZZ.decadeDone];
+    buzz(demo);
+    toast('一珠 · 一珠 · 下一顆是第十 · 一端圓滿');
   });
   $('#set-font').addEventListener('input', (e) => {
     settings.font = Number(e.target.value);

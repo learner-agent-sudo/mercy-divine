@@ -42,6 +42,7 @@
     <p class="today-state" id="today-state"></p>
 
     <button type="button" id="start-btn" class="btn btn-primary btn-block btn-lg">開始祈禱</button>
+    <button type="button" id="manual-btn" class="btn btn-block">補記一次祈禱</button>
 
     <div class="stats" id="home-stats"></div>
 
@@ -113,6 +114,38 @@
     <button type="button" id="done-undo" class="btn btn-quiet btn-block">刪除這筆紀錄</button>
   </section>
 
+  <!-- ── 補記 ───────────────────────────────────────── -->
+  <section id="view-manual" class="view" aria-label="補記祈禱">
+    <header class="bar">
+      <button type="button" class="icon-btn" data-go="home" aria-label="返回">‹</button>
+      <div class="bar-title">補記一次祈禱</div>
+      <span class="bar-spacer"></span>
+    </header>
+
+    <p class="hint">若是用念珠、經本，或在聖堂裡誦唸的，可在此補上紀錄。與在程式內誦唸的一同計入。</p>
+
+    <div class="card">
+      <label class="field">
+        <span class="field-label">日期</span>
+        <input type="date" id="manual-date" required>
+      </label>
+      <label class="field">
+        <span class="field-label">時間</span>
+        <input type="time" id="manual-time" required>
+      </label>
+      <label class="field">
+        <span class="field-label">意向（可留空）</span>
+        <input type="text" id="manual-note" maxlength="80" placeholder="為誰祈禱、或當時的意向" autocomplete="off">
+      </label>
+      <p class="hint" id="manual-error" hidden></p>
+      <button type="button" id="manual-save" class="btn btn-primary btn-block">儲存紀錄</button>
+    </div>
+
+    <h2 class="section-title">最近補記</h2>
+    <ul class="log" id="manual-log"></ul>
+    <p class="empty" id="manual-empty" hidden>還沒有補記過。</p>
+  </section>
+
   <!-- ── 紀錄 ───────────────────────────────────────── -->
   <section id="view-history" class="view" aria-label="祈禱紀錄">
     <header class="bar">
@@ -168,7 +201,15 @@
         <input type="checkbox" id="set-haptic">
         <span>用震動報數（閉眼誦念時可分辨）</span>
       </label>
-      <p class="hint">小珠一下、第十珠較長、一端唸畢連震三下、全部誦畢最長。若感覺不到，請確認手機未關閉震動。</p>
+      <label class="field">
+        <span class="field-label">震動強度</span>
+        <select id="set-haptic-strength">
+          <option value="soft">輕</option>
+          <option value="normal">中</option>
+          <option value="strong">強</option>
+        </select>
+      </label>
+      <p class="hint">一珠震一下、下一顆是第十時震兩下、一端唸畢震三下、全部誦畢震四下。手機只能調長度與下數，無法調輕重，覺得不夠明顯就選「強」。</p>
       <button type="button" id="test-haptic" class="btn btn-block">試一下震動</button>
     </div>
 

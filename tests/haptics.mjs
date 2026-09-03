@@ -29,42 +29,41 @@ for (let i = 0; i < 64; i++) {
 }
 
 // 每一次觸碰的震動，說的是「接下來這一步」，所以要看觸碰時人在哪一珠。
+// 手機不能調震動輕重，只能調長度與下數，而人分辨「幾下」遠比分辨「多長」容易，
+// 因此這裡驗證的是下數與最短長度，而非確切毫秒。
+const pulses = (json) => Math.ceil(JSON.parse(json).length / 2);
+const segments = (json) => JSON.parse(json).filter((_, i) => i % 2 === 0);
+
 const tappedOn = (n) => seen.find((s) => s.at.includes('第一端') && s.at.includes(`第 ${n} 珠`));
 const ordinary = tappedOn(1).buzz;
 
-ok('an ordinary bead gives one short pulse', ordinary === '[25]');
+ok('an ordinary bead is a single pulse', pulses(ordinary) === 1);
 ok('beads one to eight all feel the same',
    [1, 2, 3, 4, 5, 6, 7, 8].every((n) => tappedOn(n).buzz === ordinary));
-ok('leaving the ninth warns that the tenth is next',
-   tappedOn(9).buzz !== ordinary && JSON.parse(tappedOn(9).buzz)[0] > 25);
-ok('that warning is a single pulse, not a pattern', JSON.parse(tappedOn(9).buzz).length === 1);
+ok('leaving the ninth gives two pulses, not one', pulses(tappedOn(9).buzz) === 2);
 
-// 唸完第十珠 = 一端圓滿
 const decadeEnd = tappedOn(10).buzz;
-ok('finishing the tenth buzzes a multi-pulse pattern', JSON.parse(decadeEnd).length === 5);
-ok('a decade ending is unmistakable against both bead signals',
-   decadeEnd !== ordinary && decadeEnd !== tappedOn(9).buzz);
-
+ok('finishing the tenth gives three pulses', pulses(decadeEnd) === 3);
 const ends = seen.filter((s) => /第 10 珠/.test(s.at));
 ok('all five decades end identically', ends.length === 5 && ends.every((s) => s.buzz === decadeEnd));
 
-// 三遍的兩段結束禱詞
 const closing = seen.filter((s) => s.at.includes('結束') && /共 3 遍/.test(s.at));
 ok('both three-times prayers are counted', closing.length === 6);
-ok('each repetition buzzes like a bead',
-   closing.slice(0, 5).every((s) => s.buzz === ordinary));
+ok('each repetition feels like a bead', closing.slice(0, 5).every((s) => s.buzz === ordinary));
 
 const finish = seen[seen.length - 1].buzz;
-ok('the very end is the longest signal of all',
-   JSON.parse(finish).length === 5 && JSON.parse(finish)[4] > 100 && finish !== decadeEnd);
+ok('the very end gives four pulses, the most of any signal', pulses(finish) === 4);
 
-// 開頭經文與珠子要能分辨
 const opening = seen.find((s) => s.at.includes('開始|天主經')).buzz;
-ok('the opening prayers differ from beads', opening !== ordinary);
+const all = [opening, ordinary, tappedOn(9).buzz, decadeEnd, finish];
+ok('five distinguishable signals in total', new Set(all).size === 5);
+ok('their pulse counts rise with significance',
+   JSON.stringify(all.map(pulses)) === JSON.stringify([1, 1, 2, 3, 4]));
 
-const distinct = new Set([opening, ordinary, tappedOn(9).buzz, decadeEnd, finish]);
-ok('five distinguishable signals in total', distinct.size === 5);
-console.log('        ' + [...distinct].join('  '));
+// 太短的震動手機根本不會動——這正是先前感覺不到的原因
+const shortest = Math.min(...all.flatMap(segments));
+ok(`every pulse is long enough to be felt (shortest ${shortest}ms)`, shortest >= 35);
+console.log('        ' + [...new Set(all)].join('  '));
 
 // 結束禱詞也要看得到珠數
 await page.click('#done-home');
@@ -83,6 +82,26 @@ await page.click('#step-next');                                 // 唸畢，進�
 await page.waitForTimeout(120);
 ok('a decade ending also shows on screen', await page.isVisible('#flash'));
 ok('and names the decade that just finished', (await page.textContent('#flash')).includes('第一端'));
+
+// 強度只放大震動段，停頓不動，節奏才不會走樣
+await page.click('#prayer-exit');
+await page.click('[data-go="settings"]');
+const measure = async (level) => {
+  await page.selectOption('#set-haptic-strength', level);
+  await page.waitForTimeout(120);
+  return page.evaluate(() => window.__buzz[window.__buzz.length - 1]);
+};
+const soft = await measure('soft');
+const normal = await measure('normal');
+const strong = await measure('strong');
+ok('強 vibrates longer than 中, and 中 longer than 輕', strong[0] > normal[0] && normal[0] > soft[0]);
+console.log(`        輕 ${soft[0]}ms · 中 ${normal[0]}ms · 強 ${strong[0]}ms`);
+
+await page.evaluate(() => { window.__buzz = []; });
+await page.click('#test-haptic');
+await page.waitForTimeout(150);
+const demo = await page.evaluate(() => window.__buzz[window.__buzz.length - 1]);
+ok('the test button plays a demonstration', Array.isArray(demo) && demo.length > 6);
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();

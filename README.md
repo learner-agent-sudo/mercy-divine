@@ -129,19 +129,41 @@ each distinguishable from the others by length and rhythm:
 
 | when you tap | you feel | meaning |
 |---|---|---|
-| an opening prayer | one medium pulse | still in 天主經 / 聖母經 / 信經 |
-| beads 1–8 | one short pulse | another bead counted |
-| bead 9 | one longer pulse | the next one is the tenth |
-| bead 10 | five pulses | that decade is complete |
-| the last repetition | five long pulses | the whole chaplet is finished |
+| an opening prayer | one short pulse | still in 天主經 / 聖母經 / 信經 |
+| beads 1–8 | one pulse | another bead counted |
+| bead 9 | two pulses | the next one is the tenth |
+| bead 10 | three pulses | that decade is complete |
+| the last repetition | four pulses | the whole chaplet is finished |
+
+A phone cannot vary how *hard* it vibrates — only how long and in what rhythm. So the
+signals are told apart by pulse count, which people read far more reliably than
+duration, and 設定 → 震動強度 scales the length (輕 / 中 / 強, default 強). Only the
+buzzes are scaled, never the gaps, so the rhythm stays recognisable at any setting.
 
 The two closing prayers said three times each are counted the same way, with their own
 three beads on screen and 第 N 遍，共 3 遍 in words. Finishing a decade also flashes
 第一端 圓滿 on screen for anyone who opens their eyes.
 
 Turn it off in 設定, where **試一下震動** plays the sequence so you can confirm the phone
-is actually vibrating — Android silences it system-wide in some modes, which no web page
-can override.
+is actually vibrating.
+
+**Do Not Disturb** does not usually stop this. DND suppresses notifications and
+ringtones, and a vibration asked for by a page you are looking at is neither. What does
+stop it is the phone's own haptics being off — system haptic feedback disabled, some
+OEMs' silent mode, or a battery saver — and no web page can detect or override any of
+those. The behaviour varies enough between manufacturers that the test button, pressed
+while DND is on, is the only reliable answer for a given phone.
+
+## Recording a prayer said away from the phone
+
+**補記一次祈禱** on the home screen logs a chaplet prayed on beads, from a book, or in
+church. Pick the date and time it actually happened, add an intention if you want, and it
+joins the same record — counting towards the streak, the calendar and the totals.
+
+Logged prayers are marked 補記 in the history and carry no duration, since none was
+measured; the distinction survives export and import. Times in the future are refused.
+
+
 
 ## Tests
 
@@ -161,7 +183,8 @@ Five suites cover the things that would hurt most if they broke:
 | `backup-roundtrip` | export, wipe the device, import, and get records *and* pictures back; re-importing does not duplicate |
 | `update-flow` | a new version reaches an installed phone, old content serves until accepted, stale caches are cleared |
 | `tap` | a slow or slightly wobbly touch counts as one bead; drags, swipes and momentum scrolling do not |
-| `haptics` | the five vibration signals stay distinguishable, and the three-times prayers are counted |
+| `haptics` | the five vibration signals stay distinguishable, every pulse is long enough to feel, and the strength setting scales them |
+| `manual-log` | a prayer said elsewhere is recorded, dated, counted with the rest, and stays marked through a backup |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
 
 The suites drive a real browser at phone size and fail on any console error.
