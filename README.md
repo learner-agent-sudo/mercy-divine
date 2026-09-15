@@ -1,7 +1,7 @@
-# 救主慈悲串經 — Divine Mercy Chaplet
+# 玫瑰經 · 救主慈悲串經 — Rosary and Divine Mercy Chaplet
 
-An offline prayer app for praying the Chaplet of Divine Mercy in Traditional Chinese,
-with a record of every time you finish.
+An offline prayer app for praying the Rosary and the Chaplet of Divine Mercy in
+Traditional Chinese, with a record of every time you finish.
 
 Once installed on your phone it works **entirely offline** — no signal, no wifi, no
 account. Your prayer records are stored on the phone only and are never uploaded
@@ -38,11 +38,30 @@ anywhere.
 - **祈禱紀錄** shows a calendar of the days you prayed, your streak, and every session.
 - The screen stays awake while praying, and the text size is adjustable in 設定.
 
+## The two prayers
+
+The home screen picks between 救主慈悲串經 and 玫瑰經. The chaplet is 64 steps; a rosary
+is 78 — sign of the cross, creed, Our Father, three Hail Marys and a Glory Be, then five
+decades each opening with its mystery and scripture, followed by Our Father, ten Hail
+Marys, the Glory Be and the Fátima prayer, closing with the Salve Regina.
+
+The mysteries follow the week without being asked: 歡喜 on Monday and Saturday, 痛苦 on
+Tuesday and Friday, 榮福 on Wednesday and Sunday, 光明 on Thursday. Choosing a different
+set on the home screen applies to that day only — the next day returns to the cycle, so a
+one-off choice for a feast never quietly becomes permanent.
+
+Each prayer keeps its own wording. The Rosary uses the traditional 萬福瑪利亞，滿被聖寵者
+and the chaplet its own 妳充滿聖寵; the two Creeds differ too. They are separate texts in
+separate files and are never merged.
+
 ## Changing the content
 
-**The prayers** live in [`data/prayers.json`](data/prayers.json) — plain text, no code.
-Edit the wording, add or remove an opening prayer, change how many decades or beads
-there are; the app rebuilds itself from that file.
+**The prayers** live in [`data/prayers.json`](data/prayers.json) (the chaplet) and
+[`data/rosary.json`](data/rosary.json) — plain text, no code. Both use the same shape:
+`prayers` holds each text once, and `opening`, `decades.sequence` and `closing` point at
+them by name, with `repeat` for how many times and `bead` for the runs that get a bead
+row. Edit the wording, change the number of decades, or add a whole third prayer by
+writing another file and listing it in [`data/sets.json`](data/sets.json).
 
 **The pictures** go in [`images/`](images/), listed in
 [`data/images.json`](data/images.json):
@@ -52,7 +71,10 @@ there are; the app rebuilds itself from that file.
 ```
 
 `for` matches a picture to the prayer being said, so the image changes as you move
-through the chaplet. One picture can cover several prayers. The names are:
+through the prayer. One picture can cover several prayers. Prefix a name with a prayer's
+id — `rosary:hail-mary` — to use it in that prayer only; an unprefixed name serves both.
+`decade-1` … `decade-5` give a mystery its own picture. Anything with no match falls back
+to the `home` picture, so no screen is ever left blank. The names are:
 
 | name             | shown during                        |
 |------------------|-------------------------------------|
@@ -199,6 +221,7 @@ Five suites cover the things that would hurt most if they broke:
 | `haptics` | the five vibration signals stay distinguishable, every pulse is long enough to feel, and the strength setting scales them |
 | `manual-log` | a prayer said elsewhere is recorded, dated, counted with the rest, and stays marked through a backup |
 | `rose` | one petal per day, lit by how often you prayed, future days set apart from missed ones, and the calendar still reachable |
+| `rosary` | the mysteries and their scripture, the weekday cycle, the 78-step sequence, and the chaplet still intact beside it |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
 
 The suites drive a real browser at phone size and fail on any console error.

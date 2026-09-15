@@ -33,7 +33,8 @@ const store = {
   },
 };
 
-const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, haptic: true, hapticStrength: 'strong', pictures: {} };
+const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, haptic: true,
+                   hapticStrength: 'strong', set: 'chaplet', mystery: null, mysteryDay: null, pictures: {} };
 
 // 可在程式內指定聖像的九個位置。
 const IMAGE_SLOTS = [
@@ -86,39 +87,85 @@ function streak() {
 }
 
 /* ── 內容 ─────────────────────────────────────────── */
-let PRAYERS = null;
+let SETS = [];            // 所有經文
+let SET = null;           // 目前選用的經文
+let MYSTERY = null;       // 玫瑰經的奧蹟（串經為 null）
 let IMAGES = [];
 let STEPS = [];
 
-function buildSteps(p) {
+const setById = (id) => SETS.find((x) => x.id === id) || SETS[0];
+const mysteryById = (set, id) =>
+  (set.mysterySets || []).find((m) => m.id === id) || (set.mysterySets || [])[0] || null;
+
+// 依星期選奧蹟：一、六歡喜；二、五痛苦；三、日榮福；四光明。
+function mysteryForToday(set) {
+  const today = new Date().getDay();
+  return (set.mysterySets || []).find((m) => (m.days || []).includes(today))
+      || (set.mysterySets || [])[0] || null;
+}
+
+// 把 opening / decades.sequence / closing 展開成一步一步。
+// repeat 幾遍就是幾步；bead 的那一項會畫出珠子。
+function expand(items, set, ctx, steps) {
+  for (const item of items) {
+    const prayer = set.prayers[item.prayer];
+    if (!prayer) continue;
+    const total = item.repeat || 1;
+    for (let i = 1; i <= total; i++) {
+      steps.push({
+        kind: ctx.kind,
+        id: item.prayer,
+        name: prayer.name,
+        text: prayer.text,
+        stage: ctx.stage,
+        decade: ctx.decade || null,
+        bead: item.bead ? { i, total } : null,
+        rep: total > 1 && !item.bead ? { i, total } : null,
+      });
+    }
+  }
+}
+
+function buildSteps(set, mystery) {
   const steps = [];
-  for (const item of p.opening) {
-    steps.push({ kind: 'opening', id: item.id, name: item.name, text: item.text, stage: '開始' });
-  }
-  const { count, large, small } = p.decades;
-  for (let d = 1; d <= count; d++) {
+  expand(set.opening || [], set, { kind: 'opening', stage: '開始' }, steps);
+
+  const dec = set.decades;
+  for (let d = 1; d <= dec.count; d++) {
     const stage = `第${CN_NUM[d]}端`;
-    steps.push({ kind: 'large', id: large.id, name: large.name, text: large.text, stage, decade: d, bead: 0 });
-    for (let b = 1; b <= small.count; b++) {
-      steps.push({ kind: 'small', id: small.id, name: small.name, text: small.text, stage, decade: d, bead: b });
+    const from = steps.length;
+
+    // 玫瑰經每端先報奧蹟，並默想該端
+    if (dec.mystery && mystery) {
+      const m = mystery.mysteries[d - 1];
+      if (m) steps.push({ kind: 'mystery', id: 'mystery', name: m.name, text: m.text,
+                          ref: m.ref, stage, decade: d, bead: null, rep: null });
     }
-  }
-  for (const item of p.closing) {
-    for (let r = 1; r <= (item.repeat || 1); r++) {
-      steps.push({ kind: 'closing', id: item.id, name: item.name, text: item.text, stage: '結束',
-                   rep: r, of: item.repeat || 1 });
+    expand(dec.sequence, set, { kind: 'decade', stage, decade: d }, steps);
+
+    // 珠子列要知道這一端的珠數，以及目前在珠串的前面還是後面
+    const beadStep = steps.slice(from).find((x) => x.bead);
+    const beadTotal = beadStep ? beadStep.bead.total : 0;
+    let passed = false;
+    for (let i = from; i < steps.length; i++) {
+      if (steps[i].bead) { passed = true; continue; }
+      steps[i].decadeBeads = beadTotal;
+      steps[i].afterBeads = passed;
     }
+    if (steps[from]) steps[from].decadeStart = true;
   }
+
+  expand(set.closing || [], set, { kind: 'closing', stage: '結束' }, steps);
   return steps;
 }
 
+const rebuildSteps = () => { STEPS = buildSteps(SET, MYSTERY); };
+
+/* ── 聖像 ─────────────────────────────────────────── */
 const imageAt = (i) => (IMAGES.length ? IMAGES[((i % IMAGES.length) + IMAGES.length) % IMAGES.length] : null);
 
-// data/images.json 內的 for 欄位可把某張聖像指定給某段經文，
-// 例如 "for": ["hail-mary"] 就會在唸聖母經時顯示。
-// 另有 home（首頁）與 done（誦畢）兩個特別名稱。
-// 同一段經文可登記多張，依清單順序遞補：排前面的檔案若不存在，
-// 自動改用下一張，全部都取不到才收起圖框。
+// data/images.json 的 for 欄位把聖像指給某段經文。
+// 名稱可寫成 "hail-mary"（兩套經文通用）或 "rosary:hail-mary"（只用於玫瑰經）。
 let imageRoles = new Map();
 function buildImageRoles() {
   imageRoles = new Map();
@@ -129,6 +176,16 @@ function buildImageRoles() {
     }
   }
 }
+
+// 自訂聖像排最前面，其後才是 data/images.json 列出的圖片。
+const rolesFor = (role) => {
+  const listed = [
+    ...(imageRoles.get(`${SET ? SET.id : ''}:${role}`) || []),
+    ...(imageRoles.get(role) || []),
+  ];
+  const custom = customFor(role);
+  return custom ? [custom, ...listed] : listed;
+};
 
 // 取不到的檔案記下來，同一次使用中不再重試。
 const failedImages = new Set();
@@ -148,26 +205,24 @@ function setImage(imgNode, capNode, candidates) {
   show(0);
 }
 
-// 自訂聖像排最前面，其後才是 data/images.json 列出的圖片。
-const rolesFor = (role) => {
-  const listed = imageRoles.get(role) || [];
-  const custom = customFor(role);
-  return custom ? [custom, ...listed] : listed;
-};
-
-// 先找指定給這段經文的聖像；沒有指定就沿用依端數輪流的方式。
+// 先找指定給這段經文的聖像；沒有就退回首頁那張，畫面才不會忽有忽無。
 function imageForStep(step) {
   if (!IMAGES.length) return [];
   const matched = rolesFor(step.id);
   if (matched.length) return matched;
-  if (step.kind === 'large' || step.kind === 'small') return [imageAt(step.decade - 1)]; // 第一端配第一張
-  if (step.kind === 'closing') return [imageAt(IMAGES.length - 1)];
-  return [imageAt(0)];
+  if (step.kind === 'decade' || step.kind === 'mystery') {
+    const byDecade = rolesFor(`decade-${step.decade}`);
+    if (byDecade.length) return byDecade;
+  }
+  const home = rolesFor('home');
+  return home.length ? home : [imageAt(0)];
 }
 
 const imageForRole = (role, fallbackIndex) => {
   const matched = rolesFor(role);
-  return matched.length ? matched : [imageAt(fallbackIndex)];
+  if (matched.length) return matched;
+  const home = rolesFor('home');
+  return home.length ? home : [imageAt(fallbackIndex)];
 };
 
 /* ── 畫面切換 ──────────────────────────────────────── */
@@ -223,7 +278,9 @@ let session = null; // { startedAt, index, mode }
 
 function startPrayer() {
   history.pushState({ view: 'prayer' }, '');
-  session = { startedAt: Date.now(), index: 0, mode: settings.mode };
+  rebuildSteps();
+  session = { startedAt: Date.now(), index: 0, mode: settings.mode,
+              set: SET.id, mystery: MYSTERY ? MYSTERY.id : null };
   buildFullText();
   applyMode();
   go('prayer');
@@ -233,6 +290,7 @@ function startPrayer() {
 
 function applyMode() {
   const guided = session.mode === 'guided';
+  $('#prayer-title').textContent = SET.title;
   $('#guided').hidden = !guided;
   $('#full').hidden = guided;
   $('#mode-toggle').textContent = guided ? '全文' : '引導';
@@ -240,7 +298,7 @@ function applyMode() {
   $('#step-next').textContent = guided ? '下一步' : '我已誦畢';
   if (guided) renderStep();
   else {
-    $('#prayer-stage').textContent = '救主慈悲串經';
+    $('#prayer-stage').textContent = MYSTERY ? MYSTERY.name : SET.title;
     $('#progress-fill').style.width = '100%';
     setImage($('#full-image'), null, imageForRole('home', 0));
   }
@@ -256,10 +314,14 @@ function renderStep() {
 
   // 標題列已顯示第幾端，這裡只補上該端之內的位置。
   let count = '';
-  if (step.kind === 'small') count = `第 ${step.bead} 珠，共 ${PRAYERS.decades.small.count} 珠`;
-  else if (step.kind === 'large') count = `第 ${step.decade} 端，共 ${PRAYERS.decades.count} 端`;
-  else if (step.kind === 'closing' && step.of > 1) count = `第 ${step.rep} 遍，共 ${step.of} 遍`;
+  if (step.bead) count = `第 ${step.bead.i} 珠，共 ${step.bead.total} 珠`;
+  else if (step.rep) count = `第 ${step.rep.i} 遍，共 ${step.rep.total} 遍`;
+  else if (step.kind === 'mystery') count = step.ref || '';
+  else if (step.kind === 'decade') count = `第 ${step.decade} 端，共 ${SET.decades.count} 端`;
   $('#step-count').textContent = count;
+  $('#step-name').classList.toggle('mystery', step.kind === 'mystery');
+  // 默想奧蹟時經文較長，聖像讓出位置
+  $('#guided').classList.toggle('meditating', step.kind === 'mystery');
 
   renderBeads(step);
   setImage($('#guided-image'), null, imageForStep(step));
@@ -274,7 +336,8 @@ function renderStep() {
   $('#prayer-scroll').scrollTop = 0;
 }
 
-// 珠子的位置圖：一端是大珠加十顆小珠；結束禱詞則畫出三遍的進度。
+// 珠子的位置圖。珠串不一定在每端之中，長度也不一定是十：
+// 玫瑰經開始時先唸三遍聖母經，每端則是十遍。
 function renderBeads(step) {
   const wrap = $('#beads');
   wrap.textContent = '';
@@ -284,9 +347,11 @@ function renderBeads(step) {
       wrap.appendChild(makeBead('bead' + (i < current ? ' on' : i === current ? ' now' : '')));
     }
   };
-  if (step.kind === 'large' || step.kind === 'small') dots(PRAYERS.decades.small.count, step.bead, true);
-  else if (step.kind === 'closing' && step.of > 1) dots(step.of, step.rep, false);
+  if (step.bead) dots(step.bead.total, step.bead.i, step.kind === 'decade');
+  else if (step.rep) dots(step.rep.total, step.rep.i, false);
+  else if (step.decadeBeads) dots(step.decadeBeads, step.afterBeads ? step.decadeBeads + 1 : 0, true);
 }
+
 const makeBead = (cls) => el('span', cls);
 
 // 震動語彙：閉著眼睛唸經時，這是唯一能知道「數到哪裡」的訊號，
@@ -318,11 +383,12 @@ function buzz(pattern) {
 // 一端唸畢的訊號優先於其他，因為那是最需要察覺的轉折。
 function buzzFor(prev, next) {
   if (!next) return BUZZ.finish;
-  const perDecade = PRAYERS.decades.small.count;
-  if (prev && prev.kind === 'small' && prev.bead === perDecade) return BUZZ.decadeDone;
-  if (next.kind === 'large') return BUZZ.decade;
-  if (next.kind === 'small') return next.bead === perDecade ? BUZZ.lastBead : BUZZ.bead;
+  // 唸完一串十顆最需要察覺，優先於其他訊號
+  if (prev && prev.bead && prev.bead.total >= 10 && prev.bead.i === prev.bead.total) return BUZZ.decadeDone;
+  if (next.kind === 'mystery' || next.decadeStart) return BUZZ.decade;
+  if (next.bead) return next.bead.i === next.bead.total ? BUZZ.lastBead : BUZZ.bead;
   if (next.kind === 'closing') return BUZZ.closing;
+  if (next.kind === 'decade') return BUZZ.bead;
   return BUZZ.opening;
 }
 
@@ -334,7 +400,7 @@ function advance() {
   session.index++;
   renderStep();
   // 一端唸畢時明白顯示一下，睜眼時也看得出剛才過了一端
-  if (prev.kind === 'small' && prev.bead === PRAYERS.decades.small.count) {
+  if (prev.bead && prev.bead.total >= 10 && prev.bead.i === prev.bead.total) {
     flash(`${prev.stage} 圓滿`);
   }
 }
@@ -344,35 +410,45 @@ function back() {
 }
 
 /* ── 全文模式 ──────────────────────────────────────── */
-let fullBuilt = false;
+let fullBuiltFor = null;
 function buildFullText() {
-  if (fullBuilt) return;
+  const key = `${SET.id}:${MYSTERY ? MYSTERY.id : ''}`;
+  if (fullBuiltFor === key) return;
   const body = $('#full-body');
   body.textContent = '';
 
-  const section = (name, text, repLabel) => {
+  const section = (name, text, badge, ref) => {
     const sec = el('div', 'full-sec');
     const h = el('h3');
     h.appendChild(document.createTextNode(name));
-    if (repLabel) h.appendChild(el('span', 'rep', repLabel));
+    if (badge) h.appendChild(el('span', 'rep', badge));
     sec.appendChild(h);
     sec.appendChild(el('p', 'prayer-text', text));
+    if (ref) sec.appendChild(el('p', 'full-ref', ref));
     return sec;
   };
+  const times = (n) => (n > 1 ? `${CN_NUM[n] || n}遍` : '一遍');
 
-  for (const item of PRAYERS.opening) body.appendChild(section(item.name, item.text, item.label));
+  const run = (items) => {
+    for (const item of items) {
+      const prayer = SET.prayers[item.prayer];
+      if (prayer) body.appendChild(section(prayer.name, prayer.text, times(item.repeat || 1)));
+    }
+  };
 
-  const { count, large, small } = PRAYERS.decades;
-  for (let d = 1; d <= count; d++) {
+  run(SET.opening || []);
+  for (let d = 1; d <= SET.decades.count; d++) {
     body.appendChild(el('div', 'full-divider', `✣ 第${CN_NUM[d]}端 ✣`));
-    body.appendChild(section(large.name, large.text, '一遍'));
-    body.appendChild(section(small.name, small.text, `${CN_NUM[small.count]}遍`));
+    if (SET.decades.mystery && MYSTERY) {
+      const m = MYSTERY.mysteries[d - 1];
+      if (m) body.appendChild(section(m.name, m.text, '默想', m.ref));
+    }
+    run(SET.decades.sequence);
   }
-
   body.appendChild(el('div', 'full-divider', '✣ 結束 ✣'));
-  for (const item of PRAYERS.closing) body.appendChild(section(item.name, item.text, item.label));
+  run(SET.closing || []);
 
-  fullBuilt = true;
+  fullBuiltFor = key;
 }
 
 /* ── 完成 ─────────────────────────────────────────── */
@@ -381,7 +457,8 @@ let lastRecordId = null;
 function finishPrayer() {
   const now = new Date();
   const secs = Math.max(1, Math.round((Date.now() - session.startedAt) / 1000));
-  const record = { id: newId(), ts: now.toISOString(), mode: session.mode, secs, note: '' };
+  const record = { id: newId(), ts: now.toISOString(), mode: session.mode, secs, note: '',
+                   set: session.set, mystery: session.mystery };
   records.push(record);
   saveRecords();
   lastRecordId = record.id;
@@ -407,9 +484,54 @@ function leavePrayer() {
 }
 
 /* ── 首頁 ─────────────────────────────────────────── */
+// 手動挑的奧蹟只算今天；隔天回到依星期輪替。
+function activeMystery(set) {
+  if (!set.mysterySets) return null;
+  if (settings.mystery && settings.mysteryDay === dayKey(new Date())) {
+    return mysteryById(set, settings.mystery);
+  }
+  return mysteryForToday(set);
+}
+
+function renderPicker() {
+  const picker = $('#set-picker');
+  picker.textContent = '';
+  picker.hidden = SETS.length < 2;
+  for (const set of SETS) {
+    const b = el('button', null, set.short || set.title);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(set.id === SET.id));
+    b.addEventListener('click', () => {
+      SET = set;
+      MYSTERY = activeMystery(SET);
+      settings.set = set.id;
+      saveSettings();
+      fullBuiltFor = null;
+      renderHome();
+    });
+    picker.appendChild(b);
+  }
+
+  const pick = $('#mystery-pick');
+  const sets = SET.mysterySets || [];
+  pick.hidden = sets.length === 0;
+  if (!sets.length) return;
+  const sel = $('#mystery-select');
+  sel.textContent = '';
+  for (const m of sets) {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = m.name;
+    sel.appendChild(o);
+  }
+  sel.value = MYSTERY ? MYSTERY.id : sets[0].id;
+}
+
 function renderHome() {
   const today = new Date();
   $('#home-date').textContent = fmtFullDate(today);
+  $('.home-title').textContent = SET.title;
+  renderPicker();
   setImage($('#home-image'), $('#home-caption'), imageForRole('home', records.length));
 
   const todayCount = dayCounts().get(dayKey(today)) || 0;
@@ -445,6 +567,17 @@ const localTime = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 function renderManual() {
   const now = new Date();
+  const sel = $('#manual-set');
+  sel.textContent = '';
+  for (const set of SETS) {
+    for (const m of set.mysterySets || [{ id: null, name: null }]) {
+      const o = document.createElement('option');
+      o.value = m.id ? `${set.id}:${m.id}` : set.id;
+      o.textContent = m.name ? `${set.short || set.title} · ${m.name}` : (set.short || set.title);
+      sel.appendChild(o);
+    }
+  }
+  sel.value = SET.mysterySets && MYSTERY ? `${SET.id}:${MYSTERY.id}` : SET.id;
   $('#manual-date').value = dayKey(now);
   $('#manual-date').max = dayKey(now);   // 還沒發生的祈禱記不了
   $('#manual-time').value = localTime(now);
@@ -473,12 +606,15 @@ function saveManual() {
   if (Number.isNaN(when.getTime())) return fail('日期或時間不正確。');
   if (when.getTime() > Date.now() + 60000) return fail('不能補記還沒到的時間。');
 
+  const [setId, mysteryId] = $('#manual-set').value.split(':');
   records.push({
     id: newId(),
     ts: when.toISOString(),
     mode: 'offline',
     secs: 0,
     note: $('#manual-note').value.trim(),
+    set: setId,
+    mystery: mysteryId || null,
   });
   saveRecords();
   buzz(BUZZ.bead);
@@ -659,7 +795,12 @@ function logRow(r, afterDelete) {
   time.textContent = `${d.getMonth() + 1}/${d.getDate()} ${fmtTime(d)}`;
   li.appendChild(time);
 
-  li.appendChild(el('span', 'note', r.note || ''));
+  const set = SETS.find((x) => x.id === (r.set || 'chaplet'));
+  const which = set ? (set.short || set.title) : '';
+  const mystery = r.mystery && set
+    ? ((set.mysterySets || []).find((m) => m.id === r.mystery) || {}).name
+    : '';
+  li.appendChild(el('span', 'note', [mystery || which, r.note].filter(Boolean).join(' · ')));
   li.appendChild(el('span', 'meta' + (r.mode === 'offline' ? ' tag' : ''),
                     r.mode === 'offline' ? '補記' : fmtDuration(r.secs)));
 
@@ -706,7 +847,10 @@ function renderSettings() {
   $('#set-haptic-strength').value = settings.hapticStrength;
 
   $('#about-text').textContent =
-    `經文共 ${STEPS.length} 步，聖像 ${IMAGES.length} 張。所有紀錄只存在此裝置，不會上傳。`;
+    SETS.map((set) => {
+      const m = (set.mysterySets || [])[0] || null;
+      return `${set.short || set.title} ${buildSteps(set, m).length} 步`;
+    }).join('、') + `，聖像 ${IMAGES.length} 張。所有紀錄只存在此裝置，不會上傳。`;
 
   if (navigator.storage && navigator.storage.persisted) {
     navigator.storage.persisted().then((ok) => {
@@ -921,6 +1065,8 @@ function importRecords(file) {
         mode: ['guided', 'full', 'offline'].includes(r.mode) ? r.mode : 'guided',
         secs: Number.isFinite(r.secs) ? Math.max(0, Math.min(r.secs, 86400)) : 0,
         note: typeof r.note === 'string' ? r.note.slice(0, 80) : '',
+        set: typeof r.set === 'string' ? r.set.slice(0, 40) : 'chaplet',
+        mystery: typeof r.mystery === 'string' ? r.mystery.slice(0, 40) : null,
       });
       if (r.id) seen.add(r.id);
       added++;
@@ -1003,6 +1149,14 @@ function bind() {
       go(target);
     });
   }
+
+  $('#mystery-select').addEventListener('change', (e) => {
+    MYSTERY = mysteryById(SET, e.target.value);
+    settings.mystery = MYSTERY.id;
+    settings.mysteryDay = dayKey(new Date());
+    saveSettings();
+    fullBuiltFor = null;
+  });
 
   $('#manual-btn').addEventListener('click', () => {
     renderManual();
@@ -1149,25 +1303,28 @@ const inlineJSON = (id) => {
 async function init() {
   applySettings();
   try {
-    const embedded = inlineJSON('data-prayers');
+    const embedded = inlineJSON('data-sets');
     INLINE = embedded !== null;
-    const [prayers, images] = INLINE
-      ? [embedded, inlineJSON('data-images') || { images: [] }]
-      : await Promise.all([
-          fetch('data/prayers.json').then((r) => r.json()),
-          fetch('data/images.json').then((r) => r.json()).catch(() => ({ images: [] })),
-        ]);
-    PRAYERS = prayers;
+    let images;
+    if (INLINE) {
+      SETS = embedded;
+      images = inlineJSON('data-images') || { images: [] };
+    } else {
+      const index = await fetch('data/sets.json').then((r) => r.json());
+      SETS = await Promise.all(index.sets.map((s) => fetch(s.file).then((r) => r.json())));
+      images = await fetch('data/images.json').then((r) => r.json()).catch(() => ({ images: [] }));
+    }
+    SET = setById(settings.set);
+    MYSTERY = activeMystery(SET);
     IMAGES = images.images || [];
     buildImageRoles();
-    STEPS = buildSteps(PRAYERS);
+    rebuildSteps();
   } catch {
-    $('.boot-msg').textContent = '無法載入經文檔案，請確認 data/prayers.json 存在。';
+    $('.boot-msg').textContent = '無法載入經文檔案，請確認 data/ 內的檔案齊全。';
     return;
   }
 
-  document.title = PRAYERS.title;
-  $('.home-title').textContent = PRAYERS.title;
+  document.title = SETS.map((s) => s.short || s.title).join(' · ');
   bind();
   if (INLINE) applyPreviewLimits();
   await loadPictures();

@@ -41,6 +41,13 @@
 
     <p class="today-state" id="today-state"></p>
 
+    <div class="picker" id="set-picker" role="group" aria-label="選擇經文"></div>
+
+    <div class="mystery-pick" id="mystery-pick" hidden>
+      <span class="mystery-label">今日奧蹟</span>
+      <select id="mystery-select" aria-label="選擇奧蹟"></select>
+    </div>
+
     <button type="button" id="start-btn" class="btn btn-primary btn-block btn-lg">開始祈禱</button>
     <button type="button" id="manual-btn" class="btn btn-block">補記一次祈禱</button>
 
@@ -56,7 +63,10 @@
   <section id="view-prayer" class="view view-full" aria-label="祈禱">
     <header class="bar">
       <button type="button" id="prayer-exit" class="icon-btn" aria-label="結束並返回">✕</button>
-      <div class="bar-title" id="prayer-stage">救主慈悲串經</div>
+      <div class="bar-title">
+        <span id="prayer-stage">救主慈悲串經</span>
+        <span class="bar-sub" id="prayer-title"></span>
+      </div>
       <button type="button" id="mode-toggle" class="btn btn-tiny">全文</button>
     </header>
 
@@ -132,6 +142,10 @@
       <label class="field">
         <span class="field-label">時間</span>
         <input type="time" id="manual-time" required>
+      </label>
+      <label class="field">
+        <span class="field-label">誦唸的經文</span>
+        <select id="manual-set"></select>
       </label>
       <label class="field">
         <span class="field-label">意向（可留空）</span>

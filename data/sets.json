@@ -1,0 +1,13 @@
+{
+  "note": "這裡列出程式提供的經文。要新增一套，寫一個同樣格式的檔案並在下面加一行。",
+  "sets": [
+    {
+      "id": "chaplet",
+      "file": "data/prayers.json"
+    },
+    {
+      "id": "rosary",
+      "file": "data/rosary.json"
+    }
+  ]
+}

@@ -11,7 +11,8 @@ const dataUri = (file) => {
   return `data:${MIME[ext] || 'application/octet-stream'};base64,${readFileSync(file).toString('base64')}`;
 };
 
-const prayers = JSON.parse(read('data/prayers.json'));
+const index = JSON.parse(read('data/sets.json'));
+const sets = index.sets.map((s) => JSON.parse(read(s.file)));
 const images = JSON.parse(read('data/images.json'));
 
 // 圖片改為內嵌，單檔才能離開資料夾獨立運作
@@ -39,7 +40,7 @@ ${read('styles.css')}
 
 ${body}
 
-<script type="application/json" id="data-prayers">${json(prayers)}</script>
+<script type="application/json" id="data-sets">${json(sets)}</script>
 <script type="application/json" id="data-images">${json(images)}</script>
 <script>
 ${read('app.js')}
@@ -47,4 +48,5 @@ ${read('app.js')}
 `;
 
 writeFileSync(out, page);
-console.log(`${out} — ${(Buffer.byteLength(page) / 1024).toFixed(0)} KB, ${embedded} images embedded`);
+console.log(`${out} — ${(Buffer.byteLength(page) / 1024).toFixed(0)} KB, `
+  + `${sets.length} prayer sets, ${embedded} images embedded`);
