@@ -223,7 +223,57 @@ img { max-width: 100%; height: auto; display: block; }
 .done-meta { text-align: center; color: var(--muted); font-size: .9rem; margin: 0 0 1.5rem; letter-spacing: .04em; }
 
 /* ── 紀錄 ───────────────────────────────────────────── */
-.cal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: .9rem; margin-bottom: 1.5rem; }
+/* ── 祈禱玫瑰窗 ──────────────────────────────────────── */
+.bloom {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .9rem; margin-bottom: 1.5rem;
+}
+.rose { margin: 0; }
+.rose-svg { display: block; width: 100%; height: auto; max-height: 62vh; }
+
+/* 玻璃片之間留一道深色鉛線，讀起來才像彩窗而不是圓餅圖 */
+.petal {
+  stroke: var(--bg); stroke-width: 2.5; stroke-linejoin: round;
+  transition: fill .35s ease, opacity .35s ease;
+  cursor: pointer;
+}
+/* 未誦唸與尚未到來的日子仍畫成玻璃片，窗才是完整的一圈；
+   只是沒有點亮，而不是缺了一塊。 */
+.petal.empty  { fill: var(--line); opacity: .55; }
+.petal.future { fill: var(--line); opacity: .14; }
+.petal.lit1   { fill: url(#glass1); }
+.petal.lit2   { fill: url(#glass2); }
+.petal.lit3   { fill: url(#glass3); }
+.petal.today  { stroke: var(--gold); stroke-width: 2.5; }
+.petal:hover, .petal:focus-visible { opacity: 1; }
+
+.rose-rim      { fill: none; stroke: var(--line); stroke-width: 2.5; }
+.rose-rim.thin { stroke-width: 1; opacity: .6; }
+.rose-core    { fill: var(--surface); stroke: var(--line); stroke-width: 2; }
+.rose-core-in { fill: none; stroke: var(--gold); stroke-width: 1.2; opacity: .55; }
+.rose-count {
+  fill: var(--fg); font-size: 2.6rem; font-weight: 600;
+  text-anchor: middle; font-family: var(--sans);
+}
+.rose-label {
+  fill: var(--muted); font-size: .95rem; letter-spacing: .1em;
+  text-anchor: middle; font-family: var(--sans);
+}
+.rose-read {
+  text-align: center; color: var(--muted); font-size: .85rem;
+  margin: .2rem 0 .6rem; min-height: 1.4em; line-height: 1.6;
+}
+.rose-toggle { display: block; margin: 0 auto; }
+
+/* 花瓣依序綻開 */
+@media (prefers-reduced-motion: no-preference) {
+  .petal { animation: petalOpen .5s backwards; animation-delay: calc(var(--i) * 18ms); transform-origin: 200px 200px; }
+  @keyframes petalOpen {
+    from { opacity: 0; transform: scale(.72) rotate(-6deg); }
+  }
+}
+
+.cal { margin-top: .9rem; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
 .cal-head h2 { font-size: 1rem; letter-spacing: .08em; }
 .cal-dow, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .2rem; }

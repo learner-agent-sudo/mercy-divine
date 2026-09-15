@@ -156,14 +156,22 @@
 
     <div class="stats" id="history-stats"></div>
 
-    <div class="cal">
+    <div class="bloom">
       <div class="cal-head">
         <button type="button" id="cal-prev" class="icon-btn" aria-label="上個月">‹</button>
         <h2 id="cal-label"></h2>
         <button type="button" id="cal-next" class="icon-btn" aria-label="下個月">›</button>
       </div>
-      <div class="cal-dow" aria-hidden="true"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
-      <div class="cal-grid" id="cal-grid"></div>
+
+      <figure class="rose" id="rose" aria-label="本月祈禱玫瑰窗"></figure>
+      <p class="rose-read" id="rose-read"></p>
+
+      <div class="cal" id="cal" hidden>
+        <div class="cal-dow" aria-hidden="true"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <button type="button" id="cal-toggle" class="btn btn-tiny rose-toggle">看月曆</button>
     </div>
 
     <h2 class="section-title">近期</h2>

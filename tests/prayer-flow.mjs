@@ -44,7 +44,7 @@ ok('record keeps the intention', rec[0].note === '為家人祈禱');
 ok('record keeps a duration', rec[0].secs >= 1);
 
 await page.click('[data-go="history"]');
-ok('calendar marks the day', await page.locator('.cal-day.marked').count() === 1);
+ok('the rose lights one petal', await page.locator('.petal.lit1').count() === 1);
 ok('log lists the session', await page.locator('#log li').count() === 1);
 ok('streak counts 1', (await page.textContent('#history-stats')).includes('1'));
 

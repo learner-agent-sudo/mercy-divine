@@ -490,6 +490,127 @@ function saveManual() {
 /* ── 紀錄 ─────────────────────────────────────────── */
 let calMonth = new Date();
 
+/* ── 祈禱玫瑰窗 ────────────────────────────────────── */
+// 一個月畫成一扇玫瑰窗：每一天一片花瓣，誦唸過的就亮起來。
+// 還沒到的日子只留淡淡輪廓，不把未來畫成缺漏。
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs) => {
+  const n = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  return n;
+};
+const polar = (r, deg) => {
+  const a = ((deg - 90) * Math.PI) / 180;
+  return [200 + r * Math.cos(a), 200 + r * Math.sin(a)];
+};
+// 花瓣：底部沿內圈、頂端沿外圈，兩側外鼓。
+// 頂端不收成尖點而是貼著外圈的一小段弧，整體才像彩窗的玻璃片而非光芒。
+// 花瓣：底窄、腰寬、頂端沿外圈收成圓弧。
+// 腰部的控制點推到將近整格寬，側緣才鼓得起來，不然會變成直條。
+const petalPath = (deg, half, r0, r1) => {
+  const p = (r, d) => polar(r, d).map((n) => n.toFixed(1)).join(' ');
+  const L = r1 - r0;
+  const baseA = half * 0.28;
+  const tipA = half * 0.22;
+  // 兩個控制點分別落在三成與八成高度，最寬處才會在腰間而不是靠近頂端
+  const lowC = [r0 + L * 0.30, half * 1.5];
+  const highC = [r0 + L * 0.78, half * 0.78];
+  return [
+    `M${p(r0, deg - baseA)}`,
+    `C${p(lowC[0], deg - lowC[1])} ${p(highC[0], deg - highC[1])} ${p(r1, deg - tipA)}`,
+    `A${r1} ${r1} 0 0 1 ${p(r1, deg + tipA)}`,
+    `C${p(highC[0], deg + highC[1])} ${p(lowC[0], deg + lowC[1])} ${p(r0, deg + baseA)}`,
+    `A${r0} ${r0} 0 0 0 ${p(r0, deg - baseA)}`,
+    'Z',
+  ].join(' ');
+};
+
+// 玻璃的層次：靠近圓心淡、靠近外緣濃。
+function roseDefs() {
+  const defs = svgEl('defs', {});
+  const ramp = [
+    ['glass1', 'var(--gold)', '.32', '.72'],
+    ['glass2', 'var(--gold)', '.6', '1'],
+    ['glass3', 'var(--accent)', '.62', '1'],
+  ];
+  for (const [id, colour, from, to] of ramp) {
+    const g = svgEl('radialGradient', { id, cx: '50%', cy: '50%', r: '50%',
+      gradientUnits: 'userSpaceOnUse', fx: '200', fy: '200', cy: '200', cx: '200', r: '176' });
+    g.appendChild(svgEl('stop', { offset: '30%', 'stop-color': colour, 'stop-opacity': from }));
+    g.appendChild(svgEl('stop', { offset: '100%', 'stop-color': colour, 'stop-opacity': to }));
+    defs.appendChild(g);
+  }
+  return defs;
+}
+
+// 一天誦唸幾次決定花瓣的顏色深淺，最多到第三階。
+const litClass = (n) => (n >= 3 ? 'lit3' : n === 2 ? 'lit2' : 'lit1');
+
+function renderRose(days) {
+  const y = calMonth.getFullYear();
+  const m = calMonth.getMonth();
+  const total = new Date(y, m + 1, 0).getDate();
+  const todayKey = dayKey(new Date());
+  const now = new Date();
+  const monthAhead = y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth());
+
+  const svg = svgEl('svg', { viewBox: '0 0 400 400', role: 'img', class: 'rose-svg' });
+  svg.appendChild(svgEl('title', {})).textContent = `${y} 年 ${m + 1} 月的祈禱`;
+  svg.appendChild(roseDefs());
+
+  const step = 360 / total;
+  let prayedDays = 0;
+  let prayedTimes = 0;
+
+  for (let d = 1; d <= total; d++) {
+    const key = dayKey(new Date(y, m, d));
+    const n = days.get(key) || 0;
+    if (n) { prayedDays++; prayedTimes += n; }
+    const future = monthAhead || (y === now.getFullYear() && m === now.getMonth() && d > now.getDate());
+
+    const petal = svgEl('path', {
+      d: petalPath((d - 0.5) * step, step * 0.5, 78, 172),
+      class: `petal ${n ? litClass(n) : future ? 'future' : 'empty'}${key === todayKey ? ' today' : ''}`,
+      'data-day': d,
+      style: `--i:${d}`,
+    });
+    petal.appendChild(svgEl('title', {})).textContent =
+      n ? `${m + 1} 月 ${d} 日 · ${n} 次` : `${m + 1} 月 ${d} 日`;
+    petal.addEventListener('click', () => readPetal(y, m, d, n));
+    svg.appendChild(petal);
+  }
+
+  // 窗框
+  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 182, class: 'rose-rim' }));
+  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 188, class: 'rose-rim thin' }));
+
+  // 中心：本月的總數
+  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 66, class: 'rose-core' }));
+  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 57, class: 'rose-core-in' }));
+  const count = svgEl('text', { x: 200, y: 196, class: 'rose-count' });
+  count.textContent = String(prayedTimes);
+  svg.appendChild(count);
+  const label = svgEl('text', { x: 200, y: 222, class: 'rose-label' });
+  label.textContent = prayedTimes ? `${prayedDays} 天` : '尚未誦唸';
+  svg.appendChild(label);
+
+  const rose = $('#rose');
+  rose.textContent = '';
+  rose.appendChild(svg);
+  $('#rose-read').textContent = prayedTimes
+    ? `本月 ${prayedTimes} 次，共 ${prayedDays} 天。輕觸花瓣看當天。`
+    : '這個月還沒有紀錄。';
+}
+
+function readPetal(y, m, d, n) {
+  const key = dayKey(new Date(y, m, d));
+  const notes = records
+    .filter((r) => dayKey(new Date(r.ts)) === key && r.note)
+    .map((r) => r.note);
+  const head = `${m + 1} 月 ${d} 日 · ${n ? `${n} 次` : '未誦唸'}`;
+  $('#rose-read').textContent = notes.length ? `${head} — ${notes.join('、')}` : head;
+}
+
 function renderHistory() {
   const days = dayCounts();
   renderStats($('#history-stats'), [
@@ -497,6 +618,7 @@ function renderHistory() {
     [days.size, '誦念天數'],
     [records.length, '累計次數'],
   ]);
+  renderRose(days);
   renderCalendar(days);
   renderLog();
 }
@@ -561,6 +683,8 @@ function renderLog() {
   $('#log-empty').hidden = recent.length > 0;
   for (const r of recent) list.appendChild(logRow(r, renderHistory));
 }
+
+const renderMonth = () => { const d = dayCounts(); renderRose(d); renderCalendar(d); };
 
 /* ── 設定 ─────────────────────────────────────────── */
 function applySettings() {
@@ -900,8 +1024,15 @@ function bind() {
     toast('已刪除');
   });
 
-  $('#cal-prev').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(dayCounts()); });
-  $('#cal-next').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(dayCounts()); });
+  $('#cal-prev').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() - 1); renderMonth(); });
+  $('#cal-next').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() + 1); renderMonth(); });
+  $('#cal-toggle').addEventListener('click', () => {
+    const showCal = $('#cal').hidden;
+    $('#cal').hidden = !showCal;
+    $('#rose').hidden = showCal;
+    $('#rose-read').hidden = showCal;
+    $('#cal-toggle').textContent = showCal ? '看玫瑰窗' : '看月曆';
+  });
 
   $('#set-mode').addEventListener('change', (e) => { settings.mode = e.target.value; saveSettings(); });
   $('#set-theme').addEventListener('change', (e) => { settings.theme = e.target.value; saveSettings(); applySettings(); });

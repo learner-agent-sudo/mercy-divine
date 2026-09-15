@@ -154,6 +154,19 @@ OEMs' silent mode, or a battery saver — and no web page can detect or override
 those. The behaviour varies enough between manufacturers that the test button, pressed
 while DND is on, is the only reliable answer for a given phone.
 
+## The prayer rose
+
+祈禱紀錄 opens on a rose window rather than a grid. Each day of the month is a petal,
+arranged in a ring; a day prayed lights its petal in gold, twice deepens it, three or
+more turns it red. The centre holds the month's total and how many days it covers, and
+touching a petal reads out that day with whatever intention was written.
+
+Days still to come are drawn faintly rather than left out, so the window is always a
+whole circle — an unfinished month is not shown as a broken one. A day that passed
+without prayer sits between the two: present, but unlit.
+
+The grid calendar is still there behind **看月曆** for when an exact date matters.
+
 ## Recording a prayer said away from the phone
 
 **補記一次祈禱** on the home screen logs a chaplet prayed on beads, from a book, or in
@@ -185,6 +198,7 @@ Five suites cover the things that would hurt most if they broke:
 | `tap` | a slow or slightly wobbly touch counts as one bead; drags, swipes and momentum scrolling do not |
 | `haptics` | the five vibration signals stay distinguishable, every pulse is long enough to feel, and the strength setting scales them |
 | `manual-log` | a prayer said elsewhere is recorded, dated, counted with the rest, and stays marked through a backup |
+| `rose` | one petal per day, lit by how often you prayed, future days set apart from missed ones, and the calendar still reachable |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
 
 The suites drive a real browser at phone size and fail on any console error.
