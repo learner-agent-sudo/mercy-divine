@@ -360,6 +360,12 @@ img { max-width: 100%; height: auto; display: block; }
   object-fit: cover; background: var(--sunken); border: 1px solid var(--line);
 }
 .slot-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.slot-actions { display: flex; align-items: center; gap: .15rem; flex: none; }
+.slot-actions .btn-tiny { padding: .35rem .5rem; }
+.slot-thumb-none {
+  display: grid; place-items: center; color: var(--muted);
+  font-size: 1.1rem; border-style: dashed;
+}
 .slot-name { font-size: .95rem; }
 .slot-state { font-size: .72rem; color: var(--muted); }
 

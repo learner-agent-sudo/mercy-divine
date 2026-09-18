@@ -77,7 +77,10 @@ id — `rosary:hail-mary` — to use it in that prayer only; an unprefixed name 
 to the `home` picture, so no screen is ever left blank.
 
 設定 → 聖像 lists every place an image can go, grouped by prayer, and picks one from the
-phone for any of them. Each prayer has its **own cover** (封面, the home screen) and its
+phone for any of them. Each slot has three states: **預設** falls back through the chain
+below, **自訂圖片** is one you chose, and **不用** leaves that screen with no picture at
+all — the frame closes and the words get the room. 不用 is a real choice, not an absence:
+nothing is borrowed from elsewhere to fill the gap, and 還原 returns the slot to 預設. Each prayer has its **own cover** (封面, the home screen) and its
 own closing picture (誦畢), so the Rosary and the chaplet can carry different covers, plus
 a slot for every prayer within it and one for each of the Rosary's five mysteries. Where
 a slot has nothing of its own it shows the matching picture from the other prayer, then

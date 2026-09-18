@@ -3,7 +3,7 @@ import { BASE, fixture, launch } from './helpers.mjs';
 const ok = (l, p) => { console.log(`${p ? 'PASS' : 'FAIL ***'}  ${l}`); if (!p) failures++; };
 let failures = 0;
 
-const { browser, page, errors } = await launch();
+const { browser, page, errors } = await launch({ acceptDownloads: true });
 // 清單中可能列出尚未上傳的檔案，這些請求應該每個檔案只發生一次
 let missed = [];
 page.on('load', () => { missed = []; });   // 每次載入頁面重新計算
@@ -137,6 +137,67 @@ ok('each prayer also has its own closing picture',
    slots.includes('chaplet:done') && slots.includes('rosary:done'));
 ok('there is no single shared cover slot left to confuse things',
    !slots.includes('home') && !slots.includes('done'));
+
+// ── 明確「不用圖片」 ──（此時已在設定頁）
+const state = (slot) => page.textContent(`.slot[data-slot="${slot}"] .slot-state`);
+const buttons = (slot) => page.locator(`.slot[data-slot="${slot}"] button`).allTextContents();
+
+ok('a fresh slot offers 選圖 and 不用', (await buttons('rosary:sign')).join() === '選圖,不用');
+await page.locator('.slot[data-slot="rosary:sign"] button', { hasText: '不用' }).click();
+await page.waitForTimeout(300);
+ok('choosing 不用 is its own state, not just a default', await state('rosary:sign') === '不用圖片');
+ok('and it offers a way back', (await buttons('rosary:sign')).includes('還原'));
+ok('its thumbnail shows nothing rather than a borrowed picture',
+   await page.locator('.slot[data-slot="rosary:sign"] .slot-thumb-none').count() === 1);
+
+// 祈禱時真的不顯示，也不會從別處遞補
+await page.click('#view-settings [data-go="home"]');
+await page.locator('#set-picker button', { hasText: '玫瑰經' }).click();
+await page.waitForTimeout(250);
+await page.click('#start-btn');
+await page.waitForTimeout(300);
+const plateHidden = () => page.evaluate(() => document.querySelector('#guided-image').closest('.plate').hidden);
+ok('the prayer set to 不用 shows no picture at all', await plateHidden() === true);
+await page.click('#step-next');
+await page.waitForTimeout(250);
+ok('the next prayer still has one', await plateHidden() === false);
+await page.click('#prayer-exit');
+
+// 只影響那一套經文
+await page.locator('#set-picker button', { hasText: '慈悲串經' }).click();
+await page.waitForTimeout(250);
+await page.click('[data-go="settings"]');
+ok('the other prayer is untouched', await state('chaplet:creed') !== '不用圖片');
+
+// 封面也能關掉
+await page.locator('.slot[data-slot="chaplet:home"] button', { hasText: '不用' }).click();
+await page.waitForTimeout(300);
+await page.click('#view-settings [data-go="home"]');
+ok('a cover set to 不用 leaves the home screen without one',
+   await page.evaluate(() => document.querySelector('#home-image').closest('.plate').hidden) === true);
+
+// 還原回到預設
+await page.click('[data-go="settings"]');
+await page.locator('.slot[data-slot="chaplet:home"] button', { hasText: '還原' }).click();
+await page.waitForTimeout(300);
+ok('還原 puts the default back', await state('chaplet:home') === '預設');
+await page.click('#view-settings [data-go="home"]');
+ok('and the cover returns',
+   await page.evaluate(() => document.querySelector('#home-image').closest('.plate').hidden) === false);
+
+// 備份要記得「不用」這個選擇
+await page.click('[data-go="settings"]');
+const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#export-btn')]);
+const backupPath = await dl.path();
+await page.evaluate(async () => {
+  localStorage.clear();
+  for (const db of await indexedDB.databases()) indexedDB.deleteDatabase(db.name);
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.click('[data-go="settings"]');
+await page.setInputFiles('#import-file', backupPath);
+await page.waitForTimeout(900);
+ok('a restored backup remembers 不用圖片', await state('rosary:sign') === '不用圖片');
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();

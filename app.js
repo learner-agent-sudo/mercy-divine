@@ -221,9 +221,10 @@ function buildImageRoles() {
 
 // 自訂聖像排最前面，其後才是 data/images.json 列出的圖片。
 const rolesFor = (role) => {
+  if (isNoPicture(role)) return [];
   const scoped = SET ? `${SET.id}:${role}` : role;
   const listed = [...(imageRoles.get(scoped) || []), ...(imageRoles.get(role) || [])];
-  const custom = customFor(scoped) || customFor(role);
+  const custom = customFor(settingFor(role));
   return custom ? [custom, ...listed] : listed;
 };
 
@@ -258,24 +259,26 @@ function setImage(imgNode, capNode, candidates) {
 }
 
 // 先找指定給這段經文的聖像；沒有就退回首頁那張，畫面才不會忽有忽無。
-function imageForStep(step) {
-  if (!IMAGES.length) return [];
-  const matched = rolesFor(step.id);
-  if (matched.length) return matched;
-  if (step.kind === 'decade' || step.kind === 'mystery') {
-    const byDecade = rolesFor(`decade-${step.decade}`);
-    if (byDecade.length) return byDecade;
+// 依序找：這段經文 → 該端奧蹟 → 封面。任何一層寫了「不用圖片」就到此為止，
+// 不再往下遞補，否則使用者關掉的圖會從別處冒出來。
+function pickFrom(roles, fallbackIndex) {
+  for (const role of roles) {
+    if (isNoPicture(role)) return [];
+    const found = rolesFor(role);
+    if (found.length) return found;
   }
-  const home = rolesFor('home');
-  return home.length ? home : [imageAt(0)];
+  return IMAGES.length ? [imageAt(fallbackIndex || 0)] : [];
 }
 
-const imageForRole = (role, fallbackIndex) => {
-  const matched = rolesFor(role);
-  if (matched.length) return matched;
-  const home = rolesFor('home');
-  return home.length ? home : [imageAt(fallbackIndex)];
-};
+function imageForStep(step) {
+  const roles = [step.id];
+  if (step.kind === 'decade' || step.kind === 'mystery') roles.push(`decade-${step.decade}`);
+  roles.push('home');
+  return pickFrom(roles);
+}
+
+const imageForRole = (role, fallbackIndex) =>
+  pickFrom(role === 'home' ? ['home'] : [role, 'home'], fallbackIndex);
 
 /* ── 畫面切換 ──────────────────────────────────────── */
 const VIEWS = ['home', 'prayer', 'done', 'manual', 'history', 'settings'];
@@ -1021,13 +1024,25 @@ async function loadPictures() {
   } catch { /* 無法使用 IndexedDB 時就只用內建聖像 */ }
 }
 
-function customFor(role) {
-  const id = (settings.pictures || {})[role];
-  const url = id && pictureUrls.get(id);
+// 每個位置有三種狀態：沒設定（自動遞補）、自訂圖片、明確不用圖片。
+const NO_PICTURE = 'none';
+const pictureSetting = (key) => (settings.pictures || {})[key];
+
+function customFor(key) {
+  const id = pictureSetting(key);
+  if (!id || id === NO_PICTURE) return null;
+  const url = pictureUrls.get(id);
   if (!url) return null;
-  const listed = imageRoles.get(role) || [];
+  const listed = imageRoles.get(key) || [];
   return { file: url, caption: listed.length ? listed[0].caption : '' };
 }
+
+// 較明確的設定蓋過較籠統的：玫瑰經自己設了就照它的，沒設才看共用的。
+function settingFor(role) {
+  const scoped = SET ? `${SET.id}:${role}` : role;
+  return pictureSetting(scoped) !== undefined ? scoped : role;
+}
+const isNoPicture = (role) => pictureSetting(settingFor(role)) === NO_PICTURE;
 
 async function assignPicture(role, file) {
   try {
@@ -1047,6 +1062,14 @@ async function assignPicture(role, file) {
   }
 }
 
+async function setNoPicture(role) {
+  settings.pictures = { ...(settings.pictures || {}), [role]: NO_PICTURE };
+  saveSettings();
+  await loadPictures();
+  renderSlots();
+  renderHome();
+}
+
 async function clearPicture(role) {
   const pictures = { ...(settings.pictures || {}) };
   delete pictures[role];
@@ -1062,34 +1085,40 @@ function renderSlots() {
   const list = $('#slots');
   list.textContent = '';
   for (const group of imageSlots()) {
-    const head = el('li', 'slot-group', group.title);
-    list.appendChild(head);
+    list.appendChild(el('li', 'slot-group', group.title));
     for (const [key, label] of group.slots) {
+      const none = pictureSetting(key) === NO_PICTURE;
       const custom = customFor(key);
       const li = el('li', 'slot');
       li.dataset.slot = key;
 
-      const thumb = document.createElement('img');
-      thumb.className = 'slot-thumb';
-      setImage(thumb, null, slotCandidates(key));
-      li.appendChild(thumb);
+      if (none) {
+        li.appendChild(el('span', 'slot-thumb slot-thumb-none', '—'));
+      } else {
+        const thumb = document.createElement('img');
+        thumb.className = 'slot-thumb';
+        setImage(thumb, null, slotCandidates(key));
+        li.appendChild(thumb);
+      }
 
       const text = el('div', 'slot-text');
       text.appendChild(el('span', 'slot-name', label));
-      text.appendChild(el('span', 'slot-state', custom ? '自訂圖片' : '預設'));
+      text.appendChild(el('span', 'slot-state', none ? '不用圖片' : custom ? '自訂圖片' : '預設'));
       li.appendChild(text);
 
-      const pick = el('button', 'btn btn-tiny', custom ? '更換' : '選圖');
-      pick.type = 'button';
-      pick.addEventListener('click', () => { slotTarget = key; $('#pic-file').click(); });
-      li.appendChild(pick);
+      const actions = el('div', 'slot-actions');
+      const button = (cls, label2, onClick) => {
+        const b = el('button', `btn btn-tiny ${cls}`, label2);
+        b.type = 'button';
+        b.addEventListener('click', onClick);
+        actions.appendChild(b);
+      };
 
-      if (custom) {
-        const reset = el('button', 'btn btn-tiny btn-quiet', '還原');
-        reset.type = 'button';
-        reset.addEventListener('click', () => clearPicture(key));
-        li.appendChild(reset);
-      }
+      button('', custom ? '更換' : '選圖', () => { slotTarget = key; $('#pic-file').click(); });
+      if (!none) button('btn-quiet', '不用', () => setNoPicture(key));
+      if (none || custom) button('btn-quiet', '還原', () => clearPicture(key));
+      li.appendChild(actions);
+
       list.appendChild(li);
     }
   }
@@ -1181,7 +1210,8 @@ function importRecords(file) {
       const known = new Set(allSlotKeys());
       const roles = {};
       for (const [role, id] of Object.entries(parsed.pictureRoles)) {
-        if (known.has(role) && typeof id === 'string' && stored.has(id)) roles[role] = id;
+        if (!known.has(role) || typeof id !== 'string') continue;
+        if (id === NO_PICTURE || stored.has(id)) roles[role] = id;
       }
       settings.pictures = { ...(settings.pictures || {}), ...roles };
       saveSettings();
