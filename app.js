@@ -36,18 +36,36 @@ const store = {
 const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, haptic: true,
                    hapticStrength: 'strong', set: 'chaplet', mystery: null, mysteryDay: null, pictures: {} };
 
-// 可在程式內指定聖像的九個位置。
-const IMAGE_SLOTS = [
-  ['home', '首頁'],
-  ['our-father', '天主經'],
-  ['hail-mary', '聖母經'],
-  ['creed', '信經'],
-  ['eternal-father', '大珠'],
-  ['passion', '小珠'],
-  ['holy-god', '結束祈禱'],
-  ['jesus-king', '信賴禱詞'],
-  ['done', '誦畢'],
-];
+// 聖像可以指定的位置，依經文分組產生。
+// 共用的 home/done 用原本的名稱；各經文的位置前面加上經文代號，
+// 這樣玫瑰經的天主經可以另配一張，沒另配時自動沿用共用的那張。
+function imageSlots() {
+  const groups = [{ title: '共用', slots: [['home', '首頁'], ['done', '誦畢']] }];
+  for (const set of SETS) {
+    const seen = new Set();
+    const slots = [];
+    const push = (items) => {
+      for (const item of items || []) {
+        const prayer = set.prayers[item.prayer];
+        if (!prayer || seen.has(item.prayer)) continue;
+        seen.add(item.prayer);
+        slots.push([`${set.id}:${item.prayer}`, prayer.name]);
+      }
+    };
+    push(set.opening);
+    push(set.decades && set.decades.sequence);
+    push(set.closing);
+    if (set.decades && set.decades.mystery) {
+      for (let d = 1; d <= set.decades.count; d++) {
+        slots.push([`${set.id}:decade-${d}`, `第${CN_NUM[d]}端奧蹟`]);
+      }
+    }
+    groups.push({ title: set.short || set.title, slots });
+  }
+  return groups;
+}
+
+const allSlotKeys = () => imageSlots().flatMap((g) => g.slots.map(([key]) => key));
 let settings = { ...DEFAULTS, ...store.read(K_SETTINGS, {}) };
 let records = store.read(K_RECORDS, []);
 
@@ -64,9 +82,10 @@ const fmtFullDate = (d) =>
 const fmtTime = (d) => d.toLocaleTimeString('zh-Hant', { hour: 'numeric', minute: '2-digit' });
 const fmtDuration = (s) => (s < 60 ? `${s} 秒` : `${Math.floor(s / 60)} 分${s % 60 ? ` ${s % 60} 秒` : ''}`);
 
-function dayCounts() {
+function dayCounts(setId) {
   const m = new Map();
   for (const r of records) {
+    if (setId && (r.set || 'chaplet') !== setId) continue;
     const k = dayKey(new Date(r.ts));
     m.set(k, (m.get(k) || 0) + 1);
   }
@@ -94,6 +113,21 @@ let IMAGES = [];
 let STEPS = [];
 
 const setById = (id) => SETS.find((x) => x.id === id) || SETS[0];
+
+// prayers 內的 {"from":"其他經文"} 表示共用同一篇文字。
+// 在載入時就接上，其餘程式碼便不必知道有這回事。
+function resolveShared(sets) {
+  for (const set of sets) {
+    for (const [id, prayer] of Object.entries(set.prayers)) {
+      if (!prayer || !prayer.from) continue;
+      const source = sets.find((x) => x.id === prayer.from);
+      const shared = source && source.prayers[id];
+      if (shared && !shared.from) set.prayers[id] = shared;
+      else delete set.prayers[id];   // 來源不存在就當作沒有這一篇，不要顯示空白
+    }
+  }
+  return sets;
+}
 const mysteryById = (set, id) =>
   (set.mysterySets || []).find((m) => m.id === id) || (set.mysterySets || [])[0] || null;
 
@@ -179,13 +213,23 @@ function buildImageRoles() {
 
 // 自訂聖像排最前面，其後才是 data/images.json 列出的圖片。
 const rolesFor = (role) => {
-  const listed = [
-    ...(imageRoles.get(`${SET ? SET.id : ''}:${role}`) || []),
-    ...(imageRoles.get(role) || []),
-  ];
-  const custom = customFor(role);
+  const scoped = SET ? `${SET.id}:${role}` : role;
+  const listed = [...(imageRoles.get(scoped) || []), ...(imageRoles.get(role) || [])];
+  const custom = customFor(scoped) || customFor(role);
   return custom ? [custom, ...listed] : listed;
 };
+
+// 某個位置該顯示哪張圖：自訂 → 該經文指定 → 共用指定 → 首頁那張
+function slotCandidates(key) {
+  const plain = key.includes(':') ? key.split(':').slice(1).join(':') : key;
+  const list = [
+    customFor(key),
+    ...(imageRoles.get(key) || []),
+    ...(plain !== key ? imageRoles.get(plain) || [] : []),
+  ].filter(Boolean);
+  if (list.length) return list;
+  return key === 'home' ? [] : [customFor('home'), ...(imageRoles.get('home') || [])].filter(Boolean);
+}
 
 // 取不到的檔案記下來，同一次使用中不再重試。
 const failedImages = new Set();
@@ -639,16 +683,13 @@ const polar = (r, deg) => {
   const a = ((deg - 90) * Math.PI) / 180;
   return [200 + r * Math.cos(a), 200 + r * Math.sin(a)];
 };
-// 花瓣：底部沿內圈、頂端沿外圈，兩側外鼓。
-// 頂端不收成尖點而是貼著外圈的一小段弧，整體才像彩窗的玻璃片而非光芒。
+
 // 花瓣：底窄、腰寬、頂端沿外圈收成圓弧。
-// 腰部的控制點推到將近整格寬，側緣才鼓得起來，不然會變成直條。
 const petalPath = (deg, half, r0, r1) => {
   const p = (r, d) => polar(r, d).map((n) => n.toFixed(1)).join(' ');
   const L = r1 - r0;
   const baseA = half * 0.28;
   const tipA = half * 0.22;
-  // 兩個控制點分別落在三成與八成高度，最寬處才會在腰間而不是靠近頂端
   const lowC = [r0 + L * 0.30, half * 1.5];
   const highC = [r0 + L * 0.78, half * 0.78];
   return [
@@ -670,8 +711,7 @@ function roseDefs() {
     ['glass3', 'var(--accent)', '.62', '1'],
   ];
   for (const [id, colour, from, to] of ramp) {
-    const g = svgEl('radialGradient', { id, cx: '50%', cy: '50%', r: '50%',
-      gradientUnits: 'userSpaceOnUse', fx: '200', fy: '200', cy: '200', cx: '200', r: '176' });
+    const g = svgEl('radialGradient', { id, gradientUnits: 'userSpaceOnUse', cx: '200', cy: '200', r: '176' });
     g.appendChild(svgEl('stop', { offset: '30%', 'stop-color': colour, 'stop-opacity': from }));
     g.appendChild(svgEl('stop', { offset: '100%', 'stop-color': colour, 'stop-opacity': to }));
     defs.appendChild(g);
@@ -679,72 +719,117 @@ function roseDefs() {
   return defs;
 }
 
-// 一天誦唸幾次決定花瓣的顏色深淺，最多到第三階。
 const litClass = (n) => (n >= 3 ? 'lit3' : n === 2 ? 'lit2' : 'lit1');
+const markClass = (n, future) => (n ? litClass(n) : future ? 'future' : 'empty');
 
-function renderRose(days) {
+// 一朵花承載兩套經文：外圈花瓣是慈悲串經，內圈花蕊是玫瑰經。
+// 同一天在兩圈各佔一格，所以看得出那天唸了哪一種、或兩種都唸了。
+const RING = {
+  chaplet: { r0: 100, r1: 176 },
+  rosary: { filament: [64, 90], anther: 94 },
+};
+
+function renderRose() {
   const y = calMonth.getFullYear();
   const m = calMonth.getMonth();
   const total = new Date(y, m + 1, 0).getDate();
   const todayKey = dayKey(new Date());
   const now = new Date();
   const monthAhead = y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth());
+  const isFuture = (d) => monthAhead
+    || (y === now.getFullYear() && m === now.getMonth() && d > now.getDate());
+
+  const counts = new Map(SETS.map((set) => [set.id, dayCounts(set.id)]));
+  const outer = counts.get('chaplet') || new Map();
+  const inner = counts.get('rosary') || new Map();
 
   const svg = svgEl('svg', { viewBox: '0 0 400 400', role: 'img', class: 'rose-svg' });
   svg.appendChild(svgEl('title', {})).textContent = `${y} 年 ${m + 1} 月的祈禱`;
   svg.appendChild(roseDefs());
-
-  const step = 360 / total;
-  let prayedDays = 0;
-  let prayedTimes = 0;
-
-  for (let d = 1; d <= total; d++) {
-    const key = dayKey(new Date(y, m, d));
-    const n = days.get(key) || 0;
-    if (n) { prayedDays++; prayedTimes += n; }
-    const future = monthAhead || (y === now.getFullYear() && m === now.getMonth() && d > now.getDate());
-
-    const petal = svgEl('path', {
-      d: petalPath((d - 0.5) * step, step * 0.5, 78, 172),
-      class: `petal ${n ? litClass(n) : future ? 'future' : 'empty'}${key === todayKey ? ' today' : ''}`,
-      'data-day': d,
-      style: `--i:${d}`,
-    });
-    petal.appendChild(svgEl('title', {})).textContent =
-      n ? `${m + 1} 月 ${d} 日 · ${n} 次` : `${m + 1} 月 ${d} 日`;
-    petal.addEventListener('click', () => readPetal(y, m, d, n));
-    svg.appendChild(petal);
-  }
-
-  // 窗框
   svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 182, class: 'rose-rim' }));
   svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 188, class: 'rose-rim thin' }));
 
-  // 中心：本月的總數
-  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 66, class: 'rose-core' }));
-  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 57, class: 'rose-core-in' }));
-  const count = svgEl('text', { x: 200, y: 196, class: 'rose-count' });
-  count.textContent = String(prayedTimes);
+  const step = 360 / total;
+  const tally = { chaplet: 0, rosary: 0 };
+  const days = new Set();
+
+  // 外圈花瓣
+  for (let d = 1; d <= total; d++) {
+    const key = dayKey(new Date(y, m, d));
+    const n = outer.get(key) || 0;
+    if (n) { tally.chaplet += n; days.add(key); }
+    const petal = svgEl('path', {
+      d: petalPath((d - 0.5) * step, step * 0.5, RING.chaplet.r0, RING.chaplet.r1),
+      class: `petal ${markClass(n, isFuture(d))}${key === todayKey ? ' today' : ''}`,
+      'data-day': d, 'data-set': 'chaplet', style: `--i:${d}`,
+    });
+    petal.appendChild(svgEl('title', {})).textContent = `${m + 1} 月 ${d} 日 · 慈悲串經${n ? ` ${n} 次` : ''}`;
+    petal.addEventListener('click', () => readMark(y, m, d, 'chaplet', n));
+    svg.appendChild(petal);
+  }
+
+  // 內圈花蕊
+  const [f0, f1] = RING.rosary.filament;
+  for (let d = 1; d <= total; d++) {
+    const key = dayKey(new Date(y, m, d));
+    const n = inner.get(key) || 0;
+    if (n) { tally.rosary += n; days.add(key); }
+    const deg = (d - 0.5) * step;
+    const cls = `stamen ${markClass(n, isFuture(d))}${key === todayKey ? ' today' : ''}`;
+    const g = svgEl('g', { class: cls, 'data-day': d, 'data-set': 'rosary', style: `--i:${d}` });
+    const [x0, y0] = polar(f0, deg);
+    const [x1, y1] = polar(f1, deg);
+    const [ax, ay] = polar(RING.rosary.anther, deg);
+    // 花蕊本身只有一條細線和一個小圓點，手指點不準；
+    // 先鋪一條看不見的粗線當作觸碰範圍。
+    const [hx, hy] = polar(RING.rosary.anther + 7, deg);
+    g.appendChild(svgEl('line', { x1: x0.toFixed(1), y1: y0.toFixed(1),
+                                  x2: hx.toFixed(1), y2: hy.toFixed(1), class: 'stamen-hit' }));
+    g.appendChild(svgEl('line', { x1: x0.toFixed(1), y1: y0.toFixed(1), x2: x1.toFixed(1), y2: y1.toFixed(1), class: 'filament' }));
+    g.appendChild(svgEl('circle', { cx: ax.toFixed(1), cy: ay.toFixed(1), r: 4.6, class: 'anther' }));
+    g.appendChild(svgEl('title', {})).textContent = `${m + 1} 月 ${d} 日 · 玫瑰經${n ? ` ${n} 次` : ''}`;
+    g.addEventListener('click', () => readMark(y, m, d, 'rosary', n));
+    svg.appendChild(g);
+  }
+
+  // 中心
+  const sum = tally.chaplet + tally.rosary;
+  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 56, class: 'rose-core' }));
+  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 48, class: 'rose-core-in' }));
+  const count = svgEl('text', { x: 200, y: 198, class: 'rose-count' });
+  count.textContent = String(sum);
   svg.appendChild(count);
-  const label = svgEl('text', { x: 200, y: 222, class: 'rose-label' });
-  label.textContent = prayedTimes ? `${prayedDays} 天` : '尚未誦唸';
+  const label = svgEl('text', { x: 200, y: 220, class: 'rose-label' });
+  label.textContent = sum ? `${days.size} 天` : '尚未誦唸';
   svg.appendChild(label);
 
   const rose = $('#rose');
   rose.textContent = '';
   rose.appendChild(svg);
-  $('#rose-read').textContent = prayedTimes
-    ? `本月 ${prayedTimes} 次，共 ${prayedDays} 天。輕觸花瓣看當天。`
+
+  const parts = SETS
+    .filter((set) => tally[set.id])
+    .map((set) => `${set.short || set.title} ${tally[set.id]} 次`);
+  $('#rose-read').textContent = sum
+    ? `本月 ${parts.join(' · ')}，共 ${days.size} 天。輕觸花瓣或花蕊看當天。`
     : '這個月還沒有紀錄。';
 }
 
-function readPetal(y, m, d, n) {
+function readMark(y, m, d, setId, n) {
   const key = dayKey(new Date(y, m, d));
-  const notes = records
-    .filter((r) => dayKey(new Date(r.ts)) === key && r.note)
-    .map((r) => r.note);
-  const head = `${m + 1} 月 ${d} 日 · ${n ? `${n} 次` : '未誦唸'}`;
-  $('#rose-read').textContent = notes.length ? `${head} — ${notes.join('、')}` : head;
+  const set = SETS.find((x) => x.id === setId);
+  const name = set ? (set.short || set.title) : setId;
+  const same = records.filter((r) => dayKey(new Date(r.ts)) === key && (r.set || 'chaplet') === setId);
+  // 同一天可能唸了好幾次。奧蹟與意向分開收攏，各自去重，
+  // 免得「痛苦五端」因為其中一次寫了意向而重複出現。
+  const mysteries = [...new Set(same.map((r) =>
+    (r.mystery && set ? ((set.mysterySets || []).find((x) => x.id === r.mystery) || {}).name : '')
+  ).filter(Boolean))];
+  const notes = [...new Set(same.map((r) => r.note).filter(Boolean))];
+
+  const head = `${m + 1} 月 ${d} 日 · ${name} ${n ? `${n} 次` : '未誦唸'}`;
+  const detail = [mysteries.join('、'), notes.join('、')].filter(Boolean).join(' · ');
+  $('#rose-read').textContent = detail ? `${head} — ${detail}` : head;
 }
 
 function renderHistory() {
@@ -754,7 +839,7 @@ function renderHistory() {
     [days.size, '誦念天數'],
     [records.length, '累計次數'],
   ]);
-  renderRose(days);
+  renderRose();
   renderCalendar(days);
   renderLog();
 }
@@ -825,7 +910,7 @@ function renderLog() {
   for (const r of recent) list.appendChild(logRow(r, renderHistory));
 }
 
-const renderMonth = () => { const d = dayCounts(); renderRose(d); renderCalendar(d); };
+const renderMonth = () => { renderRose(); renderCalendar(dayCounts()); };
 
 /* ── 設定 ─────────────────────────────────────────── */
 function applySettings() {
@@ -947,7 +1032,8 @@ async function assignPicture(role, file) {
     await loadPictures();
     renderSlots();
     renderHome();
-    toast(`已設定「${(IMAGE_SLOTS.find((s) => s[0] === role) || [, role])[1]}」的聖像`);
+    const slot = imageSlots().flatMap((g) => g.slots).find((sl) => sl[0] === role);
+    toast(`已設定「${slot ? slot[1] : role}」的聖像`);
   } catch {
     toast('無法儲存圖片，可能是空間不足');
   }
@@ -967,34 +1053,37 @@ let slotTarget = null;
 function renderSlots() {
   const list = $('#slots');
   list.textContent = '';
-  for (const [role, label] of IMAGE_SLOTS) {
-    const custom = customFor(role);
-    const listed = imageRoles.get(role) || [];
-    const li = el('li', 'slot');
+  for (const group of imageSlots()) {
+    const head = el('li', 'slot-group', group.title);
+    list.appendChild(head);
+    for (const [key, label] of group.slots) {
+      const custom = customFor(key);
+      const li = el('li', 'slot');
+      li.dataset.slot = key;
 
-    const thumb = document.createElement('img');
-    thumb.className = 'slot-thumb';
-    // 與正式畫面共用同一套遞補與失敗記憶
-    setImage(thumb, null, custom ? [custom, ...listed] : listed);
-    li.appendChild(thumb);
+      const thumb = document.createElement('img');
+      thumb.className = 'slot-thumb';
+      setImage(thumb, null, slotCandidates(key));
+      li.appendChild(thumb);
 
-    const text = el('div', 'slot-text');
-    text.appendChild(el('span', 'slot-name', label));
-    text.appendChild(el('span', 'slot-state', custom ? '自訂圖片' : '預設'));
-    li.appendChild(text);
+      const text = el('div', 'slot-text');
+      text.appendChild(el('span', 'slot-name', label));
+      text.appendChild(el('span', 'slot-state', custom ? '自訂圖片' : '預設'));
+      li.appendChild(text);
 
-    const pick = el('button', 'btn btn-tiny', custom ? '更換' : '選圖');
-    pick.type = 'button';
-    pick.addEventListener('click', () => { slotTarget = role; $('#pic-file').click(); });
-    li.appendChild(pick);
+      const pick = el('button', 'btn btn-tiny', custom ? '更換' : '選圖');
+      pick.type = 'button';
+      pick.addEventListener('click', () => { slotTarget = key; $('#pic-file').click(); });
+      li.appendChild(pick);
 
-    if (custom) {
-      const reset = el('button', 'btn btn-tiny btn-quiet', '還原');
-      reset.type = 'button';
-      reset.addEventListener('click', () => clearPicture(role));
-      li.appendChild(reset);
+      if (custom) {
+        const reset = el('button', 'btn btn-tiny btn-quiet', '還原');
+        reset.type = 'button';
+        reset.addEventListener('click', () => clearPicture(key));
+        li.appendChild(reset);
+      }
+      list.appendChild(li);
     }
-    list.appendChild(li);
   }
 }
 
@@ -1081,7 +1170,7 @@ function importRecords(file) {
       for (const [id, url] of Object.entries(parsed.pictures)) {
         try { await putBlob(id, await dataUrlToBlob(url)); stored.add(id); shots++; } catch { /* 略過壞掉的圖 */ }
       }
-      const known = new Set(IMAGE_SLOTS.map(([role]) => role));
+      const known = new Set(allSlotKeys());
       const roles = {};
       for (const [role, id] of Object.entries(parsed.pictureRoles)) {
         if (known.has(role) && typeof id === 'string' && stored.has(id)) roles[role] = id;
@@ -1307,11 +1396,11 @@ async function init() {
     INLINE = embedded !== null;
     let images;
     if (INLINE) {
-      SETS = embedded;
+      SETS = resolveShared(embedded);
       images = inlineJSON('data-images') || { images: [] };
     } else {
       const index = await fetch('data/sets.json').then((r) => r.json());
-      SETS = await Promise.all(index.sets.map((s) => fetch(s.file).then((r) => r.json())));
+      SETS = resolveShared(await Promise.all(index.sets.map((s) => fetch(s.file).then((r) => r.json()))));
       images = await fetch('data/images.json').then((r) => r.json()).catch(() => ({ images: [] }));
     }
     SET = setById(settings.set);

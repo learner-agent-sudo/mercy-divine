@@ -14,13 +14,16 @@ ok('the window is still drawn when nothing is recorded', await page.locator('.pe
 const seeded = await page.evaluate(() => {
   const now = new Date();
   const recs = [];
-  const add = (day, n, note) => {
+  const add = (day, n, note, set, mystery) => {
     for (let i = 0; i < n; i++) {
-      recs.push({ id: `${day}-${i}`, ts: new Date(now.getFullYear(), now.getMonth(), day, 7 + i, 30).toISOString(),
-                  mode: 'guided', secs: 400, note: i === 0 ? note : '' });
+      recs.push({ id: `${set || 'chaplet'}-${day}-${i}`,
+                  ts: new Date(now.getFullYear(), now.getMonth(), day, 7 + i, 30).toISOString(),
+                  mode: 'guided', secs: 400, note: i === 0 ? note : '',
+                  set: set || 'chaplet', mystery: mystery || null });
     }
   };
   add(1, 1, ''); add(2, 2, '為亡者'); add(3, 3, '為病人');
+  add(2, 1, '', 'rosary', 'joyful'); add(4, 2, '為教會', 'rosary', 'sorrowful');
   localStorage.setItem('mercy.records.v1', JSON.stringify(recs));
   return { daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(), today: now.getDate() };
 });
@@ -42,10 +45,31 @@ ok('a missed day that has passed is not treated as future',
 
 // 中心的總數
 const centre = await page.textContent('.rose-count');
-ok('the centre counts every prayer, not just the days', centre === '6');
-ok('and names the number of days', (await page.textContent('.rose-label')) === '3 天');
-ok('the summary line agrees', (await page.textContent('#rose-read')).includes('6 次') &&
-   (await page.textContent('#rose-read')).includes('3 天'));
+ok('the centre counts both prayers together', centre === '9');
+ok('and names the number of days either was prayed', (await page.textContent('.rose-label')) === '4 天');
+const summary = await page.textContent('#rose-read');
+ok('the summary separates the two prayers',
+   summary.includes('慈悲串經 6 次') && summary.includes('玫瑰經 3 次') && summary.includes('4 天'));
+
+// ── 內圈花蕊＝玫瑰經 ──
+ok('a stamen for every day as well', await page.locator('.stamen').count() === seeded.daysInMonth);
+ok('rosary days light their stamens', await page.locator('.stamen.lit1, .stamen.lit2').count() === 2);
+ok('the two prayers are counted apart', await page.locator('.petal.lit3').count() === 1
+   && await page.locator('.stamen.lit3').count() === 0);
+ok('a day with both shows petal and stamen lit', await page.evaluate(() =>
+   document.querySelector('.petal[data-day="2"]').classList.contains('lit2')
+   && document.querySelector('.stamen[data-day="2"]').classList.contains('lit1')));
+ok('a rosary-only day leaves its petal unlit', await page.evaluate(() =>
+   document.querySelector('.petal[data-day="4"]').classList.contains('empty')
+   && document.querySelector('.stamen[data-day="4"]').classList.contains('lit2')));
+
+await page.locator('.stamen[data-day="4"]').click();
+await page.waitForTimeout(150);
+const stamenRead = await page.textContent('#rose-read');
+ok('tapping a stamen names the rosary and its mysteries',
+   stamenRead.includes('玫瑰經') && stamenRead.includes('痛苦五端') && stamenRead.includes('為教會'));
+ok('and does not repeat identical entries',
+   (stamenRead.match(/痛苦五端/g) || []).length === 1);
 
 // 輕觸花瓣
 await page.locator('.petal[data-day="3"]').click();
@@ -64,7 +88,9 @@ const label = await page.textContent('#cal-label');
 await page.click('#cal-prev');
 await page.waitForTimeout(250);
 ok('the previous month draws its own window', (await page.textContent('#cal-label')) !== label);
-ok('and it has no lit petals', await page.locator('.petal.lit1, .petal.lit2, .petal.lit3').count() === 0);
+ok('and it has no lit petals or stamens',
+   await page.locator('.petal.lit1, .petal.lit2, .petal.lit3').count() === 0
+   && await page.locator('.stamen.lit1, .stamen.lit2, .stamen.lit3').count() === 0);
 ok('a month wholly in the past has no future petals', await page.locator('.petal.future').count() === 0);
 await page.click('#cal-next');
 await page.waitForTimeout(250);
@@ -76,7 +102,7 @@ ok('the calendar is tucked away by default', !(await page.isVisible('#cal')));
 await page.click('#cal-toggle');
 await page.waitForTimeout(200);
 ok('the toggle brings the calendar back', await page.isVisible('#cal'));
-ok('with the same days marked', await page.locator('.cal-day.marked').count() === 3);
+ok('with the same days marked', await page.locator('.cal-day.marked').count() === 4);
 ok('and the window steps aside', !(await page.isVisible('#rose')));
 await page.click('#cal-toggle');
 await page.waitForTimeout(200);

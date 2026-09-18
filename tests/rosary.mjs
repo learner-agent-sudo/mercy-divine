@@ -25,11 +25,11 @@ ok('Wednesday and Sunday are glorious',
 ok('Thursday is luminous',
    rosary.mysterySets.find((s) => s.id === 'luminous').days.join() === '4');
 
-ok('the rosary Hail Mary is the traditional wording, not the chaplet one',
-   rosary.prayers['hail-mary'].text.startsWith('萬福瑪利亞，滿被聖寵者')
-   && chaplet.prayers['hail-mary'].text.startsWith('萬福瑪利亞，妳充滿聖寵'));
-ok('the two Creeds stay separate',
-   rosary.prayers.creed.text !== chaplet.prayers.creed.text);
+ok('the three common prayers point at the chaplet rather than repeating it',
+   ['our-father', 'hail-mary', 'creed'].every((id) => rosary.prayers[id].from === 'chaplet'
+                                                     && !rosary.prayers[id].text));
+ok('the prayers only the rosary uses carry their own text',
+   ['sign', 'glory', 'fatima', 'salve'].every((id) => rosary.prayers[id].text.length > 5));
 
 // ── 程式內 ──
 const { browser, page, errors } = await launch();
@@ -48,14 +48,26 @@ ok(`today's mysteries are chosen by weekday (${expected})`, await page.inputValu
 
 await page.click('#start-btn');
 const walk = [];
+const textOf = {};
 for (let i = 0; i < 78; i++) {
-  walk.push([await page.textContent('#prayer-stage'), await page.textContent('#step-name'),
-             await page.textContent('#step-count')].join('|'));
+  const name = await page.textContent('#step-name');
+  walk.push([await page.textContent('#prayer-stage'), name, await page.textContent('#step-count')].join('|'));
+  if (!(name in textOf)) textOf[name] = await page.textContent('#step-text');
   if (i < 77) await page.click('#step-next');
 }
 ok('the whole rosary is 78 steps', walk.length === 78);
 ok('it opens with the sign of the cross then the creed',
    walk[0].includes('聖號經') && walk[1].includes('信經'));
+// 共用是否真的接上，比對畫面上顯示的字與慈悲串經的原文
+ok('the rosary shows the chaplet wording for all three shared prayers',
+   textOf['信經'] === chaplet.prayers.creed.text
+   && textOf['天主經'] === chaplet.prayers['our-father'].text
+   && textOf['聖母經'] === chaplet.prayers['hail-mary'].text);
+ok('and that is the 妳充滿聖寵 Hail Mary, not the older wording',
+   textOf['聖母經'].startsWith('萬福瑪利亞，妳充滿聖寵'));
+ok('the rosary-only prayers still show their own text',
+   textOf['聖號經'] === rosary.prayers.sign.text
+   && textOf['聖三光榮經'] === rosary.prayers.glory.text);
 ok('three Hail Marys at the start, counted', walk.slice(3, 6).every((w) => w.includes('共 3 珠')));
 ok('the glory be follows them', walk[6].includes('聖三光榮經'));
 ok('each decade announces its mystery with scripture',

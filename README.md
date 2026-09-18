@@ -50,9 +50,9 @@ Tuesday and Friday, 榮福 on Wednesday and Sunday, 光明 on Thursday. Choosing
 set on the home screen applies to that day only — the next day returns to the cycle, so a
 one-off choice for a feast never quietly becomes permanent.
 
-Each prayer keeps its own wording. The Rosary uses the traditional 萬福瑪利亞，滿被聖寵者
-and the chaplet its own 妳充滿聖寵; the two Creeds differ too. They are separate texts in
-separate files and are never merged.
+天主經, 聖母經 and 信經 are the same prayer in both, so the rosary points at the chaplet's
+copy rather than repeating it — `{"from": "chaplet"}` in place of the text. Edit the
+wording once and both follow. A prayer only one of them uses keeps its own text.
 
 ## Changing the content
 
@@ -74,7 +74,12 @@ writing another file and listing it in [`data/sets.json`](data/sets.json).
 through the prayer. One picture can cover several prayers. Prefix a name with a prayer's
 id — `rosary:hail-mary` — to use it in that prayer only; an unprefixed name serves both.
 `decade-1` … `decade-5` give a mystery its own picture. Anything with no match falls back
-to the `home` picture, so no screen is ever left blank. The names are:
+to the `home` picture, so no screen is ever left blank.
+
+設定 → 聖像 lists every place an image can go, grouped by prayer — including the rosary's
+five mysteries — and picks one from the phone for any of them. Where the rosary has no
+picture of its own it shows the chaplet's, so the shared prayers look the same in both
+until you decide otherwise. The names used in `data/images.json` are:
 
 | name             | shown during                        |
 |------------------|-------------------------------------|
@@ -176,18 +181,26 @@ OEMs' silent mode, or a battery saver — and no web page can detect or override
 those. The behaviour varies enough between manufacturers that the test button, pressed
 while DND is on, is the only reliable answer for a given phone.
 
-## The prayer rose
+## The prayer flower
 
-祈禱紀錄 opens on a rose window rather than a grid. Each day of the month is a petal,
-arranged in a ring; a day prayed lights its petal in gold, twice deepens it, three or
-more turns it red. The centre holds the month's total and how many days it covers, and
-touching a petal reads out that day with whatever intention was written.
+祈禱紀錄 opens on a flower rather than a grid, and it carries both prayers at once:
+**the chaplet is the petals on the outside, the rosary is the stamens at the centre.**
+Each day of the month appears in both rings, so a glance shows which prayer was said on
+which day, or that both were.
+
+A day prayed lights its mark — gold for the petals, blue for the stamens — deepening
+with a second time and deeper again at three. The centre holds the month's total across
+both prayers and how many days they cover; touching a petal or a stamen reads out that
+day, with its mysteries and whatever intention was written.
 
 Days still to come are drawn faintly rather than left out, so the window is always a
 whole circle — an unfinished month is not shown as a broken one. A day that passed
 without prayer sits between the two: present, but unlit.
 
 The grid calendar is still there behind **看月曆** for when an exact date matters.
+
+A stamen is a thin line and a small dot — too small for a thumb — so each carries an
+invisible wide strip behind it to catch the touch.
 
 ## Recording a prayer said away from the phone
 
@@ -220,7 +233,7 @@ Five suites cover the things that would hurt most if they broke:
 | `tap` | a slow or slightly wobbly touch counts as one bead; drags, swipes and momentum scrolling do not |
 | `haptics` | the five vibration signals stay distinguishable, every pulse is long enough to feel, and the strength setting scales them |
 | `manual-log` | a prayer said elsewhere is recorded, dated, counted with the rest, and stays marked through a backup |
-| `rose` | one petal per day, lit by how often you prayed, future days set apart from missed ones, and the calendar still reachable |
+| `rose` | a petal and a stamen per day, the two prayers counted apart, future days set apart from missed ones, and the calendar still reachable |
 | `rosary` | the mysteries and their scripture, the weekday cycle, the 78-step sequence, and the chaplet still intact beside it |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
 

@@ -19,9 +19,8 @@ for (const note of ['為家人', '為亡者', '為病人']) {
 
 // 兩個位置指定自訂聖像
 await page.click('[data-go="settings"]');
-for (const [label, file] of [['首頁', 'pic-mercy.png'], ['聖母經', 'pic-hail.png']]) {
-  const row = page.locator('.slot', { has: page.locator('.slot-name', { hasText: new RegExp(`^${label}$`) }) });
-  await row.locator('button', { hasText: /選圖|更換/ }).click();
+for (const [slot, file] of [['home', 'pic-mercy.png'], ['chaplet:hail-mary', 'pic-hail.png']]) {
+  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
 }

@@ -37,18 +37,26 @@ await page.waitForSelector('#view-done.active');
 await page.click('#done-home');
 await page.click('[data-go="settings"]');
 await page.waitForSelector('#slots .slot');
-ok('nine slots listed', await page.locator('#slots .slot').count() === 9);
+const slotKeys = await page.locator('#slots .slot').evaluateAll((els) => els.map((e) => e.dataset.slot));
+ok('every place an image can go is listed, grouped by prayer',
+   slotKeys.includes('home') && slotKeys.includes('done')
+   && slotKeys.includes('chaplet:hail-mary') && slotKeys.includes('rosary:hail-mary')
+   && slotKeys.includes('rosary:decade-1') && slotKeys.includes('rosary:decade-5'));
+ok('the two prayers each get their own slots',
+   await page.locator('.slot-group').count() === 3);
 ok('all start on the built-in image', (await page.locator('.slot-state').allTextContents()).every((t) => t === '預設'));
+ok('the rosary borrows the chaplet picture where it has none of its own',
+   await page.locator('.slot[data-slot="rosary:hail-mary"] .slot-thumb').evaluate(
+     (img) => img.getAttribute('src') === document.querySelector('.slot[data-slot="chaplet:hail-mary"] .slot-thumb').getAttribute('src')));
 
-const pick = async (label, file) => {
-  const row = page.locator('.slot', { has: page.locator('.slot-name', { hasText: new RegExp(`^${label}$`) }) });
-  await row.locator('button', { hasText: /選圖|更換/ }).click();
+const pick = async (slot, file) => {
+  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
 };
-await pick('首頁', 'pic-mercy.png');
-await pick('聖母經', 'pic-hail.png');
-await pick('誦畢', 'pic-mercy.png'); // 同一張圖用在第二個位置
+await pick('home', 'pic-mercy.png');
+await pick('chaplet:hail-mary', 'pic-hail.png');
+await pick('done', 'pic-mercy.png'); // 同一張圖用在第二個位置
 
 const stored = await page.evaluate(async () => {
   const db = await new Promise((r) => { const q = indexedDB.open('mercy-pictures', 1); q.onsuccess = () => r(q.result); });
@@ -71,7 +79,7 @@ await page.waitForSelector('#view-home.active');
 ok('chosen picture survives a reload', (await src('#home-image')).blob);
 
 await page.click('[data-go="settings"]');
-const row = page.locator('.slot', { has: page.locator('.slot-name', { hasText: /^首頁$/ }) });
+const row = page.locator('.slot[data-slot="home"]');
 await row.locator('button', { hasText: '還原' }).click();
 await page.waitForTimeout(400);
 ok('還原 puts the built-in image back', await row.locator('.slot-state').textContent() === '預設');

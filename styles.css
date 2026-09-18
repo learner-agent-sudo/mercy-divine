@@ -269,18 +269,41 @@ img { max-width: 100%; height: auto; display: block; }
 .petal.today  { stroke: var(--gold); stroke-width: 2.5; }
 .petal:hover, .petal:focus-visible { opacity: 1; }
 
+/* 花蕊＝玫瑰經。用藍色與花瓣的金／紅分開，形狀也不同，一眼看得出是兩套經文。 */
+.stamen { cursor: pointer; transition: opacity .35s ease; }
+.stamen-hit { stroke: transparent; stroke-width: 16; stroke-linecap: round; pointer-events: all; }
+.stamen .filament { stroke: var(--line); stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+.stamen .anther { fill: var(--line); stroke: var(--bg); stroke-width: 1.5; pointer-events: none; }
+.stamen.empty  { opacity: .55; }
+.stamen.future { opacity: .16; }
+.stamen.lit1 .filament, .stamen.lit2 .filament, .stamen.lit3 .filament { stroke: var(--blue); }
+.stamen.lit1 .anther { fill: var(--blue); opacity: .6; }
+.stamen.lit2 .anther { fill: var(--blue); }
+.stamen.lit3 .anther { fill: var(--blue); r: 6; }
+.stamen.lit3 .filament { stroke-width: 2.8; }
+.stamen.today .anther { stroke: var(--gold); stroke-width: 2; }
+.stamen:hover, .stamen:focus-visible { opacity: 1; }
+
 .rose-rim      { fill: none; stroke: var(--line); stroke-width: 2.5; }
 .rose-rim.thin { stroke-width: 1; opacity: .6; }
 .rose-core    { fill: var(--surface); stroke: var(--line); stroke-width: 2; }
 .rose-core-in { fill: none; stroke: var(--gold); stroke-width: 1.2; opacity: .55; }
 .rose-count {
-  fill: var(--fg); font-size: 2.6rem; font-weight: 600;
+  fill: var(--fg); font-size: 2.1rem; font-weight: 600;
   text-anchor: middle; font-family: var(--sans);
 }
 .rose-label {
-  fill: var(--muted); font-size: .95rem; letter-spacing: .1em;
+  fill: var(--muted); font-size: .8rem; letter-spacing: .1em;
   text-anchor: middle; font-family: var(--sans);
 }
+.rose-legend {
+  display: flex; justify-content: center; align-items: center; gap: .4rem;
+  font-size: .76rem; color: var(--muted); margin: .2rem 0 .1rem; letter-spacing: .04em;
+}
+.rose-legend .key { width: .62rem; height: .62rem; border-radius: 50%; display: inline-block; }
+.rose-legend .key-petal { background: var(--gold); }
+.rose-legend .key-stamen { background: var(--blue); margin-left: .8rem; }
+
 .rose-read {
   text-align: center; color: var(--muted); font-size: .85rem;
   margin: .2rem 0 .6rem; min-height: 1.4em; line-height: 1.6;
@@ -289,7 +312,7 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* 花瓣依序綻開 */
 @media (prefers-reduced-motion: no-preference) {
-  .petal { animation: petalOpen .5s backwards; animation-delay: calc(var(--i) * 18ms); transform-origin: 200px 200px; }
+  .petal, .stamen { animation: petalOpen .5s backwards; animation-delay: calc(var(--i) * 18ms); transform-origin: 200px 200px; }
   @keyframes petalOpen {
     from { opacity: 0; transform: scale(.72) rotate(-6deg); }
   }
@@ -322,6 +345,11 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* ── 聖像設定 ────────────────────────────────────────── */
 .slots { list-style: none; margin: 0; padding: 0; }
+.slot-group {
+  font-size: .74rem; letter-spacing: .14em; color: var(--gold);
+  padding: .9rem 0 .35rem; border-bottom: 1px solid var(--line);
+}
+.slot-group:first-child { padding-top: .2rem; }
 .slot {
   display: flex; align-items: center; gap: .7rem;
   padding: .55rem 0; border-bottom: 1px solid var(--line);
@@ -376,5 +404,6 @@ img { max-width: 100%; height: auto; display: block; }
 @media (prefers-reduced-motion: reduce) {
   .bead.now { animation: none; }
   .flash.show { animation: none; opacity: 1; }
+  .petal, .stamen { animation: none; }
   * { transition: none !important; }
 }
