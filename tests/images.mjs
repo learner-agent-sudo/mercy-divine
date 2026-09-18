@@ -39,11 +39,11 @@ await page.click('[data-go="settings"]');
 await page.waitForSelector('#slots .slot');
 const slotKeys = await page.locator('#slots .slot').evaluateAll((els) => els.map((e) => e.dataset.slot));
 ok('every place an image can go is listed, grouped by prayer',
-   slotKeys.includes('home') && slotKeys.includes('done')
+   slotKeys.includes('chaplet:home') && slotKeys.includes('chaplet:done')
+   && slotKeys.includes('rosary:home') && slotKeys.includes('rosary:done')
    && slotKeys.includes('chaplet:hail-mary') && slotKeys.includes('rosary:hail-mary')
    && slotKeys.includes('rosary:decade-1') && slotKeys.includes('rosary:decade-5'));
-ok('the two prayers each get their own slots',
-   await page.locator('.slot-group').count() === 3);
+ok('one group per prayer', await page.locator('.slot-group').count() === 2);
 ok('all start on the built-in image', (await page.locator('.slot-state').allTextContents()).every((t) => t === '預設'));
 ok('the rosary borrows the chaplet picture where it has none of its own',
    await page.locator('.slot[data-slot="rosary:hail-mary"] .slot-thumb').evaluate(
@@ -54,9 +54,9 @@ const pick = async (slot, file) => {
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
 };
-await pick('home', 'pic-mercy.png');
+await pick('chaplet:home', 'pic-mercy.png');
 await pick('chaplet:hail-mary', 'pic-hail.png');
-await pick('done', 'pic-mercy.png'); // 同一張圖用在第二個位置
+await pick('chaplet:done', 'pic-mercy.png'); // 同一張圖用在第二個位置
 
 const stored = await page.evaluate(async () => {
   const db = await new Promise((r) => { const q = indexedDB.open('mercy-pictures', 1); q.onsuccess = () => r(q.result); });
@@ -65,7 +65,7 @@ const stored = await page.evaluate(async () => {
            roles: JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures };
 });
 ok('one picture used twice is stored once', stored.blobs === 2);
-ok('首頁 and 誦畢 share the same file', stored.roles.home === stored.roles.done);
+ok('封面 and 誦畢 share the same file', stored.roles['chaplet:home'] === stored.roles['chaplet:done']);
 ok('large photos are scaled down', stored.sizes.every((s) => s < 400 * 1024));
 console.log('        stored sizes:', stored.sizes.map((s) => (s / 1024).toFixed(0) + 'KB').join(', '));
 
@@ -79,7 +79,7 @@ await page.waitForSelector('#view-home.active');
 ok('chosen picture survives a reload', (await src('#home-image')).blob);
 
 await page.click('[data-go="settings"]');
-const row = page.locator('.slot[data-slot="home"]');
+const row = page.locator('.slot[data-slot="chaplet:home"]');
 await row.locator('button', { hasText: '還原' }).click();
 await page.waitForTimeout(400);
 ok('還原 puts the built-in image back', await row.locator('.slot-state').textContent() === '預設');
@@ -89,6 +89,54 @@ ok('home shows the built-in image again', !(await src('#home-image')).blob);
 const repeats = missed.filter((p, i) => missed.indexOf(p) !== i);
 ok('a missing file is retried at most once per page load', repeats.length === 0);
 console.log(`        ${new Set(missed).size} listed file(s) not yet uploaded, ${missed.length} request(s) this page`);
+
+// ── 每套經文各有封面 ──（此時已在首頁）
+const cover = () => page.evaluate(async () => {
+  const i = document.querySelector('#home-image');
+  for (let n = 0; n < 60 && !i.naturalWidth; n++) await new Promise((r) => setTimeout(r, 25));
+  return i.src.startsWith('blob:') ? `blob:${i.naturalWidth}x${i.naturalHeight}` : i.src.split('/').pop();
+});
+const pickFor = async (slot, file) => {
+  await page.click('[data-go="settings"]');
+  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
+  await page.setInputFiles('#pic-file', fixture(file));
+  await page.waitForTimeout(500);
+  await page.click('#view-settings [data-go="home"]');
+};
+
+const shared = await cover();
+await page.locator('#set-picker button', { hasText: '玫瑰經' }).click();
+await page.waitForTimeout(250);
+ok('both prayers start on the same cover', await cover() === shared);
+
+await page.locator('#set-picker button', { hasText: '慈悲串經' }).click();
+await page.waitForTimeout(200);
+await pickFor('chaplet:home', 'pic-mercy.png');
+const chapletCover = await cover();
+ok('a cover set for the chaplet shows on the chaplet', chapletCover !== shared);
+
+await page.locator('#set-picker button', { hasText: '玫瑰經' }).click();
+await page.waitForTimeout(300);
+ok('and does not leak onto the rosary', await cover() === shared);
+
+await pickFor('rosary:home', 'pic-hail.png');
+const rosaryCover = await cover();
+ok('the rosary takes its own cover', rosaryCover !== shared && rosaryCover !== chapletCover);
+
+await page.locator('#set-picker button', { hasText: '慈悲串經' }).click();
+await page.waitForTimeout(300);
+ok('switching back shows the chaplet cover again', await cover() === chapletCover);
+await page.locator('#set-picker button', { hasText: '玫瑰經' }).click();
+await page.waitForTimeout(300);
+ok('and switching forward shows the rosary cover', await cover() === rosaryCover);
+
+// 誦畢畫面同樣分開
+await page.click('[data-go="settings"]');
+const slots = await page.locator('#slots .slot').evaluateAll((els) => els.map((e) => e.dataset.slot));
+ok('each prayer also has its own closing picture',
+   slots.includes('chaplet:done') && slots.includes('rosary:done'));
+ok('there is no single shared cover slot left to confuse things',
+   !slots.includes('home') && !slots.includes('done'));
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();

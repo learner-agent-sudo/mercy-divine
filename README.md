@@ -76,10 +76,17 @@ id — `rosary:hail-mary` — to use it in that prayer only; an unprefixed name 
 `decade-1` … `decade-5` give a mystery its own picture. Anything with no match falls back
 to the `home` picture, so no screen is ever left blank.
 
-設定 → 聖像 lists every place an image can go, grouped by prayer — including the rosary's
-five mysteries — and picks one from the phone for any of them. Where the rosary has no
-picture of its own it shows the chaplet's, so the shared prayers look the same in both
-until you decide otherwise. The names used in `data/images.json` are:
+設定 → 聖像 lists every place an image can go, grouped by prayer, and picks one from the
+phone for any of them. Each prayer has its **own cover** (封面, the home screen) and its
+own closing picture (誦畢), so the Rosary and the chaplet can carry different covers, plus
+a slot for every prayer within it and one for each of the Rosary's five mysteries. Where
+a slot has nothing of its own it shows the matching picture from the other prayer, then
+the `home` picture, so the shared prayers look alike until you decide otherwise and no
+screen is left blank.
+
+In `data/images.json` a plain name serves both prayers and a prefixed one serves just
+that prayer, so `"for": ["rosary:home"]` is the Rosary's cover while `"for": ["home"]`
+is the fallback for both. The names are:
 
 | name             | shown during                        |
 |------------------|-------------------------------------|

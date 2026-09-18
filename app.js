@@ -40,10 +40,11 @@ const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, haptic:
 // 共用的 home/done 用原本的名稱；各經文的位置前面加上經文代號，
 // 這樣玫瑰經的天主經可以另配一張，沒另配時自動沿用共用的那張。
 function imageSlots() {
-  const groups = [{ title: '共用', slots: [['home', '首頁'], ['done', '誦畢']] }];
+  const groups = [];
   for (const set of SETS) {
     const seen = new Set();
-    const slots = [];
+    // 每套經文自己的封面與誦畢畫面，兩者各有各的圖
+    const slots = [[`${set.id}:home`, '封面（首頁）']];
     const push = (items) => {
       for (const item of items || []) {
         const prayer = set.prayers[item.prayer];
@@ -60,8 +61,15 @@ function imageSlots() {
         slots.push([`${set.id}:decade-${d}`, `第${CN_NUM[d]}端奧蹟`]);
       }
     }
+    slots.push([`${set.id}:done`, '誦畢']);
     groups.push({ title: set.short || set.title, slots });
   }
+
+  // 舊版把封面存成共用的，若還留著就讓它看得見也還原得掉
+  const legacy = [['home', '封面（兩種經文共用）'], ['done', '誦畢（共用）']]
+    .filter(([key]) => customFor(key));
+  if (legacy.length) groups.push({ title: '共用（舊設定）', slots: legacy });
+
   return groups;
 }
 
