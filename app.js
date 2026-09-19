@@ -278,9 +278,9 @@ function pickFrom(roles, fallbackIndex) {
 
 function imageForStep(step) {
   const roles = [];
-  // 一端之內以該端奧蹟的聖像為主：唸那十遍聖母經時，默想的正是這一端。
-  // 沒有為這一端配圖時，才退回該段經文自己的聖像。
-  if (step.kind === 'decade' || step.kind === 'mystery') {
+  // 奧蹟的聖像只用在報奧蹟那一步。之後唸天主經就顯示天主經的聖像、
+  // 唸聖母經就顯示聖母經的，各歸各位。
+  if (step.kind === 'mystery') {
     if (step.mysterySet) roles.push(`${step.mysterySet}-${step.decade}`);
     roles.push(`decade-${step.decade}`);
   }

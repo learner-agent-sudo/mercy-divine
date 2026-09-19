@@ -245,12 +245,17 @@ for (let i = 0; i < 14; i++) await page.click('#step-next');
 const secondMystery = await guided();
 ok(`the second sorrowful mystery shows its own picture (${await page.textContent('#step-name')})`,
    secondMystery !== firstMystery);
+// 報過奧蹟之後，每一段經文各用自己的聖像
 await page.click('#step-next');
-ok('and it stays through the Our Father of that decade', await guided() === secondMystery);
+ok(`the Our Father after it shows the Our Father picture (${await page.textContent('#step-name')})`,
+   (await guided()).endsWith('our-father.jpg'));
 await page.click('#step-next');
-ok('and through the ten Hail Marys, which is what you meditate on',
-   await guided() === secondMystery);
-for (let i = 0; i < 12; i++) await page.click('#step-next');
+ok(`and the Hail Marys show the Hail Mary picture (${await page.textContent('#step-name')})`,
+   (await guided()).endsWith('hail-mary.jpg'));
+await page.click('#step-next');
+ok('every one of the ten, not just the first',
+   (await guided()).endsWith('hail-mary.jpg'));
+for (let i = 0; i < 11; i++) await page.click('#step-next');
 ok('the third mystery, unset, goes back to the fallback',
    await page.textContent('#prayer-stage') === '第三端' && await guided() === firstMystery);
 

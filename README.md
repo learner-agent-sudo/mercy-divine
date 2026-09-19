@@ -74,11 +74,10 @@ writing another file and listing it in [`data/sets.json`](data/sets.json).
 through the prayer. One picture can cover several prayers. Prefix a name with a prayer's
 id — `rosary:hail-mary` — to use it in that prayer only; an unprefixed name serves both.
 Each of the twenty mysteries has its own name — `joyful-1` … `glorious-5` — so the same
-decade number carries a different picture in each set. Within a decade that picture stays
-up through the Our Father, the ten Hail Marys and the Glory Be, since that is the span you
-meditate on it; only where a mystery has no picture of its own does each prayer fall back
-to its own. `decade-1` … `decade-5` still work as a picture for that decade number across
-all four sets. Anything with no match falls back
+decade number carries a different picture in each set. It appears on the screen that
+announces the mystery and there only: the Our Father that follows shows the Our Father's
+picture, the ten Hail Marys show the Hail Mary's. `decade-1` … `decade-5` work the same
+way for that decade number across all four sets. Anything with no match falls back
 to the `home` picture, so no screen is ever left blank.
 
 設定 → 聖像 lists every place an image can go, in collapsible groups — one per prayer and
