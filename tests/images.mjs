@@ -1,5 +1,5 @@
 // 聖像：依經文切換、缺檔遞補、從相簿選圖、去重、縮圖、還原。
-import { BASE, fixture, launch } from './helpers.mjs';
+import { BASE, fixture, launch, openSlotGroup } from './helpers.mjs';
 const ok = (l, p) => { console.log(`${p ? 'PASS' : 'FAIL ***'}  ${l}`); if (!p) failures++; };
 let failures = 0;
 
@@ -36,20 +36,25 @@ await page.click('#step-next');            // 最後一步：完成
 await page.waitForSelector('#view-done.active');
 await page.click('#done-home');
 await page.click('[data-go="settings"]');
-await page.waitForSelector('#slots .slot');
+await page.waitForSelector('#slots .slot', { state: 'attached' });   // 分組預設收起
 const slotKeys = await page.locator('#slots .slot').evaluateAll((els) => els.map((e) => e.dataset.slot));
 ok('every place an image can go is listed, grouped by prayer',
    slotKeys.includes('chaplet:home') && slotKeys.includes('chaplet:done')
    && slotKeys.includes('rosary:home') && slotKeys.includes('rosary:done')
    && slotKeys.includes('chaplet:hail-mary') && slotKeys.includes('rosary:hail-mary')
-   && slotKeys.includes('rosary:decade-1') && slotKeys.includes('rosary:decade-5'));
-ok('one group per prayer', await page.locator('.slot-group').count() === 2);
+   && slotKeys.includes('rosary:joyful-1') && slotKeys.includes('rosary:glorious-5'));
+ok('every one of the twenty mysteries gets its own slot',
+   ['joyful', 'luminous', 'sorrowful', 'glorious'].every((set) =>
+     [1, 2, 3, 4, 5].every((n) => slotKeys.includes(`rosary:${set}-${n}`))));
+ok('the two prayers and the four mystery sets are separate groups',
+   await page.locator('.slot-group').count() === 6);
 ok('all start on the built-in image', (await page.locator('.slot-state').allTextContents()).every((t) => t === '預設'));
 ok('the rosary borrows the chaplet picture where it has none of its own',
    await page.locator('.slot[data-slot="rosary:hail-mary"] .slot-thumb').evaluate(
      (img) => img.getAttribute('src') === document.querySelector('.slot[data-slot="chaplet:hail-mary"] .slot-thumb').getAttribute('src')));
 
 const pick = async (slot, file) => {
+  await openSlotGroup(page, slot);
   await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
@@ -79,6 +84,7 @@ await page.waitForSelector('#view-home.active');
 ok('chosen picture survives a reload', (await src('#home-image')).blob);
 
 await page.click('[data-go="settings"]');
+await openSlotGroup(page, 'chaplet:home');
 const row = page.locator('.slot[data-slot="chaplet:home"]');
 await row.locator('button', { hasText: '還原' }).click();
 await page.waitForTimeout(400);
@@ -98,6 +104,7 @@ const cover = () => page.evaluate(async () => {
 });
 const pickFor = async (slot, file) => {
   await page.click('[data-go="settings"]');
+  await openSlotGroup(page, slot);
   await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
@@ -143,6 +150,7 @@ const state = (slot) => page.textContent(`.slot[data-slot="${slot}"] .slot-state
 const buttons = (slot) => page.locator(`.slot[data-slot="${slot}"] button`).allTextContents();
 
 ok('a fresh slot offers 選圖 and 不用', (await buttons('rosary:sign')).join() === '選圖,不用');
+await openSlotGroup(page, 'rosary:sign');
 await page.locator('.slot[data-slot="rosary:sign"] button', { hasText: '不用' }).click();
 await page.waitForTimeout(300);
 ok('choosing 不用 is its own state, not just a default', await state('rosary:sign') === '不用圖片');
@@ -170,6 +178,7 @@ await page.click('[data-go="settings"]');
 ok('the other prayer is untouched', await state('chaplet:creed') !== '不用圖片');
 
 // 封面也能關掉
+await openSlotGroup(page, 'chaplet:home');
 await page.locator('.slot[data-slot="chaplet:home"] button', { hasText: '不用' }).click();
 await page.waitForTimeout(300);
 await page.click('#view-settings [data-go="home"]');
@@ -178,6 +187,7 @@ ok('a cover set to 不用 leaves the home screen without one',
 
 // 還原回到預設
 await page.click('[data-go="settings"]');
+await openSlotGroup(page, 'chaplet:home');
 await page.locator('.slot[data-slot="chaplet:home"] button', { hasText: '還原' }).click();
 await page.waitForTimeout(300);
 ok('還原 puts the default back', await state('chaplet:home') === '預設');
@@ -198,6 +208,51 @@ await page.click('[data-go="settings"]');
 await page.setInputFiles('#import-file', backupPath);
 await page.waitForTimeout(900);
 ok('a restored backup remembers 不用圖片', await state('rosary:sign') === '不用圖片');
+
+// ── 每一端奧蹟各有各的聖像，一端之內整段都用它 ──（此時已在設定頁）
+await openSlotGroup(page, 'rosary:sorrowful-2');
+await page.locator('.slot[data-slot="rosary:sorrowful-2"] button', { hasText: '選圖' }).click();
+// 這裡刻意用與玫瑰經封面不同的圖：相同內容的圖片只會存一份，
+// 用同一張就分不出是奧蹟的圖還是退回封面。
+await page.setInputFiles('#pic-file', fixture('pic-mercy.png'));
+await page.waitForTimeout(600);
+ok('a mystery can take its own picture',
+   await page.textContent('.slot[data-slot="rosary:sorrowful-2"] .slot-state') === '自訂圖片');
+ok('the same mystery in another set is untouched',
+   await page.textContent('.slot[data-slot="rosary:joyful-2"] .slot-state') === '預設');
+
+await page.click('#view-settings [data-go="home"]');
+await page.locator('#set-picker button', { hasText: '玫瑰經' }).click();
+await page.waitForTimeout(200);
+await page.selectOption('#mystery-select', 'sorrowful');
+await page.waitForTimeout(200);
+await page.click('#start-btn');
+
+const guided = () => page.evaluate(async () => {
+  const i = document.querySelector('#guided-image');
+  for (let n = 0; n < 60 && !i.naturalWidth && !i.closest('.plate').hidden; n++) await new Promise((r) => setTimeout(r, 25));
+  return i.closest('.plate').hidden ? 'none' : i.src;
+});
+
+// 第一端沒有配圖，會退回玫瑰經的封面
+for (let i = 0; i < 7; i++) await page.click('#step-next');
+const firstMystery = await guided();
+ok(`a mystery with no picture of its own falls back (${await page.textContent('#step-name')})`,
+   firstMystery !== 'none');
+
+// 走到第二端，這一端配了自己的圖
+for (let i = 0; i < 14; i++) await page.click('#step-next');
+const secondMystery = await guided();
+ok(`the second sorrowful mystery shows its own picture (${await page.textContent('#step-name')})`,
+   secondMystery !== firstMystery);
+await page.click('#step-next');
+ok('and it stays through the Our Father of that decade', await guided() === secondMystery);
+await page.click('#step-next');
+ok('and through the ten Hail Marys, which is what you meditate on',
+   await guided() === secondMystery);
+for (let i = 0; i < 12; i++) await page.click('#step-next');
+ok('the third mystery, unset, goes back to the fallback',
+   await page.textContent('#prayer-stage') === '第三端' && await guided() === firstMystery);
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();

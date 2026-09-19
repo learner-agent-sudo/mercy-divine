@@ -56,13 +56,16 @@ function imageSlots() {
     push(set.opening);
     push(set.decades && set.decades.sequence);
     push(set.closing);
-    if (set.decades && set.decades.mystery) {
-      for (let d = 1; d <= set.decades.count; d++) {
-        slots.push([`${set.id}:decade-${d}`, `第${CN_NUM[d]}端奧蹟`]);
-      }
-    }
     slots.push([`${set.id}:done`, '誦畢']);
     groups.push({ title: set.short || set.title, slots });
+
+    // 四組奧蹟共二十端，每一端都可以配自己的聖像
+    for (const mset of set.mysterySets || []) {
+      groups.push({
+        title: `${set.short || set.title} · ${mset.name}`,
+        slots: mset.mysteries.map((m, i) => [`${set.id}:${mset.id}-${i + 1}`, `${CN_NUM[i + 1]}　${m.name}`]),
+      });
+    }
   }
 
   // 舊版把封面存成共用的，若還留著就讓它看得見也還原得掉
@@ -184,6 +187,9 @@ function buildSteps(set, mystery) {
                           ref: m.ref, stage, decade: d, bead: null, rep: null });
     }
     expand(dec.sequence, set, { kind: 'decade', stage, decade: d }, steps);
+    if (dec.mystery && mystery) {
+      for (let i = from; i < steps.length; i++) steps[i].mysterySet = mystery.id;
+    }
 
     // 珠子列要知道這一端的珠數，以及目前在珠串的前面還是後面
     const beadStep = steps.slice(from).find((x) => x.bead);
@@ -271,9 +277,14 @@ function pickFrom(roles, fallbackIndex) {
 }
 
 function imageForStep(step) {
-  const roles = [step.id];
-  if (step.kind === 'decade' || step.kind === 'mystery') roles.push(`decade-${step.decade}`);
-  roles.push('home');
+  const roles = [];
+  // 一端之內以該端奧蹟的聖像為主：唸那十遍聖母經時，默想的正是這一端。
+  // 沒有為這一端配圖時，才退回該段經文自己的聖像。
+  if (step.kind === 'decade' || step.kind === 'mystery') {
+    if (step.mysterySet) roles.push(`${step.mysterySet}-${step.decade}`);
+    roles.push(`decade-${step.decade}`);
+  }
+  roles.push(step.id, 'home');
   return pickFrom(roles);
 }
 
@@ -1082,10 +1093,26 @@ async function clearPicture(role) {
 
 let slotTarget = null;
 function renderSlots() {
-  const list = $('#slots');
-  list.textContent = '';
+  const wrap = $('#slots');
+  const wasOpen = new Set(
+    [...wrap.querySelectorAll('details')].filter((d) => d.open).map((d) => d.dataset.group)
+  );
+  wrap.textContent = '';
+
   for (const group of imageSlots()) {
-    list.appendChild(el('li', 'slot-group', group.title));
+    // 位置很多（光是奧蹟就有二十端），預設收起來，要用時再展開。
+    const box = el('details', 'slot-group-box');
+    box.dataset.group = group.title;
+    box.open = wasOpen.has(group.title);
+
+    const set = group.slots.filter(([key]) => pictureSetting(key) !== undefined).length;
+    const summary = el('summary', 'slot-group');
+    summary.appendChild(el('span', 'slot-group-name', group.title));
+    summary.appendChild(el('span', 'slot-group-count',
+      set ? `${group.slots.length} 個位置 · ${set} 已設定` : `${group.slots.length} 個位置`));
+    box.appendChild(summary);
+
+    const list = el('ul', 'slot-list');
     for (const [key, label] of group.slots) {
       const none = pictureSetting(key) === NO_PICTURE;
       const custom = customFor(key);
@@ -1107,13 +1134,12 @@ function renderSlots() {
       li.appendChild(text);
 
       const actions = el('div', 'slot-actions');
-      const button = (cls, label2, onClick) => {
-        const b = el('button', `btn btn-tiny ${cls}`, label2);
+      const button = (cls, text2, onClick) => {
+        const b = el('button', `btn btn-tiny ${cls}`, text2);
         b.type = 'button';
         b.addEventListener('click', onClick);
         actions.appendChild(b);
       };
-
       button('', custom ? '更換' : '選圖', () => { slotTarget = key; $('#pic-file').click(); });
       if (!none) button('btn-quiet', '不用', () => setNoPicture(key));
       if (none || custom) button('btn-quiet', '還原', () => clearPicture(key));
@@ -1121,6 +1147,8 @@ function renderSlots() {
 
       list.appendChild(li);
     }
+    box.appendChild(list);
+    wrap.appendChild(box);
   }
 }
 

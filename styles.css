@@ -344,12 +344,23 @@ img { max-width: 100%; height: auto; display: block; }
 .log button { background: none; border: 0; color: var(--muted); font-size: 1.1rem; cursor: pointer; padding: 0 .3rem; }
 
 /* ── 聖像設定 ────────────────────────────────────────── */
-.slots { list-style: none; margin: 0; padding: 0; }
+.slots { margin: 0; padding: 0; }
+.slot-list { list-style: none; margin: 0; padding: 0; }
+.slot-group-box { border-bottom: 1px solid var(--line); }
+.slot-group-box:last-child { border-bottom: 0; }
 .slot-group {
-  font-size: .74rem; letter-spacing: .14em; color: var(--gold);
-  padding: .9rem 0 .35rem; border-bottom: 1px solid var(--line);
+  display: flex; align-items: baseline; justify-content: space-between; gap: .6rem;
+  padding: .85rem .2rem; cursor: pointer; list-style: none;
 }
-.slot-group:first-child { padding-top: .2rem; }
+.slot-group::-webkit-details-marker { display: none; }
+.slot-group-name { font-size: .92rem; color: var(--fg); }
+.slot-group-count { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+.slot-group::after {
+  content: '›'; color: var(--muted); font-size: 1.1rem; line-height: 1;
+  transition: transform .2s ease; order: 1;
+}
+details[open] > .slot-group::after { transform: rotate(90deg); }
+.slot-group-box .slot:last-child { border-bottom: 0; padding-bottom: .9rem; }
 .slot {
   display: flex; align-items: center; gap: .7rem;
   padding: .55rem 0; border-bottom: 1px solid var(--line);

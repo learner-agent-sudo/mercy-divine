@@ -1,6 +1,12 @@
 import { chromium } from 'playwright';
 export const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 export const BASE = process.env.BASE_URL || 'http://localhost:8765/';
+// 聖像位置很多，預設收起來；要操作某一格得先展開它所在的那一組。
+export const openSlotGroup = (page, slot) => page.evaluate((s) => {
+  const li = document.querySelector(`.slot[data-slot="${s}"]`);
+  if (li && li.closest('details')) li.closest('details').open = true;
+}, slot);
+
 export const fixture = (name) => new URL(`./fixtures/${name}`, import.meta.url).pathname;
 
 export async function launch(opts = {}) {

@@ -73,11 +73,17 @@ writing another file and listing it in [`data/sets.json`](data/sets.json).
 `for` matches a picture to the prayer being said, so the image changes as you move
 through the prayer. One picture can cover several prayers. Prefix a name with a prayer's
 id — `rosary:hail-mary` — to use it in that prayer only; an unprefixed name serves both.
-`decade-1` … `decade-5` give a mystery its own picture. Anything with no match falls back
+Each of the twenty mysteries has its own name — `joyful-1` … `glorious-5` — so the same
+decade number carries a different picture in each set. Within a decade that picture stays
+up through the Our Father, the ten Hail Marys and the Glory Be, since that is the span you
+meditate on it; only where a mystery has no picture of its own does each prayer fall back
+to its own. `decade-1` … `decade-5` still work as a picture for that decade number across
+all four sets. Anything with no match falls back
 to the `home` picture, so no screen is ever left blank.
 
-設定 → 聖像 lists every place an image can go, grouped by prayer, and picks one from the
-phone for any of them. Each slot has three states: **預設** falls back through the chain
+設定 → 聖像 lists every place an image can go, in collapsible groups — one per prayer and
+one per set of mysteries, each named — and picks one from the phone for any of them. There
+are nearly forty places in all, so the groups start closed with a count beside each. Each slot has three states: **預設** falls back through the chain
 below, **自訂圖片** is one you chose, and **不用** leaves that screen with no picture at
 all — the frame closes and the words get the room. 不用 is a real choice, not an absence:
 nothing is borrowed from elsewhere to fill the gap, and 還原 returns the slot to 預設. Each prayer has its **own cover** (封面, the home screen) and its

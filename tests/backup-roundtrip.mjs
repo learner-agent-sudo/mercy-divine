@@ -1,7 +1,7 @@
 // 備份還原：匯出後清空手機資料，再匯入，紀錄與聖像都應完整回來。
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
-import { CHROME, BASE, fixture, launch } from './helpers.mjs';
+import { CHROME, BASE, fixture, launch, openSlotGroup } from './helpers.mjs';
 
 const { browser, page, errors } = await launch({ acceptDownloads: true });
 const ok = (label, pass) => console.log(`${pass ? 'PASS' : 'FAIL ***'}  ${label}`);
@@ -20,6 +20,7 @@ for (const note of ['為家人', '為亡者', '為病人']) {
 // 兩個位置指定自訂聖像
 await page.click('[data-go="settings"]');
 for (const [slot, file] of [['chaplet:home', 'pic-mercy.png'], ['chaplet:hail-mary', 'pic-hail.png']]) {
+  await openSlotGroup(page, slot);
   await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
