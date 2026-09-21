@@ -271,12 +271,11 @@ img { max-width: 100%; height: auto; display: block; }
 .petal.rosary.tone1  { --petal: var(--blue); }
 .petal.rosary.tone2  { --petal: color-mix(in srgb, var(--blue) 74%, var(--fg)); }
 
-/* 未誦唸與尚未到來的日子仍畫成花瓣，花形才完整；
-   但要壓得夠淡，亮起來的那幾片才是主角。 */
-.petal.empty  { --ink: 15%; }
-.petal.future { --ink: 7%; }
-.petal.lit1   { --ink: 46%; }
-.petal.lit2   { --ink: 72%; }
+/* 還沒唸到的花瓣仍然畫出來，花形才完整；但要壓得夠淡，
+   亮起來的那幾片才是主角。整朵開滿，就是這個月天天都唸了。 */
+.petal.empty  { --ink: 14%; }
+.petal.lit1   { --ink: 58%; }
+.petal.lit2   { --ink: 80%; }
 .petal.lit3   { --ink: 100%; }
 
 .petal.today  { stroke: var(--fg); stroke-width: 1.8; stroke-opacity: .5; }

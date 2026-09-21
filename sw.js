@@ -1,5 +1,5 @@
 /* 離線快取。修改經文、圖片或程式後，請把 VERSION 加一，手機才會取得新版本。 */
-const VERSION = 'v19';
+const VERSION = 'v20';
 const CACHE = `mercy-divine-${VERSION}`;
 
 const CORE = [

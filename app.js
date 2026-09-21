@@ -726,10 +726,8 @@ const petalPath = (deg, half, r0, r1) => {
 };
 
 const litClass = (n) => (n >= 3 ? 'lit3' : n === 2 ? 'lit2' : 'lit1');
-const markClass = (n, future) => (n ? litClass(n) : future ? 'future' : 'empty');
 
 // 一朵花承載兩套經文：外三層花瓣是慈悲串經，內兩層是玫瑰經。
-// 一層大約十片花瓣，一個月的日子由外層往內排；月份走過去，花就一層層往裡開。
 // 每層自己一個顏色，層次才看得出來；各層半徑刻意相疊，內層的尖端壓在
 // 外層的根部上，才像一朵花，而不是幾個同心圓。
 const RINGS = [
@@ -740,13 +738,21 @@ const RINGS = [
   { set: 'rosary', r0: 34, r1: 72, tone: 2 },
 ];
 
-// 一個月的日子分配到各層，由外層先排，盡量平均。
-function splitDays(total, layers) {
+// 花瓣平均分到各層。一套經文的花瓣數＝當月天數，所以整朵開滿，
+// 就是這個月每天都唸了一次。
+function splitPetals(total, layers) {
   const base = Math.floor(total / layers);
   const extra = total % layers;
-  const sizes = Array.from({ length: layers }, (_, i) => base + (i < extra ? 1 : 0));
-  let day = 1;
-  return sizes.map((n) => { const from = day; day += n; return { from, to: day - 1, n }; });
+  return Array.from({ length: layers }, (_, i) => base + (i < extra ? 1 : 0));
+}
+
+// 當月的每一次誦唸，依時間先後排好。第一片花瓣就是這個月的第一次。
+function monthSessions(setId, y, m) {
+  return records
+    .filter((r) => (r.set || 'chaplet') === setId)
+    .map((r) => ({ r, at: new Date(r.ts) }))
+    .filter((x) => x.at.getFullYear() === y && x.at.getMonth() === m)
+    .sort((a, b) => a.at - b.at);
 }
 
 function renderRose() {
@@ -754,55 +760,63 @@ function renderRose() {
   const m = calMonth.getMonth();
   const total = new Date(y, m + 1, 0).getDate();
   const todayKey = dayKey(new Date());
-  const now = new Date();
-  const monthAhead = y > now.getFullYear() || (y === now.getFullYear() && m > now.getMonth());
-  const isFuture = (d) => monthAhead
-    || (y === now.getFullYear() && m === now.getMonth() && d > now.getDate());
 
-  const counts = new Map(SETS.map((set) => [set.id, dayCounts(set.id)]));
+  const sessions = new Map(SETS.map((set) => [set.id, monthSessions(set.id, y, m)]));
   const svg = svgEl('svg', { viewBox: '0 0 400 400', role: 'img', class: 'rose-svg' });
   svg.appendChild(svgEl('title', {})).textContent = `${y} 年 ${m + 1} 月的祈禱`;
 
-  const tally = {};
   const days = new Set();
-  const spans = {};
+  const sizes = {};
   for (const set of SETS) {
-    tally[set.id] = 0;
-    spans[set.id] = splitDays(total, RINGS.filter((r) => r.set === set.id).length);
+    sizes[set.id] = splitPetals(total, RINGS.filter((r) => r.set === set.id).length);
+    for (const x of sessions.get(set.id)) days.add(dayKey(x.at));
   }
 
-  // 由外層畫到內層，內層的花瓣便疊在外層的根部上，像花一樣層層收攏
+  // 由外層畫到內層，內層的花瓣便疊在外層的根部上，像花一樣層層收攏。
+  // 誦唸的次數由最外層依序點亮，所以唸得越多，花就從外往內開得越滿。
   const seen = {};
+  const done = {};
   for (const ring of RINGS) {
-    const span = spans[ring.set][seen[ring.set] = (seen[ring.set] || 0)];
+    const layer = seen[ring.set] = (seen[ring.set] || 0);
+    const n = sizes[ring.set][layer];
     seen[ring.set]++;
-    if (!span || !span.n) continue;
-    const counted = counts.get(ring.set) || new Map();
-    const step = 360 / span.n;
+    if (!n) continue;
+    const list = sessions.get(ring.set) || [];
+    const set = SETS.find((x) => x.id === ring.set);
+    const name = set ? (set.short || set.title) : ring.set;
+    const base = done[ring.set] = (done[ring.set] || 0);
+    done[ring.set] += n;
+    const step = 360 / n;
     // 一層錯開半格，內層的花瓣便落在外層兩片之間，像花一樣交錯
     const skew = (seen[ring.set] % 2) ? step * 0.5 : 0;
 
-    for (let i = 0; i < span.n; i++) {
-      const d = span.from + i;
-      const key = dayKey(new Date(y, m, d));
-      const n = counted.get(key) || 0;
-      if (n) { tally[ring.set] += n; days.add(key); }
+    for (let i = 0; i < n; i++) {
+      const at = base + i;                       // 這片是本月的第幾次誦唸
+      // 唸滿一整朵還有剩的話，就再繞一圈，把同一片花瓣點得更深
+      const rounds = list.length > at ? Math.floor((list.length - 1 - at) / total) + 1 : 0;
+      const first = list[at];
+      const key = first ? dayKey(first.at) : '';
 
       const petal = svgEl('path', {
         d: petalPath((i + 0.5) * step + skew, step * 0.54, ring.r0, ring.r1),
-        class: `petal ${ring.set} tone${ring.tone} ${markClass(n, isFuture(d))}`
-             + `${key === todayKey ? ' today' : ''}`,
-        'data-day': d, 'data-set': ring.set, style: `--i:${i}`,
+        class: `petal ${ring.set} tone${ring.tone} ${rounds ? litClass(rounds) : 'empty'}`
+             + `${key && key === todayKey ? ' today' : ''}`,
+        'data-set': ring.set, 'data-nth': at + 1, style: `--i:${i}`,
       });
-      petal.appendChild(svgEl('title', {})).textContent =
-        `${m + 1} 月 ${d} 日 · ${ring.set === 'rosary' ? '玫瑰經' : '慈悲串經'}${n ? ` ${n} 次` : ''}`;
-      petal.addEventListener('click', () => readMark(y, m, d, ring.set, n));
+      if (first) {
+        petal.setAttribute('data-day', first.at.getDate());
+        petal.setAttribute('data-key', key);
+      }
+      petal.appendChild(svgEl('title', {})).textContent = first
+        ? `${m + 1} 月 ${first.at.getDate()} 日 · ${name}第 ${at + 1} 次`
+        : `${name}第 ${at + 1} 次 · 還沒唸到`;
+      petal.addEventListener('click', () => readPetal(set, list, at, total, m));
       svg.appendChild(petal);
     }
   }
 
   // 中心
-  const sum = SETS.reduce((a, set) => a + tally[set.id], 0);
+  const sum = SETS.reduce((a, set) => a + sessions.get(set.id).length, 0);
   svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 38, class: 'rose-core' }));
   svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 31, class: 'rose-core-in' }));
   const count = svgEl('text', { x: 200, y: 198, class: 'rose-count' });
@@ -816,30 +830,42 @@ function renderRose() {
   rose.textContent = '';
   rose.appendChild(svg);
 
-  const parts = SETS.filter((set) => tally[set.id])
-    .map((set) => `${set.short || set.title} ${tally[set.id]} 次`);
+  const parts = SETS.filter((set) => sessions.get(set.id).length)
+    .map((set) => `${set.short || set.title} ${sessions.get(set.id).length} 次`);
   $('#rose-read').textContent = sum
-    ? `本月 ${parts.join(' · ')}，共 ${days.size} 天。輕觸花瓣看當天。`
+    ? `本月 ${parts.join(' · ')}，共 ${days.size} 天。輕觸花瓣看那一次。`
     : '這個月還沒有紀錄。';
 }
 
-function readMark(y, m, d, setId, n) {
-  const key = dayKey(new Date(y, m, d));
-  const set = SETS.find((x) => x.id === setId);
-  const name = set ? (set.short || set.title) : setId;
-  const same = records.filter((r) => dayKey(new Date(r.ts)) === key && (r.set || 'chaplet') === setId);
-  // 同一天可能唸了好幾次。奧蹟與意向分開收攏，各自去重，
-  // 免得「痛苦五端」因為其中一次寫了意向而重複出現。
-  const mysteries = [...new Set(same.map((r) =>
-    (r.mystery && set ? ((set.mysterySets || []).find((x) => x.id === r.mystery) || {}).name : '')
+// span 是一朵花裡這套經文的花瓣總數；唸滿一朵之後，第 at+span 次會回到同一片。
+function readPetal(set, list, at, span, m) {
+  const rose = $('#rose');
+  for (const el of rose.querySelectorAll('.petal.picked')) el.classList.remove('picked');
+  const name = set ? (set.short || set.title) : '';
+
+  const mine = [];
+  for (let k = at; k < list.length; k += span) mine.push(list[k]);
+  if (!mine.length) {
+    for (const el of rose.querySelectorAll(`.petal[data-set="${set.id}"][data-nth="${at + 1}"]`)) {
+      el.classList.add('picked');
+    }
+    $('#rose-read').textContent = `${name}第 ${at + 1} 次 · 還沒唸到`;
+    return;
+  }
+
+  // 同一天可能唸了好幾次，也可能兩套經文都唸了。把那一天的花瓣全標起來，
+  // 才看得出當天的全貌——它們不在同一個角度。
+  const key = dayKey(mine[0].at);
+  for (const el of rose.querySelectorAll(`.petal[data-key="${key}"]`)) el.classList.add('picked');
+
+  // 奧蹟與意向分開收攏，各自去重，免得「痛苦五端」因為其中一次寫了意向而重複出現。
+  const mysteries = [...new Set(mine.map((x) =>
+    (x.r.mystery && set ? ((set.mysterySets || []).find((s) => s.id === x.r.mystery) || {}).name : '')
   ).filter(Boolean))];
-  const notes = [...new Set(same.map((r) => r.note).filter(Boolean))];
+  const notes = [...new Set(mine.map((x) => x.r.note).filter(Boolean))];
 
-  // 兩套經文的同一天不在同一個角度，輕觸時把兩邊都標起來才對得上
-  for (const el2 of $('#rose').querySelectorAll('.petal.picked')) el2.classList.remove('picked');
-  for (const el2 of $('#rose').querySelectorAll(`.petal[data-day="${d}"]`)) el2.classList.add('picked');
-
-  const head = `${m + 1} 月 ${d} 日 · ${name} ${n ? `${n} 次` : '未誦唸'}`;
+  const when = [...new Set(mine.map((x) => `${m + 1} 月 ${x.at.getDate()} 日`))].join('、');
+  const head = `${when} · ${name}第 ${mine.map((x) => list.indexOf(x) + 1).join('、')} 次`;
   const detail = [mysteries.join('、'), notes.join('、')].filter(Boolean).join(' · ');
   $('#rose-read').textContent = detail ? `${head} — ${detail}` : head;
 }
