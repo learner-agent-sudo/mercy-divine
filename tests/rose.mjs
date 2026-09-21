@@ -8,7 +8,7 @@ await page.goto(BASE, { waitUntil: 'networkidle' });
 
 await page.click('[data-go="history"]');
 ok('an empty month says so plainly', (await page.textContent('#rose-read')).includes('還沒有紀錄'));
-ok('the flower is still drawn when nothing is recorded', await page.locator('.petal.outer').count() > 27);
+ok('the flower is still drawn when nothing is recorded', await page.locator('.petal.chaplet').count() > 27);
 
 // 造出有疏有密的一個月
 const seeded = await page.evaluate(() => {
@@ -31,17 +31,50 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.click('[data-go="history"]');
 await page.waitForTimeout(400);
 
-ok('one petal for every day of the month', await page.locator('.petal.outer').count() === seeded.daysInMonth);
-ok('a day prayed once is lit at the first level', await page.locator('.petal.outer.lit1').count() === 1);
-ok('twice is a deeper level', await page.locator('.petal.outer.lit2').count() === 1);
-ok('three or more is the deepest', await page.locator('.petal.outer.lit3').count() === 1);
+ok('one petal for every day of the month', await page.locator('.petal.chaplet').count() === seeded.daysInMonth);
+ok('a day prayed once is lit at the first level', await page.locator('.petal.chaplet.lit1').count() === 1);
+ok('twice is a deeper level', await page.locator('.petal.chaplet.lit2').count() === 1);
+ok('three or more is the deepest', await page.locator('.petal.chaplet.lit3').count() === 1);
 ok('today is marked in both rings', await page.locator('.petal.today').count() === 2);
+
+// ── 花分五層 ──
+const layers = await page.evaluate(() => {
+  const out = [];
+  for (const el of document.querySelectorAll('.petal')) {
+    const set = el.classList.contains('rosary') ? 'rosary' : 'chaplet';
+    const tone = [...el.classList].find((c) => c.startsWith('tone'));
+    const key = `${set}-${tone}`;
+    const row = out.find((r) => r.key === key) || (out.push({ key, n: 0, days: [] }), out.at(-1));
+    row.n++;
+    row.days.push(Number(el.dataset.day));
+  }
+  return out;
+});
+ok('the flower has five layers', layers.length === 5);
+ok('three of them belong to the chaplet, two to the rosary',
+   layers.filter((r) => r.key.startsWith('chaplet')).length === 3
+   && layers.filter((r) => r.key.startsWith('rosary')).length === 2);
+ok('the chaplet layers hold about ten petals each',
+   layers.filter((r) => r.key.startsWith('chaplet')).every((r) => r.n >= 10 && r.n <= 11));
+ok('and no layer of a prayer is more than one petal bigger than its neighbours',
+   ['chaplet', 'rosary'].every((set) => {
+     const sizes = layers.filter((r) => r.key.startsWith(set)).map((r) => r.n);
+     return Math.max(...sizes) - Math.min(...sizes) <= 1;
+   }));
+ok('each layer takes a run of days, outermost first', layers.every((r) => {
+  const sorted = [...r.days].sort((a, b) => a - b);
+  return sorted.every((d, i) => i === 0 || d === sorted[i - 1] + 1);
+}));
+ok('the layers together cover the month once per prayer', ['chaplet', 'rosary'].every((set) => {
+  const days = layers.filter((r) => r.key.startsWith(set)).flatMap((r) => r.days).sort((a, b) => a - b);
+  return days.length === seeded.daysInMonth && days[0] === 1 && days.at(-1) === seeded.daysInMonth;
+}));
 
 const future = await page.locator('.petal.future').count();
 ok('days still to come are drawn, but set apart from missed ones',
    future === (seeded.daysInMonth - seeded.today) * 2);
 ok('a missed day that has passed is not treated as future',
-   await page.locator('.petal.outer.empty').count() === seeded.today - 3);
+   await page.locator('.petal.chaplet.empty').count() === seeded.today - 3);
 
 // 中心的總數
 const centre = await page.textContent('.rose-count');
@@ -52,18 +85,18 @@ ok('the summary separates the two prayers',
    summary.includes('慈悲串經 6 次') && summary.includes('玫瑰經 3 次') && summary.includes('4 天'));
 
 // ── 內圈花蕊＝玫瑰經 ──
-ok('an inner petal for every day as well', await page.locator('.petal.inner').count() === seeded.daysInMonth);
-ok('rosary days light the inner ring', await page.locator('.petal.inner.lit1, .petal.inner.lit2').count() === 2);
-ok('the two prayers are counted apart', await page.locator('.petal.outer.lit3').count() === 1
-   && await page.locator('.petal.inner.lit3').count() === 0);
+ok('an inner petal for every day as well', await page.locator('.petal.rosary').count() === seeded.daysInMonth);
+ok('rosary days light the inner ring', await page.locator('.petal.rosary.lit1, .petal.rosary.lit2').count() === 2);
+ok('the two prayers are counted apart', await page.locator('.petal.chaplet.lit3').count() === 1
+   && await page.locator('.petal.rosary.lit3').count() === 0);
 ok('a day with both lights the outer and inner ring', await page.evaluate(() =>
-   document.querySelector('.petal.outer[data-day="2"]').classList.contains('lit2')
-   && document.querySelector('.petal.inner[data-day="2"]').classList.contains('lit1')));
+   document.querySelector('.petal.chaplet[data-day="2"]').classList.contains('lit2')
+   && document.querySelector('.petal.rosary[data-day="2"]').classList.contains('lit1')));
 ok('a rosary-only day leaves its outer petal unlit', await page.evaluate(() =>
-   document.querySelector('.petal.outer[data-day="4"]').classList.contains('empty')
-   && document.querySelector('.petal.inner[data-day="4"]').classList.contains('lit2')));
+   document.querySelector('.petal.chaplet[data-day="4"]').classList.contains('empty')
+   && document.querySelector('.petal.rosary[data-day="4"]').classList.contains('lit2')));
 
-await page.locator('.petal.inner[data-day="4"]').click();
+await page.locator('.petal.rosary[data-day="4"]').click();
 await page.waitForTimeout(150);
 const stamenRead = await page.textContent('#rose-read');
 ok('tapping an inner petal names the rosary and its mysteries',
@@ -72,13 +105,19 @@ ok('and does not repeat identical entries',
    (stamenRead.match(/痛苦五端/g) || []).length === 1);
 
 // 輕觸花瓣
-await page.locator('.petal.outer[data-day="3"]').click();
+await page.locator('.petal.chaplet[data-day="3"]').click();
 await page.waitForTimeout(150);
 const read = await page.textContent('#rose-read');
 ok('tapping a petal names the day and the count', read.includes('3 日') && read.includes('3 次'));
 ok('and shows what it was offered for', read.includes('為病人'));
+ok('tapping marks that day in both layers, wherever they sit',
+   await page.evaluate(() => {
+     const picked = [...document.querySelectorAll('.petal.picked')];
+     return picked.length === 2 && picked.every((el) => el.dataset.day === '3')
+       && new Set(picked.map((el) => el.dataset.set)).size === 2;
+   }));
 
-await page.locator('.petal.outer[data-day="1"]').click();
+await page.locator('.petal.chaplet[data-day="1"]').click();
 await page.waitForTimeout(150);
 ok('a day with no intention still reads cleanly',
    (await page.textContent('#rose-read')).includes('1 次'));
@@ -94,7 +133,7 @@ ok('a month wholly in the past has no future petals', await page.locator('.petal
 await page.click('#cal-next');
 await page.waitForTimeout(250);
 ok('coming back restores this month', (await page.textContent('#cal-label')) === label);
-ok('and the lit petals return', await page.locator('.petal.outer.lit1, .petal.outer.lit2, .petal.outer.lit3').count() === 3);
+ok('and the lit petals return', await page.locator('.petal.chaplet.lit1, .petal.chaplet.lit2, .petal.chaplet.lit3').count() === 3);
 
 // 月曆仍在，只是收起來
 ok('the calendar is tucked away by default', !(await page.isVisible('#cal')));
