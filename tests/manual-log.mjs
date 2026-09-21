@@ -58,7 +58,7 @@ ok('both kinds add up', (await stats()).includes('2累計次數'));
 await page.click('[data-go="history"]');
 ok('history lists both', await page.locator('#log li').count() === 2);
 ok('and distinguishes them', (await page.textContent('#log')).includes('補記'));
-ok('the rose lights both days', await page.locator('.petal.lit1').count() === 2);
+ok('the rose lights both days', await page.locator('.petal.outer.lit1').count() === 2);
 
 // 備份要保住 offline 這個來源
 await page.click('#view-history [data-go="home"]');

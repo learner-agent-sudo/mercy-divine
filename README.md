@@ -199,12 +199,14 @@ while DND is on, is the only reliable answer for a given phone.
 ## The prayer flower
 
 祈禱紀錄 opens on a flower rather than a grid, and it carries both prayers at once:
-**the chaplet is the petals on the outside, the rosary is the stamens at the centre.**
+**the chaplet is the outer ring of petals, the rosary the inner whorl.**
 Each day of the month appears in both rings, so a glance shows which prayer was said on
 which day, or that both were.
 
-A day prayed lights its mark — gold for the petals, blue for the stamens — deepening
-with a second time and deeper again at three. The centre holds the month's total across
+A day prayed lights its mark — gold on the outer ring, blue on the inner — deepening
+with a second time and deeper again at three. Petals are broad and overlap their
+neighbours, so the lit days read as a layered bloom rather than a row of spokes; the
+unlit ones stay faint enough to leave the flower to them. The centre holds the month's total across
 both prayers and how many days they cover; touching a petal or a stamen reads out that
 day, with its mysteries and whatever intention was written.
 
@@ -214,8 +216,7 @@ without prayer sits between the two: present, but unlit.
 
 The grid calendar is still there behind **看月曆** for when an exact date matters.
 
-A stamen is a thin line and a small dot — too small for a thumb — so each carries an
-invisible wide strip behind it to catch the touch.
+
 
 ## Recording a prayer said away from the phone
 
@@ -248,7 +249,7 @@ Five suites cover the things that would hurt most if they broke:
 | `tap` | a slow or slightly wobbly touch counts as one bead; drags, swipes and momentum scrolling do not |
 | `haptics` | the five vibration signals stay distinguishable, every pulse is long enough to feel, and the strength setting scales them |
 | `manual-log` | a prayer said elsewhere is recorded, dated, counted with the rest, and stays marked through a backup |
-| `rose` | a petal and a stamen per day, the two prayers counted apart, future days set apart from missed ones, and the calendar still reachable |
+| `rose` | a petal in each ring per day, the two prayers counted apart, future days set apart from missed ones, and the calendar still reachable |
 | `rosary` | the mysteries and their scripture, the weekday cycle, the 78-step sequence, and the chaplet still intact beside it |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
 
