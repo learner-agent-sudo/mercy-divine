@@ -67,6 +67,18 @@ const scrollable = await page.evaluate(() => {
   return s.scrollHeight > s.clientHeight + 20;
 });
 ok('the long 信經 actually scrolls at large type', scrollable);
+
+// 底下還有沒讀到的經文時，要看得出來，才不會以為讀完了就輕觸過去
+await page.waitForTimeout(200);
+ok('a cut-off prayer says so at the foot of the screen',
+   await page.evaluate(() => document.querySelector('#view-prayer').classList.contains('more')));
+await page.evaluate(() => { const s = document.querySelector('#prayer-scroll'); s.scrollTop = s.scrollHeight; });
+await page.waitForTimeout(250);
+ok('and stops saying so once it is read to the end',
+   !(await page.evaluate(() => document.querySelector('#view-prayer').classList.contains('more'))));
+await page.evaluate(() => { document.querySelector('#prayer-scroll').scrollTop = 0; });
+await page.waitForTimeout(250);
+
 // 信經沒有珠數可讀，改看是否仍停在同一段經文
 const b = await page.locator('#prayer-scroll').boundingBox();
 

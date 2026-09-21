@@ -257,6 +257,7 @@ function setImage(imgNode, capNode, candidates) {
     if (i >= list.length) { if (plate) plate.hidden = true; return; }
     if (plate) plate.hidden = false;
     imgNode.onerror = () => { failedImages.add(list[i].file); show(i + 1); };
+    imgNode.onload = scrollCue;   // 圖片載進來高度才定下來
     imgNode.src = list[i].file;
     imgNode.alt = list[i].caption || '';
     if (capNode) capNode.textContent = list[i].caption || '';
@@ -386,8 +387,6 @@ function renderStep() {
   else if (step.kind === 'decade') count = `第 ${step.decade} 端，共 ${SET.decades.count} 端`;
   $('#step-count').textContent = count;
   $('#step-name').classList.toggle('mystery', step.kind === 'mystery');
-  // 默想奧蹟時經文較長，聖像讓出位置
-  $('#guided').classList.toggle('meditating', step.kind === 'mystery');
 
   renderBeads(step);
   setImage($('#guided-image'), null, imageForStep(step));
@@ -400,6 +399,16 @@ function renderStep() {
   $('#step-next').textContent = last ? '我已誦畢' : '下一步';
   $('#tap-hint').textContent = last ? '輕觸畫面任一處完成' : '輕觸畫面任一處繼續';
   $('#prayer-scroll').scrollTop = 0;
+  scrollCue();
+}
+
+// 奧蹟的經文比一句禱詞長得多，聖像又佔了位置，畫面底下常常還有沒讀到的字。
+// 有下文時在底部透出一道漸層，才不會以為讀完了就輕觸過去。
+function scrollCue() {
+  const el = $('#prayer-scroll');
+  if (!el) return;
+  const more = el.scrollHeight - el.clientHeight - el.scrollTop > 8;
+  $('#view-prayer').classList.toggle('more', more);
 }
 
 // 珠子的位置圖。珠串不一定在每端之中，長度也不一定是十：
@@ -1305,6 +1314,8 @@ function bind() {
     advance();
   });
   scroll.addEventListener('pointercancel', () => { down = null; });
+  scroll.addEventListener('scroll', scrollCue, { passive: true });
+  addEventListener('resize', scrollCue);
   // 長按圖片會跳出「儲存圖片」，會打斷祈禱
   scroll.addEventListener('contextmenu', (e) => {
     if (session && session.mode === 'guided') e.preventDefault();

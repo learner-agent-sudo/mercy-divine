@@ -13,36 +13,49 @@
   --shadow:  0 1px 2px rgba(43, 33, 27, .06), 0 8px 24px rgba(43, 33, 27, .07);
   --fs: 1;
   --radius: 0.9rem;
+  --ink-off: 14%;   /* 還沒唸到的花瓣 */
+  --ink-1:   58%;   /* 唸過一輪 */
+  --ink-2:   80%;   /* 兩輪 */
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC",
           "Noto Sans CJK TC", "Microsoft JhengHei", "Heiti TC", "Hiragino Sans", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg:      #141110;
-    --surface: #1F1A17;
-    --sunken:  #191411;
-    --fg:      #EDE3D6;
-    --muted:   #9C8E81;
-    --line:    #332B26;
-    --accent:  #C55C50;
+    --surface: #241E1A;
+    --sunken:  #1C1613;
+    --fg:      #F4EBDF;
+    --muted:   #B6A899;
+    --line:    #4A3F37;
+    --accent:  #D66C5E;
     --accent-ink: #1A0F0D;
-    --blue:    #7FA8C2;
-    --gold:    #CDA35F;
+    --blue:    #8FB8D2;
+    --gold:    #DCB26B;
     --shadow:  0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
+    /* 花瓣是把顏色和底色相混畫出來的。底色一黑，混出來就發灰，
+       所以深色主題下點亮的比例要拉高，花才亮得起來。 */
+    --ink-off: 26%;
+    --ink-1:   82%;
+    --ink-2:   92%;
   }
 }
 :root[data-theme="dark"] {
   --bg:      #141110;
-  --surface: #1F1A17;
-  --sunken:  #191411;
-  --fg:      #EDE3D6;
-  --muted:   #9C8E81;
-  --line:    #332B26;
-  --accent:  #C55C50;
+  --surface: #241E1A;
+  --sunken:  #1C1613;
+  --fg:      #F4EBDF;
+  --muted:   #B6A899;
+  --line:    #4A3F37;
+  --accent:  #D66C5E;
   --accent-ink: #1A0F0D;
-  --blue:    #7FA8C2;
-  --gold:    #CDA35F;
+  --blue:    #8FB8D2;
+  --gold:    #DCB26B;
   --shadow:  0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
+  /* 花瓣是把顏色和底色相混畫出來的。底色一黑，混出來就發灰，
+     所以深色主題下點亮的比例要拉高，花才亮得起來。 */
+  --ink-off: 26%;
+  --ink-1:   82%;
+  --ink-2:   92%;
 }
 
 * { box-sizing: border-box; }
@@ -123,7 +136,6 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .plate img { width: 100%; height: auto; }
 .plate-sm img { width: auto; max-width: 100%; max-height: 34vh; margin: 0 auto; }
-.guided.meditating .plate-sm img { max-height: 17vh; }
 .plate figcaption {
   position: absolute; inset: auto 0 0 0; padding: 2.5rem .9rem .8rem;
   background: linear-gradient(to top, rgba(0, 0, 0, .68), transparent);
@@ -220,10 +232,18 @@ img { max-width: 100%; height: auto; display: block; }
 .tap-hint { text-align: center; color: var(--muted); font-size: .78rem; letter-spacing: .1em; margin-top: 1.6rem; opacity: .75; }
 
 .actions {
+  position: relative;
   display: flex; gap: 1.1rem; align-items: center;
   padding: .7rem 1.15rem calc(.7rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line); background: var(--bg);
 }
+/* 底下還有沒讀到的經文時，透出一道漸層，才不會以為讀完了就輕觸過去 */
+.actions::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 3.4rem;
+  background: linear-gradient(to top, var(--bg) 58%, transparent);
+  pointer-events: none; opacity: 0; transition: opacity .25s ease;
+}
+#view-prayer.more .actions::before { opacity: 1; }
 /* 「上一步」刻意做小並拉開距離：誤觸會倒退一珠，比漏數更擾人。 */
 #step-prev { flex: none; padding-inline: .5rem; font-size: .85rem; }
 
@@ -273,9 +293,9 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* 還沒唸到的花瓣仍然畫出來，花形才完整；但要壓得夠淡，
    亮起來的那幾片才是主角。整朵開滿，就是這個月天天都唸了。 */
-.petal.empty  { --ink: 14%; }
-.petal.lit1   { --ink: 58%; }
-.petal.lit2   { --ink: 80%; }
+.petal.empty  { --ink: var(--ink-off); }
+.petal.lit1   { --ink: var(--ink-1); }
+.petal.lit2   { --ink: var(--ink-2); }
 .petal.lit3   { --ink: 100%; }
 
 .petal.today  { stroke: var(--fg); stroke-width: 1.8; stroke-opacity: .5; }
