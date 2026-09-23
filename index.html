@@ -34,6 +34,14 @@
       <p class="home-date" id="home-date"></p>
     </header>
 
+    <div class="card resume" id="resume" hidden>
+      <h2 class="section-title">上次的口袋模式還沒唸完</h2>
+      <p class="hint" id="resume-where"></p>
+      <button type="button" id="resume-go" class="btn btn-primary btn-block">接下去唸</button>
+      <button type="button" id="resume-log" class="btn btn-block">已經唸完了，記成一次</button>
+      <button type="button" id="resume-drop" class="btn btn-quiet btn-block">刪掉這筆進度</button>
+    </div>
+
     <figure class="plate">
       <img id="home-image" alt="">
       <figcaption id="home-caption"></figcaption>
@@ -49,6 +57,7 @@
     </div>
 
     <button type="button" id="start-btn" class="btn btn-primary btn-block btn-lg">開始祈禱</button>
+    <button type="button" id="pocket-btn" class="btn btn-block">口袋模式（走路時用）</button>
     <button type="button" id="manual-btn" class="btn btn-block">補記一次祈禱</button>
 
     <div class="stats" id="home-stats"></div>
@@ -73,6 +82,10 @@
     <div class="progress" role="progressbar" aria-label="進度" aria-valuemin="0" aria-valuemax="100">
       <span id="progress-fill"></span>
     </div>
+
+    <p class="pocket-bar" id="pocket-bar" hidden>
+      口袋模式進行中　·　可以關螢幕了，用手錶上的 ⏭ 數珠
+    </p>
 
     <div class="scroll" id="prayer-scroll">
 
@@ -237,6 +250,7 @@
       </label>
       <p class="hint">一珠震一下、下一顆是第十時震兩下、一端唸畢震三下、全部誦畢震四下。手機只能調長度與下數，無法調輕重，覺得不夠明顯就選「強」。</p>
       <button type="button" id="test-haptic" class="btn btn-block">試一下震動</button>
+      <p class="hint">「口袋模式」是走路時用的：手機關螢幕放進口袋，用手錶或耳機上的「下一首」數珠，手錶上會顯示唸到第幾珠，所以不需要任何聲音提示。關著螢幕時系統不准震動，這是瀏覽器的限制，改不了。<br>它會佔住手機的音樂控制，祈禱時聽不了音樂或 podcast。<br>小米的省電機制可能在半路把程式清掉。建議先把本程式加到桌面，再到 設定 → 應用管理 → 找到它 → 省電策略 → 無限制，並在最近工作中鎖住。萬一還是被清掉，進度不會消失——下次打開會問你要接下去，還是記成一次。</p>
     </div>
 
     <div class="card">
@@ -278,6 +292,11 @@
 </main>
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- 口袋模式用。播的是一段聽不見的音訊，作用不是發出聲音，
+     而是讓系統把這個分頁當成正在播放，才不會關螢幕就被凍結，
+     手錶與耳機的上下一首也才會送到這裡來。 -->
+<audio id="hold" loop playsinline preload="none"></audio>
 
 <script src="app.js"></script>
 </body>

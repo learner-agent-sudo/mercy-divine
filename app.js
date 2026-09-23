@@ -340,23 +340,184 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && current === 'prayer') requestWake();
 });
 
-/* ── 祈禱流程 ──────────────────────────────────────── */
-let session = null; // { startedAt, index, mode }
+/* ── 口袋模式 ──────────────────────────────────────── */
+// 走路時用：手機關螢幕放口袋，用手錶上的音樂控制數珠。
+//
+// Android 只留了一個縫隙讓網頁在關螢幕時繼續活著——正在播放音訊的分頁不會被
+// 凍結，而且系統會把耳機鍵、藍牙鍵、手錶上的上下一首都轉給它。所以這裡播一段
+// 聽不見的音訊佔住那個位置，再把「下一首」接成「數一珠」。
+// 手錶上那行曲名就是目前唸到哪裡，所以不需要任何聲音提示。
 
-function startPrayer() {
-  history.pushState({ view: 'prayer' }, '');
+const POCKET_KEY = 'mercy.pocket.v1';
+const POCKET_ART = [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }];
+let holding = null;      // 正在播放的音訊元素
+
+// 一秒、8kHz、單聲道的 40Hz 微弱音。振幅壓在 -60dB 以下，而且手機喇叭本來就
+// 推不出 40Hz，所以聽不到。刻意不用純數位靜音——有些 Android 會判定成「沒在
+// 播放」而把控制卡收掉，那手錶上就沒得按了。
+function silentTrackUrl() {
+  const rate = 8000;
+  const n = rate;                                  // 一秒；40 個完整週期，接得起來
+  const buf = new ArrayBuffer(44 + n * 2);
+  const view = new DataView(buf);
+  const str = (off, t) => { for (let i = 0; i < t.length; i++) view.setUint8(off + i, t.charCodeAt(i)); };
+  str(0, 'RIFF');  view.setUint32(4, 36 + n * 2, true);  str(8, 'WAVE');
+  str(12, 'fmt '); view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);  view.setUint16(34, 16, true);
+  str(36, 'data'); view.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    view.setInt16(44 + i * 2, Math.round(20 * Math.sin((2 * Math.PI * 40 * i) / rate)), true);
+  }
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+// 必須在觸碰事件裡呼叫，否則瀏覽器不准播放。
+async function pocketStart() {
+  const el = $('#hold');
+  if (!el) return false;
+  if (!el.getAttribute('src')) el.src = silentTrackUrl();
+  try { await el.play(); } catch { return false; }
+  holding = el;
+
+  if ('mediaSession' in navigator) {
+    const ms = navigator.mediaSession;
+    ms.playbackState = 'playing';
+    const on = (action, fn) => { try { ms.setActionHandler(action, fn); } catch { /* 不支援就算了 */ } };
+    on('nexttrack', () => { if (session) advance(); });
+    on('previoustrack', () => { if (session) back(); });
+    on('play', () => { el.play().catch(() => {}); ms.playbackState = 'playing'; });
+    on('pause', () => { el.pause(); ms.playbackState = 'paused'; });
+  }
+  return true;
+}
+
+function pocketStop() {
+  if (holding) { holding.pause(); holding.currentTime = 0; holding = null; }
+  if ('mediaSession' in navigator) {
+    const ms = navigator.mediaSession;
+    for (const a of ['nexttrack', 'previoustrack', 'play', 'pause']) {
+      try { ms.setActionHandler(a, null); } catch { /* 同上 */ }
+    }
+    ms.metadata = null;
+    ms.playbackState = 'none';
+  }
+}
+
+// 手錶上顯示的就是這三行，所以要寫得一眼看得懂唸到哪裡。
+function pocketSync() {
+  if (!session || !session.pocket || !('mediaSession' in navigator) || !window.MediaMetadata) return;
+  const step = STEPS[session.index];
+  if (!step) return;
+  let title = step.name;
+  if (step.bead) title = `${step.name} ${step.bead.i}／${step.bead.total}`;
+  else if (step.rep) title = `${step.name} ${step.rep.i}／${step.rep.total}`;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title,
+    artist: `${step.stage} · ${SET.title}`,
+    album: `第 ${session.index + 1} 步，共 ${STEPS.length} 步`,
+    artwork: POCKET_ART,
+  });
+}
+
+// 小米對背景很兇，走到一半整個被清掉是有可能的。每一珠都把進度寫下來，
+// 下次打開才問得出「要接下去，還是記成一次」，不會白唸。
+function saveProgress() {
+  // 第一步還沒唸，沒有進度可言；記下來只會在首頁留一張沒有意義的卡片
+  if (!session || !session.pocket || session.index === 0) return;
+  try {
+    localStorage.setItem(POCKET_KEY, JSON.stringify({
+      startedAt: session.startedAt, index: session.index,
+      set: session.set, mystery: session.mystery,
+    }));
+  } catch { /* 空間不足就不記，祈禱本身不該因此中斷 */ }
+}
+function clearProgress() {
+  try { localStorage.removeItem(POCKET_KEY); } catch { /* 同上 */ }
+}
+function loadProgress() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(POCKET_KEY) || 'null');
+    if (!raw || typeof raw.index !== 'number' || raw.index < 0) return null;
+    if (!SETS.some((x) => x.id === raw.set)) return null;
+    return raw;
+  } catch { return null; }
+}
+
+async function startPocket() {
+  if (!(await pocketStart())) {
+    toast('這部裝置不讓程式在背景播放，口袋模式開不起來');
+    return;
+  }
+  startPrayer(true);
+}
+
+// 接續上次沒唸完的進度。要先把經文與奧蹟切回當時那一套。
+async function resumePocket(saved) {
+  if (!(await pocketStart())) {
+    toast('這部裝置不讓程式在背景播放，口袋模式開不起來');
+    return;
+  }
+  SET = setById(saved.set);
+  MYSTERY = saved.mystery ? mysteryById(SET, saved.mystery) : null;
   rebuildSteps();
-  session = { startedAt: Date.now(), index: 0, mode: settings.mode,
-              set: SET.id, mystery: MYSTERY ? MYSTERY.id : null };
+  history.pushState({ view: 'prayer' }, '');
+  session = { startedAt: saved.startedAt || Date.now(), index: Math.min(saved.index, STEPS.length - 1),
+              mode: 'guided', pocket: true, set: SET.id, mystery: MYSTERY ? MYSTERY.id : null };
   buildFullText();
   applyMode();
   go('prayer');
-  requestWake();
+}
+
+// 「已經唸完了，記成一次」：手機在路上被系統清掉時用的。
+// 時間取當時開始到現在，但封頂在兩小時——被清掉的那段常常隔了大半天，
+// 照實算出來的秒數沒有意義。
+function logProgress(saved) {
+  const now = new Date();
+  const secs = Math.min(7200, Math.max(1, Math.round((Date.now() - (saved.startedAt || Date.now())) / 1000)));
+  records.push({ id: newId(), ts: now.toISOString(), mode: 'pocket', secs, note: '',
+                 set: saved.set, mystery: saved.mystery || null });
+  saveRecords();
+  clearProgress();
+  renderHome();
+  toast('已記下一次');
+}
+
+function renderResume() {
+  const saved = loadProgress();
+  const card = $('#resume');
+  if (!card) return;
+  card.hidden = !saved;
+  if (!saved) return;
+  const set = setById(saved.set);
+  const steps = buildSteps(set, saved.mystery ? mysteryById(set, saved.mystery) : null);
+  const step = steps[Math.min(saved.index, steps.length - 1)];
+  const where = step ? `${step.stage} · ${step.name}` : '';
+  $('#resume-where').textContent =
+    `${set.short || set.title}　第 ${saved.index + 1} 步，共 ${steps.length} 步${where ? `（${where}）` : ''}。`;
+}
+
+/* ── 祈禱流程 ──────────────────────────────────────── */
+let session = null; // { startedAt, index, mode }
+
+function startPrayer(pocket) {
+  history.pushState({ view: 'prayer' }, '');
+  rebuildSteps();
+  // 口袋模式一律用引導模式：全文模式沒有逐珠，手錶上就無從數起。
+  session = { startedAt: Date.now(), index: 0, mode: pocket ? 'guided' : settings.mode,
+              pocket: !!pocket, set: SET.id, mystery: MYSTERY ? MYSTERY.id : null };
+  buildFullText();
+  applyMode();
+  go('prayer');
+  if (!pocket) requestWake();   // 口袋模式是要關螢幕的，別把它撐著
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 }
 
 function applyMode() {
   const guided = session.mode === 'guided';
+  $('#pocket-bar').hidden = !session.pocket;
+  $('#mode-toggle').hidden = !!session.pocket;
   $('#prayer-title').textContent = SET.title;
   $('#guided').hidden = !guided;
   $('#full').hidden = guided;
@@ -400,6 +561,8 @@ function renderStep() {
   $('#tap-hint').textContent = last ? '輕觸畫面任一處完成' : '輕觸畫面任一處繼續';
   $('#prayer-scroll').scrollTop = 0;
   scrollCue();
+  pocketSync();
+  saveProgress();
 }
 
 // 奧蹟的經文比一句禱詞長得多，聖像又佔了位置，畫面底下常常還有沒讀到的字。
@@ -470,7 +633,8 @@ function buzzFor(prev, next) {
 function advance() {
   const last = session.index >= STEPS.length - 1;
   const prev = STEPS[session.index];
-  buzz(buzzFor(prev, last ? null : STEPS[session.index + 1]));
+  // 頁面看不見時系統本來就不震，呼叫它只是徒然
+  if (!document.hidden) buzz(buzzFor(prev, last ? null : STEPS[session.index + 1]));
   if (last) { finishPrayer(); return; }
   session.index++;
   renderStep();
@@ -480,7 +644,7 @@ function advance() {
   }
 }
 function back() {
-  buzz(BUZZ.back);
+  if (!document.hidden) buzz(BUZZ.back);
   if (session.index > 0) { session.index--; renderStep(); }
 }
 
@@ -532,7 +696,8 @@ let lastRecordId = null;
 function finishPrayer() {
   const now = new Date();
   const secs = Math.max(1, Math.round((Date.now() - session.startedAt) / 1000));
-  const record = { id: newId(), ts: now.toISOString(), mode: session.mode, secs, note: '',
+  const record = { id: newId(), ts: now.toISOString(),
+                   mode: session.pocket ? 'pocket' : session.mode, secs, note: '',
                    set: session.set, mystery: session.mystery };
   records.push(record);
   saveRecords();
@@ -542,6 +707,8 @@ function finishPrayer() {
   $('#done-meta').textContent = `${fmtFullDate(now)}　${fmtTime(now)}　歷時 ${fmtDuration(secs)}`;
   $('#done-note').value = '';
   session = null;
+  pocketStop();
+  clearProgress();
   releaseWake();
   history.replaceState({ view: 'done' }, '');
   go('done');
@@ -552,8 +719,12 @@ function mayLeavePrayer() {
   return !(session && session.index > 0) || confirm('尚未誦畢，確定要離開嗎？此次不會留下紀錄。');
 }
 function leavePrayer() {
+  // 進度刻意留著：中途離開常常是要改天接下去，首頁會問要接續還是記成一次。
+  const keep = session && session.pocket && session.index > 0;
   session = null;
+  pocketStop();
   releaseWake();
+  if (!keep) clearProgress();
   renderHome();
   go('home');
 }
@@ -624,6 +795,7 @@ function renderHome() {
     [month, '本月次數'],
     [records.length, '累計次數'],
   ]);
+  renderResume();
 }
 
 function renderStats(node, pairs) {
@@ -933,8 +1105,8 @@ function logRow(r, afterDelete) {
     ? ((set.mysterySets || []).find((m) => m.id === r.mystery) || {}).name
     : '';
   li.appendChild(el('span', 'note', [mystery || which, r.note].filter(Boolean).join(' · ')));
-  li.appendChild(el('span', 'meta' + (r.mode === 'offline' ? ' tag' : ''),
-                    r.mode === 'offline' ? '補記' : fmtDuration(r.secs)));
+  const tag = r.mode === 'offline' ? '補記' : r.mode === 'pocket' ? '口袋' : '';
+  li.appendChild(el('span', 'meta' + (tag ? ' tag' : ''), tag || fmtDuration(r.secs)));
 
   const del = el('button', null, '×');
   del.type = 'button';
@@ -1241,7 +1413,7 @@ function importRecords(file) {
       records.push({
         id: String(r.id || newId()).slice(0, 64),
         ts: r.ts,
-        mode: ['guided', 'full', 'offline'].includes(r.mode) ? r.mode : 'guided',
+        mode: ['guided', 'full', 'offline', 'pocket'].includes(r.mode) ? r.mode : 'guided',
         secs: Number.isFinite(r.secs) ? Math.max(0, Math.min(r.secs, 86400)) : 0,
         note: typeof r.note === 'string' ? r.note.slice(0, 80) : '',
         set: typeof r.set === 'string' ? r.set.slice(0, 40) : 'chaplet',
@@ -1283,7 +1455,22 @@ function importRecords(file) {
 
 /* ── 事件綁定 ──────────────────────────────────────── */
 function bind() {
-  $('#start-btn').addEventListener('click', startPrayer);
+  // 不能直接把 startPrayer 當處理器——click 事件會被當成「口袋模式」那個參數
+  $('#start-btn').addEventListener('click', () => startPrayer(false));
+  $('#pocket-btn').addEventListener('click', startPocket);
+  $('#resume-go').addEventListener('click', () => {
+    const saved = loadProgress();
+    if (saved) resumePocket(saved);
+  });
+  $('#resume-log').addEventListener('click', () => {
+    const saved = loadProgress();
+    if (saved) logProgress(saved);
+  });
+  $('#resume-drop').addEventListener('click', () => {
+    clearProgress();
+    renderResume();
+    toast('已刪掉那筆進度');
+  });
   $('#prayer-exit').addEventListener('click', () => history.back());
   $('#step-next').addEventListener('click', () => (session.mode === 'guided' ? advance() : finishPrayer()));
   $('#step-prev').addEventListener('click', back);
