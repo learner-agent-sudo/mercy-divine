@@ -350,14 +350,22 @@ document.addEventListener('visibilitychange', () => {
 
 const POCKET_KEY = 'mercy.pocket.v1';
 const POCKET_ART = [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }];
-let holding = null;      // 正在播放的音訊元素
+const HOLD_SECS = 30;      // 見下方：太短的音軌拿不到媒體控制
+let holding = null;        // 正在播放的音訊元素
+let holdUrl = null;
 
-// 一秒、8kHz、單聲道的 40Hz 微弱音。振幅壓在 -60dB 以下，而且手機喇叭本來就
-// 推不出 40Hz，所以聽不到。刻意不用純數位靜音——有些 Android 會判定成「沒在
-// 播放」而把控制卡收掉，那手錶上就沒得按了。
-function silentTrackUrl() {
+// 撐住分頁的那段音軌。要同時滿足兩件互相拉扯的事：
+//
+// 1. Chrome 只替「夠長、聽得到」的音訊建立媒體工作階段——太短的會被當成音效，
+//    不會出現播放控制，手錶上自然什麼都沒有。所以長度取 30 秒，音量也不能壓到
+//    系統的偵測門檻以下。
+// 2. 可是我們不想讓人聽到任何聲音。
+//
+// 解法是用 40Hz。手機喇叭本來就推不出這麼低的頻率，所以就算振幅拉到
+// -38dB（系統聽得很清楚），人耳在手機上還是一片安靜。
+function holdTrackUrl() {
   const rate = 8000;
-  const n = rate;                                  // 一秒；40 個完整週期，接得起來
+  const n = rate * HOLD_SECS;
   const buf = new ArrayBuffer(44 + n * 2);
   const view = new DataView(buf);
   const str = (off, t) => { for (let i = 0; i < t.length; i++) view.setUint8(off + i, t.charCodeAt(i)); };
@@ -367,42 +375,77 @@ function silentTrackUrl() {
   view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true);
   view.setUint16(32, 2, true);  view.setUint16(34, 16, true);
   str(36, 'data'); view.setUint32(40, n * 2, true);
+  const amp = 0.012 * 32767;                       // 約 -38dB
   for (let i = 0; i < n; i++) {
-    view.setInt16(44 + i * 2, Math.round(20 * Math.sin((2 * Math.PI * 40 * i) / rate)), true);
+    view.setInt16(44 + i * 2, Math.round(amp * Math.sin((2 * Math.PI * 40 * i) / rate)), true);
   }
   return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
 }
 
 // 必須在觸碰事件裡呼叫，否則瀏覽器不准播放。
-async function pocketStart() {
+async function holdPlay() {
   const el = $('#hold');
   if (!el) return false;
-  if (!el.getAttribute('src')) el.src = silentTrackUrl();
+  if (!holdUrl) { holdUrl = holdTrackUrl(); el.preload = 'auto'; el.src = holdUrl; }
+  el.loop = true;
+  el.volume = 1;
   try { await el.play(); } catch { return false; }
   holding = el;
+  return true;
+}
 
-  if ('mediaSession' in navigator) {
-    const ms = navigator.mediaSession;
-    ms.playbackState = 'playing';
-    const on = (action, fn) => { try { ms.setActionHandler(action, fn); } catch { /* 不支援就算了 */ } };
-    on('nexttrack', () => { if (session) advance(); });
-    on('previoustrack', () => { if (session) back(); });
-    on('play', () => { el.play().catch(() => {}); ms.playbackState = 'playing'; });
-    on('pause', () => { el.pause(); ms.playbackState = 'paused'; });
+function holdStop() {
+  if (holding) { holding.pause(); holding.currentTime = 0; holding = null; }
+}
+
+const MEDIA_ACTIONS = ['nexttrack', 'previoustrack', 'play', 'pause'];
+function mediaBind(handlers) {
+  if (!('mediaSession' in navigator)) return false;
+  const ms = navigator.mediaSession;
+  ms.playbackState = 'playing';
+  let bound = 0;
+  for (const action of MEDIA_ACTIONS) {
+    try { ms.setActionHandler(action, handlers[action] || null); bound++; } catch { /* 不支援的動作跳過 */ }
   }
+  return bound > 0;
+}
+function mediaRelease() {
+  if (!('mediaSession' in navigator)) return;
+  const ms = navigator.mediaSession;
+  for (const action of MEDIA_ACTIONS) {
+    try { ms.setActionHandler(action, null); } catch { /* 同上 */ }
+  }
+  ms.metadata = null;
+  ms.playbackState = 'none';
+}
+
+async function pocketStart() {
+  if (!(await holdPlay())) return false;
+  const el = holding;
+  mediaBind({
+    nexttrack: () => { if (session) advance(); },
+    previoustrack: () => { if (session) back(); },
+    play: () => { el.play().catch(() => {}); navigator.mediaSession.playbackState = 'playing'; },
+    pause: () => { el.pause(); navigator.mediaSession.playbackState = 'paused'; },
+  });
   return true;
 }
 
 function pocketStop() {
-  if (holding) { holding.pause(); holding.currentTime = 0; holding = null; }
-  if ('mediaSession' in navigator) {
-    const ms = navigator.mediaSession;
-    for (const a of ['nexttrack', 'previoustrack', 'play', 'pause']) {
-      try { ms.setActionHandler(a, null); } catch { /* 同上 */ }
-    }
-    ms.metadata = null;
-    ms.playbackState = 'none';
-  }
+  holdStop();
+  mediaRelease();
+}
+
+// 音軌沒播起來，手錶上就不會有東西可按。這時要講出來，不要讓人白走一趟。
+function pocketHealth() {
+  const el = $('#hold');
+  const bar = $('#pocket-bar');
+  if (!bar || !session || !session.pocket) return;
+  const bad = !el || el.paused;
+  bar.classList.toggle('warn', bad);
+  bar.textContent = bad
+    ? '⚠ 音訊沒有播起來，手錶上不會出現控制。請改用畫面上的「下一步」。'
+    : '口袋模式進行中　·　可以關螢幕了，用手錶上的 ⏭ 數珠';
 }
 
 // 手錶上顯示的就是這三行，所以要寫得一眼看得懂唸到哪裡。
@@ -468,6 +511,7 @@ async function resumePocket(saved) {
   buildFullText();
   applyMode();
   go('prayer');
+  pocketHealth();
 }
 
 // 「已經唸完了，記成一次」：手機在路上被系統清掉時用的。
@@ -498,6 +542,64 @@ function renderResume() {
     `${set.short || set.title}　第 ${saved.index + 1} 步，共 ${steps.length} 步${where ? `（${where}）` : ''}。`;
 }
 
+/* ── 口袋模式自我檢查 ──────────────────────────────── */
+// 手錶按不動時，要分得出是這支程式沒把控制交出去，還是手錶那頭沒接上。
+// 這裡把音軌單獨播起來、把控制登記好，然後把收到的按鍵數出來。
+
+let probe = null;
+function probeRender() {
+  const out = $('#probe-out');
+  const audio = $('#hold');
+  if (!probe) { out.hidden = true; return; }
+  const rows = [
+    ['音訊播放中', audio && !audio.paused ? '是' : '否 — 手錶不會有控制'],
+    ['音軌長度', audio && audio.duration ? `${Math.round(audio.duration)} 秒` : '讀取中'],
+    ['媒體控制', probe.bound ? '已交給系統' : '這個瀏覽器不支援'],
+    ['手錶按鍵', `⏭ ${probe.next}　⏮ ${probe.prev}　⏯ ${probe.toggle}`],
+  ];
+  out.textContent = '';
+  for (const [k, v] of rows) {
+    const li = el('li');
+    li.appendChild(el('span', 'probe-k', k));
+    li.appendChild(el('span', 'probe-v', v));
+    out.appendChild(li);
+  }
+  out.hidden = false;
+}
+
+async function probeStart() {
+  const ok = await holdPlay();
+  probe = { next: 0, prev: 0, toggle: 0, bound: false };
+  $('#probe-btn').textContent = '停止測試';
+  if (!ok) { probeRender(); toast('這部裝置不讓程式播放音訊'); return; }
+  const bump = (k) => { probe[k]++; probeRender(); };
+  probe.bound = mediaBind({
+    nexttrack: () => bump('next'),
+    previoustrack: () => bump('prev'),
+    // 測試時不真的暫停，否則按一下就沒得按了
+    play: () => { holding.play().catch(() => {}); bump('toggle'); },
+    pause: () => { holding.play().catch(() => {}); bump('toggle'); },
+  });
+  if ('mediaSession' in navigator && window.MediaMetadata) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: '測試中 — 請按手錶上的 ⏭',
+      artist: '口袋模式自我檢查',
+      album: '救主慈悲串經',
+      artwork: POCKET_ART,
+    });
+  }
+  $('#hold').addEventListener('loadedmetadata', probeRender, { once: true });
+  probeRender();
+}
+
+function probeStop() {
+  probe = null;
+  holdStop();
+  mediaRelease();
+  $('#probe-btn').textContent = '開始測試';
+  probeRender();
+}
+
 /* ── 祈禱流程 ──────────────────────────────────────── */
 let session = null; // { startedAt, index, mode }
 
@@ -510,6 +612,7 @@ function startPrayer(pocket) {
   buildFullText();
   applyMode();
   go('prayer');
+  pocketHealth();
   if (!pocket) requestWake();   // 口袋模式是要關螢幕的，別把它撐著
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 }
@@ -1458,6 +1561,7 @@ function bind() {
   // 不能直接把 startPrayer 當處理器——click 事件會被當成「口袋模式」那個參數
   $('#start-btn').addEventListener('click', () => startPrayer(false));
   $('#pocket-btn').addEventListener('click', startPocket);
+  $('#probe-btn').addEventListener('click', () => (probe ? probeStop() : probeStart()));
   $('#resume-go').addEventListener('click', () => {
     const saved = loadProgress();
     if (saved) resumePocket(saved);

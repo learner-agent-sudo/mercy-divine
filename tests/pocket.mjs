@@ -49,6 +49,32 @@ const audio = await page.evaluate(() => {
 });
 ok('a looping track is playing to hold the tab alive', !audio.paused && audio.loop);
 ok('and it is generated locally, not fetched', audio.src === 'blob:');
+
+// Chrome 只替夠長、聽得到的音訊建立媒體控制；太短或太安靜會被當成音效，
+// 手錶上就什麼都不會出現。這兩項是口袋模式的成敗所在。
+await page.waitForFunction(() => document.querySelector('#hold').duration > 0);
+const track = await page.evaluate(async () => {
+  const el = document.querySelector('#hold');
+  const raw = await (await fetch(el.src)).arrayBuffer();
+  const pcm = new Int16Array(raw, 44);
+  let peak = 0;
+  for (let i = 0; i < pcm.length; i++) peak = Math.max(peak, Math.abs(pcm[i]));
+  return { secs: el.duration, peak: peak / 32768, samples: pcm.length };
+});
+ok('the track is long enough for the system to treat it as media, not a sound effect',
+   track.secs >= 10);
+ok('and loud enough to count as playing', track.peak > 0.005);
+ok('but far too quiet to hear', track.peak < 0.05);
+
+// 40Hz：手機喇叭推不出來，所以可以放得比偵測門檻大聲而人還是聽不到
+const cycles = await page.evaluate(async () => {
+  const raw = await (await fetch(document.querySelector('#hold').src)).arrayBuffer();
+  const pcm = new Int16Array(raw, 44, 8000);        // 第一秒
+  let up = 0;
+  for (let i = 1; i < pcm.length; i++) if (pcm[i - 1] < 0 && pcm[i] >= 0) up++;
+  return up;
+});
+ok('the tone sits below what a phone speaker can reproduce', cycles >= 38 && cycles <= 42);
 ok('the screen says it can be switched off',
    (await page.textContent('#pocket-bar')).includes('可以關螢幕'));
 ok('the full-text toggle is out of the way — it has no beads to count',
@@ -180,6 +206,39 @@ ok('and plays nothing', await page.evaluate(() => document.querySelector('#hold'
 ok('and keeps the full-text toggle', await page.isVisible('#mode-toggle'));
 ok('and does not leave pocket progress behind',
    await page.evaluate(() => localStorage.getItem('mercy.pocket.v1') === null));
+
+// ── 自我檢查 ──
+// 手錶沒反應時，要分得出是這支程式沒交出控制，還是手錶那頭沒接上
+await page.click('#prayer-exit');
+await page.waitForTimeout(250);
+await page.click('[data-go="settings"]');
+await page.waitForTimeout(200);
+ok('settings offers a way to check the watch link', await page.isVisible('#probe-btn'));
+await page.click('#probe-btn');
+await page.waitForTimeout(400);
+ok('the check plays the track', await page.evaluate(() => !document.querySelector('#hold').paused));
+ok('and reports what it found', await page.isVisible('#probe-out'));
+const probed = () => page.textContent('#probe-out');
+ok('it says the track is playing', (await probed()).includes('是'));
+ok('and how long the track is', /\d+ 秒/.test(await probed()));
+ok('it starts with no presses received', (await probed()).includes('⏭ 0'));
+
+await fire('nexttrack');
+await fire('nexttrack');
+await fire('previoustrack');
+await page.waitForTimeout(200);
+const counted = await probed();
+ok('pressing the watch is counted, so a dead link is visible',
+   counted.includes('⏭ 2') && counted.includes('⏮ 1'));
+ok('the check does not start a prayer', !(await page.isVisible('#view-prayer.active')));
+ok('and leaves no record behind', await page.evaluate((n) =>
+   JSON.parse(localStorage.getItem('mercy.records.v1')).length === n, before));
+
+await page.click('#probe-btn');
+await page.waitForTimeout(250);
+ok('stopping the check stops the track', await page.evaluate(() =>
+   document.querySelector('#hold').paused));
+ok('and clears the readout', !(await page.isVisible('#probe-out')));
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();
