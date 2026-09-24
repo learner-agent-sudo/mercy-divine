@@ -167,7 +167,7 @@ ok('the record shows up tagged as a pocket prayer in the log', await page.evalua
   return !!l && l.textContent.includes('口袋');
 }));
 ok('and the flower counts it like any other',
-   await page.locator('.petal.chaplet.lit1').count() === 1);
+   await page.locator('#rose .flower.chaplet').count() === 1);
 await page.click('#view-history [data-go="home"]');
 await page.waitForTimeout(200);
 

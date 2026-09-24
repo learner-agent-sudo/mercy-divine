@@ -976,182 +976,315 @@ function saveManual() {
 /* ── 紀錄 ─────────────────────────────────────────── */
 let calMonth = new Date();
 
-/* ── 祈禱玫瑰窗 ────────────────────────────────────── */
-// 一個月畫成一扇玫瑰窗：每一天一片花瓣，誦唸過的就亮起來。
-// 還沒到的日子只留淡淡輪廓，不把未來畫成缺漏。
+/* ── 祈禱花束 ─────────────────────────────────────── */
+// 一個月一束花：每唸一次開一朵。慈悲串經是白花，玫瑰經是紅玫瑰——
+// 「玫瑰經」本來就是玫瑰花冠；白色取自慈悲耶穌像裡淡色的那道光。
+// 這個月的第一次放在正中，之後順著黃金角一圈圈往外，花束是從中間長出來的。
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const svgEl = (tag, attrs) => {
+const svgEl = (tag, attrs = {}) => {
   const n = document.createElementNS(SVG_NS, tag);
   for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
   return n;
 };
-const polar = (r, deg) => {
-  const a = ((deg - 90) * Math.PI) / 180;
-  return [200 + r * Math.cos(a), 200 + r * Math.sin(a)];
-};
+// 每朵花拿一點固定的偏移，角度、大小都不一樣，整束才不像用尺量出來的
+const wobble = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
 
-// 花瓣：根部收窄，約到一半高度張到最寬，再收成一個圓頭的尖。
-// 刻意讓相鄰花瓣在根部相疊，疊出一層花，而不是一根根分開的放射狀。
-const petalPath = (deg, half, r0, r1) => {
-  const p = (r, d) => polar(r, d).map((n) => n.toFixed(1)).join(' ');
-  const L = r1 - r0;
-  const baseA = half * 0.26;
-  const tipA = half * 0.13;
-  return [
-    `M${p(r0, deg - baseA)}`,
-    `C${p(r0 + L * 0.18, deg - half * 0.92)} ${p(r0 + L * 0.52, deg - half)} ${p(r0 + L * 0.78, deg - half * 0.82)}`,
-    `C${p(r0 + L * 0.93, deg - half * 0.56)} ${p(r1, deg - tipA * 2.6)} ${p(r1, deg - tipA)}`,
-    `A${r1} ${r1} 0 0 1 ${p(r1, deg + tipA)}`,
-    `C${p(r1, deg + tipA * 2.6)} ${p(r0 + L * 0.93, deg + half * 0.56)} ${p(r0 + L * 0.78, deg + half * 0.82)}`,
-    `C${p(r0 + L * 0.52, deg + half)} ${p(r0 + L * 0.18, deg + half * 0.92)} ${p(r0, deg + baseA)}`,
-    `A${r0} ${r0} 0 0 0 ${p(r0, deg - baseA)}`,
-    'Z',
-  ].join(' ');
-};
-
-const litClass = (n) => (n >= 3 ? 'lit3' : n === 2 ? 'lit2' : 'lit1');
-
-// 一朵花承載兩套經文：外三層花瓣是慈悲串經，內兩層是玫瑰經。
-// 每層自己一個顏色，層次才看得出來；各層半徑刻意相疊，內層的尖端壓在
-// 外層的根部上，才像一朵花，而不是幾個同心圓。
-const RINGS = [
-  { set: 'chaplet', r0: 146, r1: 194, tone: 1 },
-  { set: 'chaplet', r0: 112, r1: 158, tone: 2 },
-  { set: 'chaplet', r0: 80, r1: 126, tone: 3 },
-  { set: 'rosary', r0: 56, r1: 96, tone: 1 },
-  { set: 'rosary', r0: 34, r1: 72, tone: 2 },
-];
-
-// 花瓣平均分到各層。一套經文的花瓣數＝當月天數，所以整朵開滿，
-// 就是這個月每天都唸了一次。
-function splitPetals(total, layers) {
-  const base = Math.floor(total / layers);
-  const extra = total % layers;
-  return Array.from({ length: layers }, (_, i) => base + (i < extra ? 1 : 0));
+// 花瓣的漸層畫在每一片花瓣自己的座標裡（objectBoundingBox）：根部在下、尖端在上，
+// 所以不管怎麼旋轉縮放，都是根部深、邊緣亮。用 userSpaceOnUse 的話，漸層會在
+// 花瓣自己的變形之後才解算，明暗就落在亂七八糟的地方。
+// id 是整份文件共用的，所以每張圖各給一個前綴，免得互相搶。
+function flowerDefs(svg, pre) {
+  const d = svgEl('defs');
+  const lin = (id, stops, dir = ['0.5', '1', '0.5', '0']) => {
+    const g = svgEl('linearGradient', { id: `${pre}-${id}`, x1: dir[0], y1: dir[1], x2: dir[2], y2: dir[3] });
+    for (const [o, c] of stops) g.appendChild(svgEl('stop', { offset: o, 'stop-color': c }));
+    d.appendChild(g);
+  };
+  lin('r1', [['0%', '#8E2A24'], ['55%', '#C4573F'], ['100%', '#CF6848']]);   // 玫瑰外輪最亮
+  lin('r2', [['0%', '#7A211C'], ['60%', '#AE3B2C'], ['100%', '#B8452F']]);
+  lin('r3', [['0%', '#651814'], ['65%', '#962D24'], ['100%', '#A13326']]);   // 越往花心越深
+  lin('w', [['0%', '#D9CFC0'], ['50%', '#F2ECE2'], ['100%', '#FFFFFF']]);
+  lin('leaf', [['0%', '#4A6B3A'], ['100%', '#76944F']], ['0', '0', '1', '1']);
+  svg.appendChild(d);
 }
 
-// 當月的每一次誦唸，依時間先後排好。第一片花瓣就是這個月的第一次。
+// 玫瑰：三輪花瓣加一個捲起來的花心。全開時半徑約 112。
+const ROSE_PETAL = 'M0 0 C-34 -4 -60 -26 -58 -56 C-56 -82 -32 -98 -11 -90 C-5 -88 5 -88 11 -90 '
+                 + 'C32 -98 56 -82 58 -56 C60 -26 34 -4 0 0 Z';
+const ROSE_WHORLS = [
+  { n: 5, turn: 0,  grad: 'r1', dist: 16, s: 1.00 },
+  { n: 5, turn: 36, grad: 'r2', dist: 10, s: 0.74 },
+  { n: 5, turn: 18, grad: 'r3', dist: 5,  s: 0.50 },
+  { n: 3, turn: 50, grad: 'r3', dist: 2,  s: 0.30 },
+];
+function drawRose(g, pre, r, seed) {
+  const k = r / 112;
+  const line = Math.max(0.55, Math.min(1.6, r * 0.036));   // 描邊跟著花的大小，小花才不會糊成一團
+  for (const w of ROSE_WHORLS) {
+    for (let i = 0; i < w.n; i++) {
+      const j = wobble(seed * 7 + i, w.s) - 0.5;
+      const s = w.s * (1 + j * 0.12);
+      g.appendChild(svgEl('path', {
+        d: ROSE_PETAL, fill: `url(#${pre}-${w.grad})`, stroke: '#5A1512',
+        'stroke-width': line / k / s, 'stroke-linejoin': 'round',
+        transform: `rotate(${w.turn + (360 / w.n) * i + j * 10}) translate(0 ${-w.dist}) scale(${s})`,
+      }));
+    }
+  }
+  g.appendChild(svgEl('circle', { r: 9, fill: '#651814' }));   // 捲芯中間別透出底色
+  g.appendChild(svgEl('path', {
+    d: 'M-2 2 C4 -6 14 -3 13 5 C12 13 1 15 -6 10 C-14 3 -10 -9 1 -12',
+    fill: 'none', stroke: '#5A1512', 'stroke-width': line / k * 1.1, 'stroke-linecap': 'round',
+  }));
+  return k;
+}
+
+// 白花：五片圓瓣、淡黃的環、金黃的眼。輪廓和玫瑰完全不同，縮到很小也分得出來。
+// 全開時半徑約 62。
+const WHITE_PETAL = 'M0 -5 C-21 -9 -32 -30 -25 -46 C-18 -63 18 -63 25 -46 C32 -30 21 -9 0 -5 Z';
+function drawWhite(g, pre, r, seed) {
+  const k = (r / 62) * 0.92;
+  const line = Math.max(0.55, Math.min(1.5, r * 0.034));
+  for (let i = 0; i < 5; i++) {
+    const j = wobble(seed * 5 + i, 3.3) - 0.5;
+    const t = `rotate(${i * 72 + j * 8}) scale(${1 + j * 0.1})`;
+    g.appendChild(svgEl('path', {
+      d: WHITE_PETAL, fill: `url(#${pre}-w)`, stroke: '#8C7A66',
+      'stroke-width': line / k, 'stroke-linejoin': 'round', transform: t,
+    }));
+    g.appendChild(svgEl('path', {
+      d: 'M0 -14 C-1 -26 0 -36 0 -44', fill: 'none', stroke: '#B8A993', opacity: 0.6,
+      'stroke-width': line / k * 0.7, 'stroke-linecap': 'round', transform: t,
+    }));
+  }
+  g.appendChild(svgEl('circle', { r: 14, fill: '#FFF8E6', stroke: '#8C7A66', 'stroke-width': line / k * 0.8 }));
+  for (let i = 0; i < 5; i++) {
+    const a = ((i * 72 + 36) * Math.PI) / 180;
+    g.appendChild(svgEl('circle', { cx: Math.sin(a) * 9.5, cy: -Math.cos(a) * 9.5, r: 2.2, fill: '#E9C45A' }));
+  }
+  g.appendChild(svgEl('circle', { r: 6.5, fill: '#E0A92E', stroke: '#9A6F1A', 'stroke-width': line / k * 0.6 }));
+  return k;
+}
+
+const FLOWER = { rosary: drawRose, chaplet: drawWhite };
+const drawFlower = (setId) => FLOWER[setId] || drawWhite;
+
+function drawLeaf(g, pre, x, y, rot, s) {
+  const t = `translate(${x} ${y}) rotate(${rot}) scale(${s})`;
+  g.appendChild(svgEl('path', {
+    d: 'M0 0 C18 -12 46 -12 62 2 C46 18 18 16 0 0 Z', fill: `url(#${pre}-leaf)`, stroke: '#35502C',
+    'stroke-width': 1.4 / s, 'stroke-linejoin': 'round', transform: t,
+  }));
+  g.appendChild(svgEl('path', {
+    d: 'M3 1 C20 0 40 2 58 2', fill: 'none', stroke: '#35502C', 'stroke-width': 1 / s, opacity: 0.5, transform: t,
+  }));
+}
+
+// 圖例用的小花
+function flowerIcon(setId) {
+  const svg = svgEl('svg', { viewBox: '0 0 40 40', class: 'bq-icon', 'aria-hidden': 'true' });
+  const pre = `ic-${setId}`;
+  flowerDefs(svg, pre);
+  const g = svgEl('g');
+  const k = drawFlower(setId)(g, pre, 18, 2);
+  g.setAttribute('transform', `translate(20 20) scale(${k.toFixed(4)})`);
+  svg.appendChild(g);
+  return svg;
+}
+
+// 當月的每一次誦唸，依時間先後排好。
 function monthSessions(setId, y, m) {
   return records
     .filter((r) => (r.set || 'chaplet') === setId)
-    .map((r) => ({ r, at: new Date(r.ts) }))
+    .map((rec) => ({ rec, at: new Date(rec.ts) }))
     .filter((x) => x.at.getFullYear() === y && x.at.getMonth() === m)
     .sort((a, b) => a.at - b.at);
 }
 
-function renderRose() {
+// 花束的版面。花越多，花束張得越開、每朵越小，但整束都留在畫面裡。
+const TIE = { x: 200, y: 372 };
+function bouquetLayout(n) {
+  const rx = n ? Math.min(150, 36 + 22 * Math.sqrt(n)) : 70;
+  const ry = rx * 0.8;
+  const cy = TIE.y - ry - 70;
+  const fr = n ? Math.min(46, Math.max(9, Math.sqrt((rx * ry) / n) * 1.2)) : 0;
+  return { cx: 200, cy, rx, ry, fr };
+}
+
+let bouquetFlowers = [];     // 目前畫出來的每一朵：位置與對應的那一次祈禱
+
+function renderBouquet() {
   const y = calMonth.getFullYear();
   const m = calMonth.getMonth();
-  const total = new Date(y, m + 1, 0).getDate();
-  const todayKey = dayKey(new Date());
+  const pre = 'bq';
 
-  const sessions = new Map(SETS.map((set) => [set.id, monthSessions(set.id, y, m)]));
-  const svg = svgEl('svg', { viewBox: '0 0 400 400', role: 'img', class: 'rose-svg' });
-  svg.appendChild(svgEl('title', {})).textContent = `${y} 年 ${m + 1} 月的祈禱`;
+  // 兩套經文的每一次，照時間混在一起排——花束裡兩種花就這樣交錯著長出來
+  const bySet = new Map(SETS.map((set) => [set.id, monthSessions(set.id, y, m)]));
+  const all = SETS.flatMap((set) => bySet.get(set.id).map((x, i) => ({ ...x, set, nth: i + 1 })))
+    .sort((a, b) => a.at - b.at);
+  const days = new Set(all.map((x) => dayKey(x.at)));
+  const N = all.length;
+  const L = bouquetLayout(N);
 
-  const days = new Set();
-  const sizes = {};
-  for (const set of SETS) {
-    sizes[set.id] = splitPetals(total, RINGS.filter((r) => r.set === set.id).length);
-    for (const x of sessions.get(set.id)) days.add(dayKey(x.at));
+  const svg = svgEl('svg', { viewBox: '0 0 400 440', class: 'bouquet', role: 'img' });
+  svg.appendChild(svgEl('title')).textContent = `${y} 年 ${m + 1} 月的祈禱花束，共 ${N} 朵`;
+  flowerDefs(svg, pre);
+
+  // 襯在後面的包裝紙，像扇子一樣張開
+  const top = L.cy - L.ry - (N ? L.fr * 0.6 : 20);
+  svg.appendChild(svgEl('path', {
+    class: 'bq-back',
+    d: `M${TIE.x - 18} ${TIE.y + 8} L${L.cx - L.rx - 26} ${L.cy - L.ry * 0.15}`
+     + ` Q${L.cx} ${top - 40} ${L.cx + L.rx + 26} ${L.cy - L.ry * 0.15} L${TIE.x + 18} ${TIE.y + 8} Z`,
+  }));
+
+  bouquetFlowers = all.map((x, i) => {
+    const rho = Math.sqrt((i + (N === 1 ? 0 : 0.5)) / N);
+    const th = i * 2.39996;                              // 黃金角
+    const j = wobble(i, 9.1) - 0.5;
+    return {
+      ...x, i,
+      key: dayKey(x.at),
+      x: L.cx + (L.rx - L.fr * 0.55) * rho * Math.cos(th),
+      y: L.cy + (L.ry - L.fr * 0.55) * rho * Math.sin(th),
+      r: L.fr * (1 + j * 0.16) * (x.set.id === 'chaplet' ? 0.95 : 1),
+      rot: j * 40,
+    };
+  });
+
+  // 莖：每一朵都收到綁帶那一點
+  const stems = svgEl('g', { class: 'bq-stems' });
+  for (const f of bouquetFlowers) {
+    const mx = f.x * 0.35 + TIE.x * 0.65;
+    stems.appendChild(svgEl('path', {
+      d: `M${f.x.toFixed(1)} ${f.y.toFixed(1)} Q${mx.toFixed(1)} ${(f.y + (TIE.y - f.y) * 0.55).toFixed(1)}`
+       + ` ${(TIE.x + (f.x - TIE.x) * 0.08).toFixed(1)} ${TIE.y}`,
+      'stroke-width': Math.max(1.2, L.fr * 0.07),
+    }));
   }
+  svg.appendChild(stems);
 
-  // 由外層畫到內層，內層的花瓣便疊在外層的根部上，像花一樣層層收攏。
-  // 誦唸的次數由最外層依序點亮，所以唸得越多，花就從外往內開得越滿。
-  const seen = {};
-  const done = {};
-  for (const ring of RINGS) {
-    const layer = seen[ring.set] = (seen[ring.set] || 0);
-    const n = sizes[ring.set][layer];
-    seen[ring.set]++;
-    if (!n) continue;
-    const list = sessions.get(ring.set) || [];
-    const set = SETS.find((x) => x.id === ring.set);
-    const name = set ? (set.short || set.title) : ring.set;
-    const base = done[ring.set] = (done[ring.set] || 0);
-    done[ring.set] += n;
-    const step = 360 / n;
-    // 一層錯開半格，內層的花瓣便落在外層兩片之間，像花一樣交錯
-    const skew = (seen[ring.set] % 2) ? step * 0.5 : 0;
+  // 葉子從花束邊緣探出來
+  const leaves = svgEl('g');
+  const nLeaves = N ? Math.min(8, 3 + Math.round(N / 6)) : 4;
+  const reach = N ? 1 : 0.6;
+  for (let i = 0; i < nLeaves; i++) {
+    const a = ((150 + (i / Math.max(1, nLeaves - 1)) * 240) * Math.PI) / 180;
+    const lx = L.cx + (L.rx + L.fr * 0.1) * reach * Math.cos(a);
+    const ly = L.cy + (L.ry + L.fr * 0.1) * reach * Math.sin(a);
+    const deg = (Math.atan2(ly - L.cy, lx - L.cx) * 180) / Math.PI;
+    drawLeaf(leaves, pre, lx, ly, deg - 10 + (wobble(i, 2.2) - 0.5) * 30,
+             N ? Math.max(0.42, Math.min(0.85, L.fr / 44)) : 0.7);
+  }
+  svg.appendChild(leaves);
 
-    for (let i = 0; i < n; i++) {
-      const at = base + i;                       // 這片是本月的第幾次誦唸
-      // 唸滿一整朵還有剩的話，就再繞一圈，把同一片花瓣點得更深
-      const rounds = list.length > at ? Math.floor((list.length - 1 - at) / total) + 1 : 0;
-      const first = list[at];
-      const key = first ? dayKey(first.at) : '';
+  // 前面的包裝紙與綁帶
+  const fw = 76;
+  svg.appendChild(svgEl('path', {
+    class: 'bq-front',
+    d: `M${TIE.x - fw} ${TIE.y - 30} L${TIE.x + fw} ${TIE.y - 30} L${TIE.x + 24} 436 L${TIE.x - 24} 436 Z`,
+  }));
+  svg.appendChild(svgEl('path', { class: 'bq-fold', d: `M${TIE.x - fw + 8} ${TIE.y - 26} L${TIE.x - 4} 436` }));
+  const bow = svgEl('g', { class: 'bq-bow', transform: `translate(${TIE.x} ${TIE.y + 6})` });
+  for (const d of [
+    'M0 0 C-10 14 -16 30 -22 44 L-12 40 L-8 50 C-4 34 -2 16 0 0 Z',
+    'M0 0 C8 16 12 30 20 42 L10 40 L7 50 C4 32 2 16 0 0 Z',
+  ]) bow.appendChild(svgEl('path', { d, class: 'tail' }));
+  for (const d of [
+    'M0 0 C-14 -16 -40 -16 -38 -2 C-36 10 -14 8 0 0 Z',
+    'M0 0 C14 -16 40 -16 38 -2 C36 10 14 8 0 0 Z',
+  ]) bow.appendChild(svgEl('path', { d, class: 'loop' }));
+  bow.appendChild(svgEl('ellipse', { rx: 7, ry: 6, class: 'knot' }));
+  svg.appendChild(bow);
 
-      const petal = svgEl('path', {
-        d: petalPath((i + 0.5) * step + skew, step * 0.54, ring.r0, ring.r1),
-        class: `petal ${ring.set} tone${ring.tone} ${rounds ? litClass(rounds) : 'empty'}`
-             + `${key && key === todayKey ? ' today' : ''}`,
-        'data-set': ring.set, 'data-nth': at + 1, style: `--i:${i}`,
-      });
-      if (first) {
-        petal.setAttribute('data-day', first.at.getDate());
-        petal.setAttribute('data-key', key);
-      }
-      petal.appendChild(svgEl('title', {})).textContent = first
-        ? `${m + 1} 月 ${first.at.getDate()} 日 · ${name}第 ${at + 1} 次`
-        : `${name}第 ${at + 1} 次 · 還沒唸到`;
-      petal.addEventListener('click', () => readPetal(set, list, at, total, m));
-      svg.appendChild(petal);
+  // 花：上面的在後、下面的在前，才疊得像一束
+  const flowers = svgEl('g');
+  for (const f of [...bouquetFlowers].sort((a, b) => a.y - b.y)) {
+    const outer = svgEl('g', {
+      class: `flower ${f.set.id}`, transform: `translate(${f.x.toFixed(1)} ${f.y.toFixed(1)})`,
+      'data-set': f.set.id, 'data-nth': f.nth, 'data-day': f.at.getDate(), 'data-key': f.key,
+      style: `--i:${f.i}`,
+    });
+    const grow = svgEl('g', { class: 'grow' });           // 開花的動畫只動這一層
+    // 花是照原始大小畫的，畫完才知道要縮多少，再把整朵縮到定位
+    const shape = svgEl('g');
+    const k = drawFlower(f.set.id)(shape, pre, f.r, f.i + 1);
+    shape.setAttribute('transform', `rotate(${f.rot.toFixed(1)}) scale(${k.toFixed(4)})`);
+    grow.appendChild(shape);
+    outer.appendChild(grow);
+    outer.appendChild(svgEl('circle', { class: 'halo', r: (f.r * 1.1).toFixed(1) }));
+    flowers.appendChild(outer);
+  }
+  svg.appendChild(flowers);
+
+  // 花很小，點不準是常態。輕觸時找離手指最近的那一朵，而不是非得點在花瓣上。
+  svg.addEventListener('click', (e) => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
+    let best = null;
+    let bestD = Infinity;
+    for (const f of bouquetFlowers) {
+      const d = Math.hypot(f.x - pt.x, f.y - pt.y);
+      if (d < bestD) { bestD = d; best = f; }
     }
-  }
-
-  // 中心
-  const sum = SETS.reduce((a, set) => a + sessions.get(set.id).length, 0);
-  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 38, class: 'rose-core' }));
-  svg.appendChild(svgEl('circle', { cx: 200, cy: 200, r: 31, class: 'rose-core-in' }));
-  const count = svgEl('text', { x: 200, y: 198, class: 'rose-count' });
-  count.textContent = String(sum);
-  svg.appendChild(count);
-  const label = svgEl('text', { x: 200, y: 216, class: 'rose-label' });
-  label.textContent = sum ? `${days.size} 天` : '尚未誦唸';
-  svg.appendChild(label);
+    if (best && bestD <= Math.max(best.r * 1.35, 26)) readFlower(best, m);
+    else clearFlower();
+  });
 
   const rose = $('#rose');
   rose.textContent = '';
   rose.appendChild(svg);
 
-  const parts = SETS.filter((set) => sessions.get(set.id).length)
-    .map((set) => `${set.short || set.title} ${sessions.get(set.id).length} 次`);
-  $('#rose-read').textContent = sum
-    ? `本月 ${parts.join(' · ')}，共 ${days.size} 天。輕觸花瓣看那一次。`
-    : '這個月還沒有紀錄。';
+  // 花束下面的一行：兩種花各幾朵、共幾天
+  const legend = $('#bq-legend');
+  legend.textContent = '';
+  for (const set of SETS) {
+    const key = el('span', 'bq-key');
+    key.dataset.set = set.id;
+    key.appendChild(flowerIcon(set.id));
+    key.appendChild(document.createTextNode(`${set.short || set.title} `));
+    key.appendChild(el('b', null, String(bySet.get(set.id).length)));
+    legend.appendChild(key);
+  }
+  legend.appendChild(el('span', 'bq-days', `${days.size} 天`));
+
+  $('#rose-read').textContent = N ? '輕觸一朵花，看是哪一天唸的。' : '這個月還沒有紀錄。';
 }
 
-// span 是一朵花裡這套經文的花瓣總數；唸滿一朵之後，第 at+span 次會回到同一片。
-function readPetal(set, list, at, span, m) {
-  const rose = $('#rose');
-  for (const el of rose.querySelectorAll('.petal.picked')) el.classList.remove('picked');
-  const name = set ? (set.short || set.title) : '';
+function clearFlower() {
+  const svg = $('#rose .bouquet');
+  if (!svg) return;
+  for (const n of svg.querySelectorAll('.bq-veil, .bq-lifted')) n.remove();
+  $('#rose-read').textContent = bouquetFlowers.length ? '輕觸一朵花，看是哪一天唸的。' : '這個月還沒有紀錄。';
+}
 
-  const mine = [];
-  for (let k = at; k < list.length; k += span) mine.push(list[k]);
-  if (!mine.length) {
-    for (const el of rose.querySelectorAll(`.petal[data-set="${set.id}"][data-nth="${at + 1}"]`)) {
-      el.classList.add('picked');
-    }
-    $('#rose-read').textContent = `${name}第 ${at + 1} 次 · 還沒唸到`;
-    return;
+// 點到一朵：說出是哪一天、幾點、第幾次，並把同一天的花都標出來。
+// 其餘的不是調透明——那樣後面的莖會穿過花瓣露出來——而是在整束上面蓋一層
+// 薄紗，再把那天的幾朵複製一份放到紗的上面。
+function readFlower(f, m) {
+  const svg = $('#rose .bouquet');
+  clearFlower();
+  svg.appendChild(svgEl('rect', { class: 'bq-veil', x: 0, y: 0, width: 400, height: 440 }));
+  const lifted = svgEl('g', { class: 'bq-lifted' });
+  for (const node of svg.querySelectorAll('.flower')) {
+    if (node.dataset.key !== f.key) continue;
+    const copy = node.cloneNode(true);
+    copy.classList.add('picked');
+    copy.style.setProperty('--i', 0);                // 立刻開出來，不必排隊
+    lifted.appendChild(copy);
   }
+  svg.appendChild(lifted);
 
-  // 同一天可能唸了好幾次，也可能兩套經文都唸了。把那一天的花瓣全標起來，
-  // 才看得出當天的全貌——它們不在同一個角度。
-  const key = dayKey(mine[0].at);
-  for (const el of rose.querySelectorAll(`.petal[data-key="${key}"]`)) el.classList.add('picked');
-
-  // 奧蹟與意向分開收攏，各自去重，免得「痛苦五端」因為其中一次寫了意向而重複出現。
-  const mysteries = [...new Set(mine.map((x) =>
-    (x.r.mystery && set ? ((set.mysterySets || []).find((s) => s.id === x.r.mystery) || {}).name : '')
-  ).filter(Boolean))];
-  const notes = [...new Set(mine.map((x) => x.r.note).filter(Boolean))];
-
-  const when = [...new Set(mine.map((x) => `${m + 1} 月 ${x.at.getDate()} 日`))].join('、');
-  const head = `${when} · ${name}第 ${mine.map((x) => list.indexOf(x) + 1).join('、')} 次`;
-  const detail = [mysteries.join('、'), notes.join('、')].filter(Boolean).join(' · ');
-  $('#rose-read').textContent = detail ? `${head} — ${detail}` : head;
+  const set = f.set;
+  const name = set.short || set.title;
+  const sameDay = bouquetFlowers.filter((x) => x.key === f.key).length;
+  const mystery = f.rec.mystery && set.mysterySets
+    ? (set.mysterySets.find((x) => x.id === f.rec.mystery) || {}).name : '';
+  const parts = [`${m + 1} 月 ${f.at.getDate()} 日 ${fmtTime(f.at)}`, `${name}第 ${f.nth} 次`];
+  if (sameDay > 1) parts.push(`當天共 ${sameDay} 朵`);
+  const detail = [mystery, f.rec.note].filter(Boolean).join('、');
+  $('#rose-read').textContent = parts.join(' · ') + (detail ? ` — ${detail}` : '');
 }
 
 function renderHistory() {
@@ -1161,7 +1294,7 @@ function renderHistory() {
     [days.size, '誦念天數'],
     [records.length, '累計次數'],
   ]);
-  renderRose();
+  renderBouquet();
   renderCalendar(days);
   renderLog();
 }
@@ -1232,7 +1365,7 @@ function renderLog() {
   for (const r of recent) list.appendChild(logRow(r, renderHistory));
 }
 
-const renderMonth = () => { renderRose(); renderCalendar(dayCounts()); };
+const renderMonth = () => { renderBouquet(); renderCalendar(dayCounts()); };
 
 /* ── 設定 ─────────────────────────────────────────── */
 function applySettings() {
@@ -1658,7 +1791,7 @@ function bind() {
     $('#cal').hidden = !showCal;
     $('#rose').hidden = showCal;
     $('#rose-read').hidden = showCal;
-    $('#cal-toggle').textContent = showCal ? '看玫瑰窗' : '看月曆';
+    $('#cal-toggle').textContent = showCal ? '看花束' : '看月曆';
   });
 
   $('#set-mode').addEventListener('change', (e) => { settings.mode = e.target.value; saveSettings(); });

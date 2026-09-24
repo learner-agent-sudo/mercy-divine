@@ -13,9 +13,9 @@
   --shadow:  0 1px 2px rgba(43, 33, 27, .06), 0 8px 24px rgba(43, 33, 27, .07);
   --fs: 1;
   --radius: 0.9rem;
-  --ink-off: 14%;   /* 還沒唸到的花瓣 */
-  --ink-1:   58%;   /* 唸過一輪 */
-  --ink-2:   80%;   /* 兩輪 */
+  /* 花束的包裝紙 */
+  --paper-back: #EFE3CB;  --paper-back-line: #D2BE98;
+  --paper-front: #DCC49B; --paper-front-line: #B89C6E; --paper-fold: #CDB184;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC",
           "Noto Sans CJK TC", "Microsoft JhengHei", "Heiti TC", "Hiragino Sans", sans-serif;
 }
@@ -32,11 +32,8 @@
     --blue:    #8FB8D2;
     --gold:    #DCB26B;
     --shadow:  0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
-    /* 花瓣是把顏色和底色相混畫出來的。底色一黑，混出來就發灰，
-       所以深色主題下點亮的比例要拉高，花才亮得起來。 */
-    --ink-off: 26%;
-    --ink-1:   82%;
-    --ink-2:   92%;
+    --paper-back: #4B3D2F;  --paper-back-line: #6A5842;
+    --paper-front: #6E5A43; --paper-front-line: #8C7556; --paper-fold: #5C4A37;
   }
 }
 :root[data-theme="dark"] {
@@ -51,11 +48,8 @@
   --blue:    #8FB8D2;
   --gold:    #DCB26B;
   --shadow:  0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
-  /* 花瓣是把顏色和底色相混畫出來的。底色一黑，混出來就發灰，
-     所以深色主題下點亮的比例要拉高，花才亮得起來。 */
-  --ink-off: 26%;
-  --ink-1:   82%;
-  --ink-2:   92%;
+  --paper-back: #4B3D2F;  --paper-back-line: #6A5842;
+  --paper-front: #6E5A43; --paper-front-line: #8C7556; --paper-fold: #5C4A37;
 }
 
 * { box-sizing: border-box; }
@@ -286,74 +280,50 @@ img { max-width: 100%; height: auto; display: block; }
 .done-meta { text-align: center; color: var(--muted); font-size: .9rem; margin: 0 0 1.5rem; letter-spacing: .04em; }
 
 /* ── 紀錄 ───────────────────────────────────────────── */
-/* ── 祈禱玫瑰窗 ──────────────────────────────────────── */
+/* ── 祈禱花束 ──────────────────────────────────────── */
 .bloom {
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: .9rem; margin-bottom: 1.5rem;
 }
 .rose { margin: 0; }
-.rose-svg { display: block; width: 100%; height: auto; max-height: 64vh; }
+.bouquet { display: block; width: 100%; height: auto; max-height: 62vh; cursor: pointer; }
 
-/* 五層花瓣：外三層是慈悲串經（金→紅），內兩層是玫瑰經（藍）。
-   每一層自己一個顏色，層次才分得開；同一層的花瓣同色，看起來才是一朵花。
-   花瓣用不透明的顏色——內層疊在外層上時要真的蓋住，才像花瓣層層相疊，
-   而不是一片片半透明的玻璃互相透出來。誦唸的次數用濃淡表示。 */
-.petal {
-  fill: color-mix(in srgb, var(--petal, var(--muted)) var(--ink, 14%), var(--bg));
-  stroke: var(--bg);
-  stroke-width: 1.2; stroke-linejoin: round;
-  transition: fill .35s ease, stroke .2s ease;
-  cursor: pointer;
-}
-/* 由外而內漸濃：最外層調淡，越往花心越飽和 */
-.petal.chaplet.tone1 { --petal: var(--gold); }
-.petal.chaplet.tone2 { --petal: color-mix(in srgb, var(--gold) 52%, var(--accent)); }
-.petal.chaplet.tone3 { --petal: var(--accent); }
-.petal.rosary.tone1  { --petal: var(--blue); }
-.petal.rosary.tone2  { --petal: color-mix(in srgb, var(--blue) 74%, var(--fg)); }
+/* 花是一張畫，顏色寫死在圖裡，不跟著主題走；包裝紙才跟主題換色 */
+.bq-back  { fill: var(--paper-back);  stroke: var(--paper-back-line);  stroke-width: 1.5; stroke-linejoin: round; }
+.bq-front { fill: var(--paper-front); stroke: var(--paper-front-line); stroke-width: 1.6; stroke-linejoin: round; }
+.bq-fold  { fill: none; stroke: var(--paper-fold); stroke-width: 1.4; }
+.bq-stems { fill: none; stroke: #55763F; stroke-linecap: round; }
+.bq-bow .tail { fill: #B98A34; stroke: #8A6320; stroke-width: 1.2; }
+.bq-bow .loop { fill: #D2A548; stroke: #8A6320; stroke-width: 1.3; }
+.bq-bow .knot { fill: #C29337; stroke: #8A6320; stroke-width: 1.3; }
 
-/* 還沒唸到的花瓣仍然畫出來，花形才完整；但要壓得夠淡，
-   亮起來的那幾片才是主角。整朵開滿，就是這個月天天都唸了。 */
-.petal.empty  { --ink: var(--ink-off); }
-.petal.lit1   { --ink: var(--ink-1); }
-.petal.lit2   { --ink: var(--ink-2); }
-.petal.lit3   { --ink: 100%; }
+/* 輕觸是整張圖在接（找最近的一朵），每朵花本身不必接觸碰 */
+.flower { pointer-events: none; }
+.flower .halo { fill: none; stroke: var(--gold); stroke-width: 2.4; opacity: 0; }
+/* 看某一天時，整束蓋一層薄紗，那天的幾朵浮在上面 */
+.bq-veil { fill: var(--surface); opacity: .62; pointer-events: none; }
+.bq-lifted { pointer-events: none; }
+.bq-lifted .halo { opacity: 1; }
 
-.petal.today  { stroke: var(--fg); stroke-width: 1.8; stroke-opacity: .5; }
-/* 輕觸某一天時，兩套經文的那一片同時描邊——它們不在同一個角度 */
-.petal.picked { stroke: var(--fg); stroke-width: 2.6; stroke-opacity: 1; }
-.petal:hover, .petal:focus-visible { stroke: var(--fg); stroke-opacity: .75; }
-
-.rose-core    { fill: var(--surface); stroke: var(--line); stroke-width: 2; }
-.rose-core-in { fill: none; stroke: var(--gold); stroke-width: 1.2; opacity: .55; }
-.rose-count {
-  fill: var(--fg); font-size: 2.1rem; font-weight: 600;
-  text-anchor: middle; font-family: var(--sans);
+.bq-legend {
+  display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .3rem 1.1rem;
+  font-size: .82rem; color: var(--muted); margin: .3rem 0 0; letter-spacing: .03em;
 }
-.rose-label {
-  fill: var(--muted); font-size: .8rem; letter-spacing: .1em;
-  text-anchor: middle; font-family: var(--sans);
-}
-.rose-legend {
-  display: flex; justify-content: center; align-items: center; gap: .4rem;
-  font-size: .76rem; color: var(--muted); margin: .2rem 0 .1rem; letter-spacing: .04em;
-}
-.rose-legend .key { width: .62rem; height: .62rem; border-radius: 50%; display: inline-block; }
-.rose-legend .key-petal { background: var(--gold); }
-.rose-legend .key-inner { background: var(--blue); margin-left: .8rem; }
+.bq-key { display: inline-flex; align-items: center; gap: .3rem; }
+.bq-key b { color: var(--fg); font-size: .98rem; font-weight: 600; }
+.bq-icon { width: 1.3rem; height: 1.3rem; flex: none; }
 
 .rose-read {
   text-align: center; color: var(--muted); font-size: .85rem;
-  margin: .2rem 0 .6rem; min-height: 1.4em; line-height: 1.6;
+  margin: .4rem 0 .6rem; min-height: 1.4em; line-height: 1.6;
 }
 .rose-toggle { display: block; margin: 0 auto; }
 
-/* 花瓣依序綻開 */
+/* 一朵一朵依序開出來 */
 @media (prefers-reduced-motion: no-preference) {
-  .petal { animation: petalOpen .5s backwards; animation-delay: calc(var(--i) * 18ms); transform-origin: 200px 200px; }
-  @keyframes petalOpen {
-    from { opacity: 0; transform: scale(.72) rotate(-6deg); }
-  }
+  .flower .grow { animation: flowerIn .45s cubic-bezier(.34, 1.4, .64, 1) backwards;
+                  animation-delay: calc(min(var(--i), 40) * 22ms); }
+  @keyframes flowerIn { from { opacity: 0; transform: scale(.3); } }
 }
 
 .cal { margin-top: .9rem; }
@@ -459,6 +429,6 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) {
   .bead.now { animation: none; }
   .flash.show { animation: none; opacity: 1; }
-  .petal { animation: none; }
+  .flower .grow { animation: none; }
   * { transition: none !important; }
 }
