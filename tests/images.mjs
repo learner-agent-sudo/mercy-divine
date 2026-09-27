@@ -55,7 +55,7 @@ ok('the rosary borrows the chaplet picture where it has none of its own',
 
 const pick = async (slot, file) => {
   await openSlotGroup(page, slot);
-  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
+  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|加圖/ }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
 };
@@ -70,7 +70,11 @@ const stored = await page.evaluate(async () => {
            roles: JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures };
 });
 ok('one picture used twice is stored once', stored.blobs === 2);
-ok('封面 and 誦畢 share the same file', stored.roles['chaplet:home'] === stored.roles['chaplet:done']);
+// 每個位置存的是一串圖檔代號（可以好幾張），同一張圖在兩個位置用的是同一個代號
+ok('each slot keeps a list of its pictures', Array.isArray(stored.roles['chaplet:home'])
+   && stored.roles['chaplet:home'].length === 1);
+ok('封面 and 誦畢 share the same file',
+   JSON.stringify(stored.roles['chaplet:home']) === JSON.stringify(stored.roles['chaplet:done']));
 ok('large photos are scaled down', stored.sizes.every((s) => s < 400 * 1024));
 console.log('        stored sizes:', stored.sizes.map((s) => (s / 1024).toFixed(0) + 'KB').join(', '));
 
@@ -105,7 +109,7 @@ const cover = () => page.evaluate(async () => {
 const pickFor = async (slot, file) => {
   await page.click('[data-go="settings"]');
   await openSlotGroup(page, slot);
-  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
+  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|加圖/ }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
   await page.click('#view-settings [data-go="home"]');

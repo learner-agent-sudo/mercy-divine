@@ -17,13 +17,13 @@ for (const note of ['為家人', '為亡者', '為病人']) {
   await page.click('#done-home');
 }
 
-// 兩個位置指定自訂聖像
+// 兩個位置指定自訂聖像；封面放兩張（輪播），兩張圖都只存一份
 await page.click('[data-go="settings"]');
-for (const [slot, file] of [['chaplet:home', 'pic-mercy.png'], ['chaplet:hail-mary', 'pic-hail.png']]) {
+for (const [slot, files] of [['chaplet:home', ['pic-mercy.png', 'pic-hail.png']], ['chaplet:hail-mary', ['pic-hail.png']]]) {
   await openSlotGroup(page, slot);
-  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|更換/ }).click();
-  await page.setInputFiles('#pic-file', fixture(file));
-  await page.waitForTimeout(500);
+  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|加圖/ }).click();
+  await page.setInputFiles('#pic-file', files.map(fixture));
+  await page.waitForTimeout(700);
 }
 
 const before = await page.evaluate(() => ({
@@ -64,6 +64,8 @@ ok('records restored', after.records.length === before.records.length);
 ok('notes restored', JSON.stringify(after.records.map(r => r.note).sort()) ===
                      JSON.stringify(before.records.map(r => r.note).sort()));
 ok('picture slots restored', JSON.stringify(after.pictures) === JSON.stringify(before.pictures));
+ok('a slot with several pictures keeps all of them, in order',
+   Array.isArray(after.pictures['chaplet:home']) && after.pictures['chaplet:home'].length === 2);
 
 await page.click('#view-settings [data-go="home"]');
 const home = await page.evaluate(async () => {

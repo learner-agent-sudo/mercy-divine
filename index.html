@@ -43,7 +43,7 @@
     </div>
 
     <figure class="plate">
-      <img id="home-image" alt="">
+      <div class="car"><img id="home-image" alt=""></div>
       <figcaption id="home-caption"></figcaption>
     </figure>
 
@@ -93,23 +93,30 @@
       <div id="flash" class="flash" role="status" aria-live="polite" hidden></div>
 
       <div id="guided" class="guided">
-        <figure class="plate plate-sm">
-          <img id="guided-image" alt="">
-        </figure>
-        <div class="step-head">
-          <h2 class="step-name" id="step-name"></h2>
-          <p class="step-count" id="step-count"></p>
+        <!-- 聖像、經名與珠子固定在上方；只有經文在下面捲動 -->
+        <div class="pinned">
+          <figure class="plate plate-sm">
+            <div class="car"><img id="guided-image" alt=""></div>
+          </figure>
+          <div class="step-head">
+            <h2 class="step-name" id="step-name"></h2>
+            <p class="step-count" id="step-count"></p>
+          </div>
+          <div class="beads" id="beads" aria-hidden="true"></div>
         </div>
-        <p class="prayer-text" id="step-text"></p>
-        <div class="beads" id="beads" aria-hidden="true"></div>
-        <p class="tap-hint" id="tap-hint">輕觸畫面任一處繼續</p>
+        <div class="guided-body">
+          <p class="prayer-text" id="step-text"></p>
+          <p class="tap-hint" id="tap-hint">輕觸畫面任一處繼續</p>
+        </div>
       </div>
 
       <!-- 全文模式 -->
       <div id="full" class="full" hidden>
-        <figure class="plate plate-sm">
-          <img id="full-image" alt="">
-        </figure>
+        <div class="pinned">
+          <figure class="plate plate-sm">
+            <div class="car"><img id="full-image" alt=""></div>
+          </figure>
+        </div>
         <div id="full-body"></div>
       </div>
 
@@ -124,7 +131,7 @@
   <!-- ── 完成 ───────────────────────────────────────── -->
   <section id="view-done" class="view" aria-label="誦畢">
     <figure class="plate">
-      <img id="done-image" alt="">
+      <div class="car"><img id="done-image" alt=""></div>
       <figcaption id="done-caption"></figcaption>
     </figure>
     <h2 class="done-title">阿們</h2>
@@ -230,6 +237,10 @@
       </label>
       <p class="sample" id="font-sample">因祂的至悲慘苦難，求您垂憐我們及普世。</p>
       <label class="switch">
+        <input type="checkbox" id="set-full">
+        <span>祈禱時全螢幕</span>
+      </label>
+      <label class="switch">
         <input type="checkbox" id="set-wake">
         <span>祈禱時保持螢幕不熄</span>
       </label>
@@ -254,7 +265,7 @@
       <h2 class="section-title">聖像</h2>
       <p class="hint">從相簿選圖，指定給每一段經文。<b>這裡選的圖只存在目前這一部裝置</b>——手機與電腦各自獨立，不會互通。要讓另一部裝置也看到同幾張圖，可在此匯出備份檔，再到另一部裝置匯入；若要讓所有裝置一律顯示，請把圖片檔放進網站的 images 資料夾。</p>
       <div class="slots" id="slots"></div>
-      <input type="file" id="pic-file" accept="image/*" hidden>
+      <input type="file" id="pic-file" accept="image/*" multiple hidden>
     </div>
 
     <div class="card">

@@ -33,7 +33,7 @@ const store = {
   },
 };
 
-const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, haptic: true,
+const DEFAULTS = { mode: 'guided', font: 100, theme: 'auto', wake: true, fullscreen: true, haptic: true,
                    hapticStrength: 'strong', set: 'chaplet', mystery: null, mysteryDay: null, pictures: {} };
 
 // 聖像可以指定的位置，依經文分組產生。
@@ -70,7 +70,7 @@ function imageSlots() {
 
   // 舊版把封面存成共用的，若還留著就讓它看得見也還原得掉
   const legacy = [['home', '封面（兩種經文共用）'], ['done', '誦畢（共用）']]
-    .filter(([key]) => customFor(key));
+    .filter(([key]) => customsFor(key).length);
   if (legacy.length) groups.push({ title: '共用（舊設定）', slots: legacy });
 
   return groups;
@@ -225,25 +225,27 @@ function buildImageRoles() {
   }
 }
 
-// 自訂聖像排最前面，其後才是 data/images.json 列出的圖片。
+// 一個位置可以有零張、一張或好幾張聖像。自訂的有就只用自訂的；沒有才用
+// data/images.json 列出的。該經文專屬的清單蓋過共用的。
 const rolesFor = (role) => {
   if (isNoPicture(role)) return [];
-  const scoped = SET ? `${SET.id}:${role}` : role;
-  const listed = [...(imageRoles.get(scoped) || []), ...(imageRoles.get(role) || [])];
-  const custom = customFor(settingFor(role));
-  return custom ? [custom, ...listed] : listed;
+  const custom = customsFor(settingFor(role));
+  if (custom.length) return custom;
+  const scoped = imageRoles.get(SET ? `${SET.id}:${role}` : role) || [];
+  return scoped.length ? scoped : imageRoles.get(role) || [];
 };
 
-// 某個位置該顯示哪張圖：自訂 → 該經文指定 → 共用指定 → 首頁那張
+// 設定頁的縮圖：自訂 → 該經文指定 → 共用指定 → 首頁那張
 function slotCandidates(key) {
+  const custom = customsFor(key);
+  if (custom.length) return custom;
   const plain = key.includes(':') ? key.split(':').slice(1).join(':') : key;
-  const list = [
-    customFor(key),
-    ...(imageRoles.get(key) || []),
-    ...(plain !== key ? imageRoles.get(plain) || [] : []),
-  ].filter(Boolean);
-  if (list.length) return list;
-  return key === 'home' ? [] : [customFor('home'), ...(imageRoles.get('home') || [])].filter(Boolean);
+  const listed = imageRoles.get(key) || [];
+  if (listed.length) return listed;
+  if (plain !== key && (imageRoles.get(plain) || []).length) return imageRoles.get(plain);
+  if (key === 'home') return [];
+  const home = customsFor('home');
+  return home.length ? home : imageRoles.get('home') || [];
 }
 
 // 取不到的檔案記下來，同一次使用中不再重試。
@@ -263,6 +265,83 @@ function setImage(imgNode, capNode, candidates) {
     if (capNode) capNode.textContent = list[i].caption || '';
   };
   show(0);
+}
+
+// 聖像的大畫面（首頁、祈禱、誦畢）。沒有圖就把整塊收起來；一張就是一張；
+// 好幾張就做成輪播——可以左右滑，也會每隔幾秒自己換下一張。
+// 第一張沿用原本的 <img>，其餘的接在後面。
+const plateRender = new WeakMap();   // 每塊圖目前的那一輪；圖片的錯誤回報可能晚到，要認得出是哪一輪的
+const plateTimer = new WeakMap();
+const SLIDE_EVERY = 6000;
+
+function showPictures(imgNode, capNode, candidates) {
+  const track = imgNode.parentElement;
+  const plate = imgNode.closest('.plate');
+  const list = [].concat(candidates || []).filter((p) => p && p.file && !failedImages.has(p.file));
+  const token = {};
+  plateRender.set(plate, token);
+  clearInterval(plateTimer.get(plate));
+  for (const n of track.querySelectorAll('.car-extra')) n.remove();
+  const oldDots = plate.querySelector('.car-dots');
+  if (oldDots) oldDots.remove();
+  track.onscroll = null;
+  plate.classList.toggle('multi', list.length > 1);
+
+  if (!list.length) {
+    plate.hidden = true;
+    imgNode.removeAttribute('src');
+    if (capNode) capNode.textContent = '';
+    return;
+  }
+  plate.hidden = false;
+
+  list.forEach((p, i) => {
+    const node = i === 0 ? imgNode : track.appendChild(document.createElement('img'));
+    if (i) node.className = 'car-extra';
+    // 載不到的那張拿掉重排；但若這塊圖已經換成別的內容，就別管了
+    node.onerror = () => {
+      if (plateRender.get(plate) !== token) return;
+      failedImages.add(p.file);
+      showPictures(imgNode, capNode, candidates);
+    };
+    node.onload = scrollCue;
+    node.alt = p.caption || '';
+    node.src = p.file;
+  });
+  track.scrollLeft = 0;
+  if (capNode) capNode.textContent = list[0].caption || '';
+  if (list.length < 2) return;
+
+  const dots = el('div', 'car-dots');
+  const at = () => Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+  const slideTo = (i) => {
+    const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    track.scrollTo({ left: i * track.clientWidth, behavior: calm ? 'auto' : 'smooth' });
+  };
+  list.forEach((_, i) => {
+    const b = el('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', `第 ${i + 1} 張，共 ${list.length} 張`);
+    b.addEventListener('click', (e) => { e.stopPropagation(); slideTo(i); });
+    dots.appendChild(b);
+  });
+  plate.appendChild(dots);
+
+  const mark = () => {
+    const i = at();
+    [...dots.children].forEach((d, j) => d.setAttribute('aria-current', String(j === i)));
+    if (capNode && list[i]) capNode.textContent = list[i].caption || '';
+  };
+  // 看不見的時候不換（在別的畫面、或螢幕關著），免得白白耗電
+  const tick = () => {
+    if (plateRender.get(plate) !== token) return;
+    if (document.hidden || !plate.offsetParent) return;
+    slideTo((at() + 1) % list.length);
+  };
+  const restart = () => { clearInterval(plateTimer.get(plate)); plateTimer.set(plate, setInterval(tick, SLIDE_EVERY)); };
+  track.onscroll = () => { mark(); restart(); };   // 自己滑過之後，從那張重新計時
+  mark();
+  restart();
 }
 
 // 先找指定給這段經文的聖像；沒有就退回首頁那張，畫面才不會忽有忽無。
@@ -299,7 +378,7 @@ let current = 'home';
 function go(name) {
   current = name;
   for (const v of VIEWS) $(`#view-${v}`).classList.toggle('active', v === name);
-  if (name !== 'prayer') releaseWake();
+  if (name !== 'prayer') { releaseWake(); exitFullscreen(); }
   window.scrollTo(0, 0);
   const scroll = $('#prayer-scroll');
   if (name === 'prayer' && scroll) scroll.scrollTop = 0;
@@ -325,6 +404,18 @@ function toast(msg) {
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+/* ── 全螢幕 ────────────────────────────────────────── */
+// 祈禱時把網址列與狀態列都收起來，聖像與經文多出一截空間。
+// 只能在觸碰當下要求，所以在按下「開始」的那一刻呼叫。
+function enterFullscreen() {
+  const root = document.documentElement;
+  if (!settings.fullscreen || document.fullscreenElement || !root.requestFullscreen) return;
+  root.requestFullscreen({ navigationUI: 'hide' }).catch(() => { /* 系統不讓就照常顯示 */ });
+}
+function exitFullscreen() {
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 }
 
 /* ── 螢幕保持 ──────────────────────────────────────── */
@@ -511,6 +602,7 @@ async function resumePocket(saved) {
   buildFullText();
   applyMode();
   go('prayer');
+  enterFullscreen();
   pocketHealth();
 }
 
@@ -612,6 +704,7 @@ function startPrayer(pocket) {
   buildFullText();
   applyMode();
   go('prayer');
+  enterFullscreen();
   pocketHealth();
   if (!pocket) requestWake();   // 口袋模式是要關螢幕的，別把它撐著
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
@@ -631,7 +724,7 @@ function applyMode() {
   else {
     $('#prayer-stage').textContent = MYSTERY ? MYSTERY.name : SET.title;
     $('#progress-fill').style.width = '100%';
-    setImage($('#full-image'), null, imageForRole('home', 0));
+    showPictures($('#full-image'), null, imageForRole('home', 0));
   }
 }
 
@@ -653,7 +746,7 @@ function renderStep() {
   $('#step-name').classList.toggle('mystery', step.kind === 'mystery');
 
   renderBeads(step);
-  setImage($('#guided-image'), null, imageForStep(step));
+  showPictures($('#guided-image'), null, imageForStep(step));
 
   const pct = (session.index / (STEPS.length - 1)) * 100;
   $('#progress-fill').style.width = `${pct}%`;
@@ -806,7 +899,7 @@ function finishPrayer() {
   saveRecords();
   lastRecordId = record.id;
 
-  setImage($('#done-image'), $('#done-caption'), imageForRole('done', records.length));
+  showPictures($('#done-image'), $('#done-caption'), imageForRole('done', records.length));
   $('#done-meta').textContent = `${fmtFullDate(now)}　${fmtTime(now)}　歷時 ${fmtDuration(secs)}`;
   $('#done-note').value = '';
   session = null;
@@ -881,7 +974,7 @@ function renderHome() {
   $('#home-date').textContent = fmtFullDate(today);
   $('.home-title').textContent = SET.title;
   renderPicker();
-  setImage($('#home-image'), $('#home-caption'), imageForRole('home', records.length));
+  showPictures($('#home-image'), $('#home-caption'), imageForRole('home', records.length));
 
   const todayCount = dayCounts().get(dayKey(today)) || 0;
   const state = $('#today-state');
@@ -1380,6 +1473,8 @@ function renderSettings() {
   $('#set-font').value = settings.font;
   $('#set-font-out').textContent = `${settings.font}%`;
   $('#set-theme').value = settings.theme;
+  $('#set-full').checked = settings.fullscreen;
+  $('#set-full').disabled = !document.documentElement.requestFullscreen;
   $('#set-wake').checked = settings.wake;
   $('#set-wake').disabled = !('wakeLock' in navigator);
   $('#set-haptic').checked = settings.haptic;
@@ -1457,7 +1552,7 @@ const pictureUrls = new Map(); // id → object URL
 async function loadPictures() {
   if (!('indexedDB' in window)) return;
   try {
-    const wanted = new Set(Object.values(settings.pictures || {}));
+    const wanted = new Set(Object.keys(settings.pictures || {}).flatMap(customIds));
     for (const id of wanted) {
       if (pictureUrls.has(id)) continue;
       const blob = await getBlob(id);
@@ -1468,17 +1563,36 @@ async function loadPictures() {
   } catch { /* 無法使用 IndexedDB 時就只用內建聖像 */ }
 }
 
-// 每個位置有三種狀態：沒設定（自動遞補）、自訂圖片、明確不用圖片。
+// 每個位置有三種狀態：沒設定（用內建的）、自訂的一張或幾張、明確不用圖片。
+// settings.pictures[位置] 存的是：'none'，或一串圖檔代號（照加入的先後）。
 const NO_PICTURE = 'none';
 const pictureSetting = (key) => (settings.pictures || {})[key];
 
-function customFor(key) {
-  const id = pictureSetting(key);
-  if (!id || id === NO_PICTURE) return null;
-  const url = pictureUrls.get(id);
-  if (!url) return null;
+// 舊版每個位置只存一個代號字串；讀進來時一律整理成陣列，
+// 其他地方就只需要處理一種形狀。
+function tidyPictures(raw) {
+  const out = {};
+  for (const [key, v] of Object.entries(raw || {})) {
+    if (v === NO_PICTURE) out[key] = NO_PICTURE;
+    else if (typeof v === 'string' && v) out[key] = [v];
+    else if (Array.isArray(v)) {
+      const ids = [...new Set(v.filter((x) => typeof x === 'string' && x && x !== NO_PICTURE))];
+      if (ids.length) out[key] = ids;
+    }
+  }
+  return out;
+}
+
+const customIds = (key) => {
+  const v = pictureSetting(key);
+  if (!v || v === NO_PICTURE) return [];
+  return Array.isArray(v) ? v : [v];
+};
+
+function customsFor(key) {
   const listed = imageRoles.get(key) || [];
-  return { file: url, caption: listed.length ? listed[0].caption : '' };
+  const caption = listed.length ? listed[0].caption : '';
+  return customIds(key).map((id) => pictureUrls.get(id)).filter(Boolean).map((file) => ({ file, caption }));
 }
 
 // 較明確的設定蓋過較籠統的：玫瑰經自己設了就照它的，沒設才看共用的。
@@ -1488,22 +1602,43 @@ function settingFor(role) {
 }
 const isNoPicture = (role) => pictureSetting(settingFor(role)) === NO_PICTURE;
 
-async function assignPicture(role, file) {
+// 加進去的圖接在這個位置原有的自訂圖後面；原本是「不用圖片」的話就改成有圖。
+async function addPictures(role, files) {
+  const list = [...(files || [])].filter((f) => f && (!f.type || f.type.startsWith('image/')));
+  if (!list.length) return;
   try {
-    const blob = await shrink(file);
-    const id = await blobId(blob);
-    await putBlob(id, blob);
-    settings.pictures = { ...(settings.pictures || {}), [role]: id };
+    const ids = [...customIds(role)];
+    for (const file of list) {
+      const blob = await shrink(file);
+      const id = await blobId(blob);
+      await putBlob(id, blob);
+      if (!pictureUrls.has(id)) pictureUrls.set(id, URL.createObjectURL(blob));
+      if (!ids.includes(id)) ids.push(id);
+    }
+    settings.pictures = { ...(settings.pictures || {}), [role]: ids };
     saveSettings();
-    if (!pictureUrls.has(id)) pictureUrls.set(id, URL.createObjectURL(blob));
     await loadPictures();
     renderSlots();
     renderHome();
     const slot = imageSlots().flatMap((g) => g.slots).find((sl) => sl[0] === role);
-    toast(`已設定「${slot ? slot[1] : role}」的聖像`);
+    const name = slot ? slot[1] : role;
+    toast(ids.length > 1 ? `「${name}」現在有 ${ids.length} 張，會輪流顯示` : `已設定「${name}」的聖像`);
   } catch {
     toast('無法儲存圖片，可能是空間不足');
   }
+}
+
+// 拿掉其中一張。拿光了就回到預設，而不是變成「不用圖片」。
+async function removePicture(role, id) {
+  const ids = customIds(role).filter((x) => x !== id);
+  const pictures = { ...(settings.pictures || {}) };
+  if (ids.length) pictures[role] = ids;
+  else delete pictures[role];
+  settings.pictures = pictures;
+  saveSettings();
+  await loadPictures();
+  renderSlots();
+  renderHome();
 }
 
 async function setNoPicture(role) {
@@ -1548,7 +1683,8 @@ function renderSlots() {
     const list = el('ul', 'slot-list');
     for (const [key, label] of group.slots) {
       const none = pictureSetting(key) === NO_PICTURE;
-      const custom = customFor(key);
+      const ids = customIds(key).filter((id) => pictureUrls.has(id));
+      const custom = ids.length > 0;
       const li = el('li', 'slot');
       li.dataset.slot = key;
 
@@ -1563,7 +1699,12 @@ function renderSlots() {
 
       const text = el('div', 'slot-text');
       text.appendChild(el('span', 'slot-name', label));
-      text.appendChild(el('span', 'slot-state', none ? '不用圖片' : custom ? '自訂圖片' : '預設'));
+      const builtIn = custom || none ? 0 : slotCandidates(key).length;
+      text.appendChild(el('span', 'slot-state',
+        none ? '不用圖片'
+          : ids.length > 1 ? `自訂 ${ids.length} 張 · 輪流顯示`
+            : custom ? '自訂圖片'
+              : builtIn > 1 ? `預設 ${builtIn} 張 · 輪流顯示` : '預設'));
       li.appendChild(text);
 
       const actions = el('div', 'slot-actions');
@@ -1573,10 +1714,30 @@ function renderSlots() {
         b.addEventListener('click', onClick);
         actions.appendChild(b);
       };
-      button('', custom ? '更換' : '選圖', () => { slotTarget = key; $('#pic-file').click(); });
+      // 「加圖」接在原有的後面；一次可以選好幾張，就成了輪播
+      button('', custom ? '加圖' : '選圖', () => { slotTarget = key; $('#pic-file').click(); });
       if (!none) button('btn-quiet', '不用', () => setNoPicture(key));
       if (none || custom) button('btn-quiet', '還原', () => clearPicture(key));
       li.appendChild(actions);
+
+      // 自訂的每一張都列出來，可以單獨拿掉
+      if (custom) {
+        const strip = el('div', 'slot-pics');
+        ids.forEach((id, i) => {
+          const cell = el('span', 'slot-pic');
+          const img = document.createElement('img');
+          img.src = pictureUrls.get(id);
+          img.alt = `${label} 第 ${i + 1} 張`;
+          cell.appendChild(img);
+          const x = el('button', 'slot-pic-x', '×');
+          x.type = 'button';
+          x.setAttribute('aria-label', `拿掉第 ${i + 1} 張`);
+          x.addEventListener('click', () => removePicture(key, id));
+          cell.appendChild(x);
+          strip.appendChild(cell);
+        });
+        li.appendChild(strip);
+      }
 
       list.appendChild(li);
     }
@@ -1595,11 +1756,11 @@ const blobToDataUrl = (blob) => new Promise((resolve) => {
 
 async function exportRecords() {
   if (!records.length && !Object.keys(settings.pictures || {}).length) { toast('尚無紀錄可匯出'); return; }
-  const payload = { app: 'mercy-divine', version: 2, exportedAt: new Date().toISOString(), records };
+  const payload = { app: 'mercy-divine', version: 3, exportedAt: new Date().toISOString(), records };
 
   // 自訂聖像一併帶走，換手機或清除資料後可完整還原
   const pictures = {};
-  for (const id of new Set(Object.values(settings.pictures || {}))) {
+  for (const id of new Set(Object.keys(settings.pictures || {}).flatMap(customIds))) {
     const blob = await getBlob(id).catch(() => null);
     if (blob) {
       const url = await blobToDataUrl(blob);
@@ -1670,9 +1831,11 @@ function importRecords(file) {
       }
       const known = new Set(allSlotKeys());
       const roles = {};
-      for (const [role, id] of Object.entries(parsed.pictureRoles)) {
-        if (!known.has(role) || typeof id !== 'string') continue;
-        if (id === NO_PICTURE || stored.has(id)) roles[role] = id;
+      for (const [role, v] of Object.entries(tidyPictures(parsed.pictureRoles))) {
+        if (!known.has(role)) continue;
+        if (v === NO_PICTURE) { roles[role] = v; continue; }
+        const ids = v.filter((id) => stored.has(id));
+        if (ids.length) roles[role] = ids;
       }
       settings.pictures = { ...(settings.pictures || {}), ...roles };
       saveSettings();
@@ -1796,6 +1959,7 @@ function bind() {
 
   $('#set-mode').addEventListener('change', (e) => { settings.mode = e.target.value; saveSettings(); });
   $('#set-theme').addEventListener('change', (e) => { settings.theme = e.target.value; saveSettings(); applySettings(); });
+  $('#set-full').addEventListener('change', (e) => { settings.fullscreen = e.target.checked; saveSettings(); });
   $('#set-wake').addEventListener('change', (e) => {
     settings.wake = e.target.checked;
     saveSettings();
@@ -1825,9 +1989,10 @@ function bind() {
   });
   $('#set-font').addEventListener('change', saveSettings);
 
+  // 一次可以選好幾張
   $('#pic-file').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file && slotTarget) assignPicture(slotTarget, file);
+    const files = [...e.target.files];
+    if (files.length && slotTarget) addPictures(slotTarget, files);
     slotTarget = null;
     e.target.value = '';
   });
@@ -1933,6 +2098,9 @@ async function init() {
   document.title = SETS.map((s) => s.short || s.title).join(' · ');
   bind();
   if (INLINE) applyPreviewLimits();
+  // 舊版每個位置只存一張；整理成新的形狀後存回去
+  const tidy = tidyPictures(settings.pictures);
+  if (JSON.stringify(tidy) !== JSON.stringify(settings.pictures || {})) { settings.pictures = tidy; saveSettings(); }
   await loadPictures();
   renderHome();
   go('home');
