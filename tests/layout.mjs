@@ -42,7 +42,7 @@ await page.click('[data-go="settings"]');
 await page.locator('#set-font').fill('170');
 await page.click('#view-settings [data-go="home"]');
 await page.click('#start-btn');
-await page.click('#step-next'); await page.click('#step-next');   // 信經，最長的一段
+for (let i = 0; i < 3; i++) await page.click('#step-next');   // 信經，最長的一段
 await page.waitForTimeout(300);
 ok('the long creed has to scroll', await page.evaluate(() => {
   const s = document.querySelector('#prayer-scroll');
@@ -99,6 +99,7 @@ ok('adding a picture already there does not duplicate it',
 
 await page.click('#view-settings [data-go="home"]');
 await page.click('#start-btn');
+await page.click('#step-next');                               // 聖號經之後就是天主經
 await page.waitForTimeout(500);
 ok('the step shows every picture of its slot', await page.locator('#guided .car img').count() === 2);
 ok('with a dot for each', await page.locator('#guided .car-dots button').count() === 2);
@@ -152,6 +153,7 @@ await page.locator('.slot[data-slot="chaplet:our-father"] button', { hasText: '�
 await page.waitForTimeout(300);
 await page.click('#view-settings [data-go="home"]');
 await page.click('#start-btn');
+await page.click('#step-next');                               // 天主經
 await page.waitForTimeout(300);
 ok('a slot set to no picture hides the picture area',
    await page.evaluate(() => document.querySelector('#guided .plate').hidden));
@@ -163,11 +165,11 @@ await page.waitForSelector('#view-home.active');
 await page.click('[data-go="settings"]');
 const png = `data:image/png;base64,${readFileSync(fixture('pic-hail.png')).toString('base64')}`;
 const oldBackup = { app: 'mercy-divine', version: 2, records: [],
-                    pictures: { oldid1234: png }, pictureRoles: { 'chaplet:jesus-king': 'oldid1234' } };
+                    pictures: { oldid1234: png }, pictureRoles: { 'chaplet:holy-god': 'oldid1234' } };
 await page.setInputFiles('#import-file', { name: 'old.json', mimeType: 'application/json',
                                            buffer: Buffer.from(JSON.stringify(oldBackup)) });
 await page.waitForTimeout(800);
-const imported = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures['chaplet:jesus-king']);
+const imported = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures['chaplet:holy-god']);
 ok('an old backup with one picture per slot still imports', JSON.stringify(imported) === '["oldid1234"]');
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');

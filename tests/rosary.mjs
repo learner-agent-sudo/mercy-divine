@@ -25,11 +25,16 @@ ok('Wednesday and Sunday are glorious',
 ok('Thursday is luminous',
    rosary.mysterySets.find((s) => s.id === 'luminous').days.join() === '4');
 
-ok('the three common prayers point at the chaplet rather than repeating it',
-   ['our-father', 'hail-mary', 'creed'].every((id) => rosary.prayers[id].from === 'chaplet'
-                                                     && !rosary.prayers[id].text));
+ok('the four common prayers point at the chaplet rather than repeating it',
+   ['sign', 'our-father', 'hail-mary', 'creed'].every((id) => rosary.prayers[id].from === 'chaplet'
+                                                             && !rosary.prayers[id].text));
 ok('the prayers only the rosary uses carry their own text',
-   ['sign', 'glory', 'fatima', 'salve'].every((id) => rosary.prayers[id].text.length > 5));
+   ['glory', 'fatima', 'salve'].every((id) => rosary.prayers[id].text.length > 5));
+ok('the chaplet opens and closes with the sign of the cross',
+   chaplet.opening[0].prayer === 'sign' && chaplet.closing.at(-1).prayer === 'sign');
+ok('and no longer has the trust prayer', !chaplet.prayers['jesus-king']
+   && !chaplet.closing.some((x) => x.prayer === 'jesus-king'));
+ok('the rosary closes with it too', rosary.closing.at(-1).prayer === 'sign');
 
 // ── 程式內 ──
 const { browser, page, errors } = await launch();
@@ -49,13 +54,13 @@ ok(`today's mysteries are chosen by weekday (${expected})`, await page.inputValu
 await page.click('#start-btn');
 const walk = [];
 const textOf = {};
-for (let i = 0; i < 78; i++) {
+for (let i = 0; i < 79; i++) {
   const name = await page.textContent('#step-name');
   walk.push([await page.textContent('#prayer-stage'), name, await page.textContent('#step-count')].join('|'));
   if (!(name in textOf)) textOf[name] = await page.textContent('#step-text');
-  if (i < 77) await page.click('#step-next');
+  if (i < 78) await page.click('#step-next');
 }
-ok('the whole rosary is 78 steps', walk.length === 78);
+ok('the whole rosary is 79 steps', walk.length === 79);
 ok('it opens with the sign of the cross then the creed',
    walk[0].includes('聖號經') && walk[1].includes('信經'));
 // 共用是否真的接上，比對畫面上顯示的字與慈悲串經的原文
@@ -66,7 +71,7 @@ ok('the rosary shows the chaplet wording for all three shared prayers',
 ok('and that is the 妳充滿聖寵 Hail Mary, not the older wording',
    textOf['聖母經'].startsWith('萬福瑪利亞，妳充滿聖寵'));
 ok('the rosary-only prayers still show their own text',
-   textOf['聖號經'] === rosary.prayers.sign.text
+   textOf['聖號經'] === chaplet.prayers.sign.text
    && textOf['聖三光榮經'] === rosary.prayers.glory.text);
 ok('three Hail Marys at the start, counted', walk.slice(3, 6).every((w) => w.includes('共 3 珠')));
 ok('the glory be follows them', walk[6].includes('聖三光榮經'));
@@ -77,6 +82,7 @@ ok('then Our Father, ten Hail Marys, Glory, Fatima',
    && walk[18].includes('第 10 珠') && walk[19].includes('聖三光榮經') && walk[20].includes('花地瑪'));
 ok('five decades in all', walk.filter((w) => /第[一二三四五]端/.test(w) && w.includes('共 10 珠')).length === 50);
 ok('it closes with the Salve Regina', walk[77].includes('又聖母經'));
+ok('and then the sign of the cross', walk[78].includes('聖號經'));
 
 const names = rosary.mysterySets.find((s) => s.id === expected).mysteries.map((m) => m.name);
 ok('the mysteries appear in order', names.every((n, i) => walk.some((w) => w.includes(n))));
@@ -110,7 +116,7 @@ await page.click('#prayer-exit');
 await page.locator('#set-picker button', { hasText: '慈悲串經' }).click();
 await page.waitForTimeout(250);
 await page.click('#start-btn');
-ok('the chaplet still opens on its own Our Father', (await page.textContent('#step-name')) === '天主經');
+ok('the chaplet opens with the sign of the cross too', (await page.textContent('#step-name')) === '聖號經');
 ok('and still has no mysteries', !(await page.textContent('#step-count')).match(/\d+:\d+/));
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');

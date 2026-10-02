@@ -20,7 +20,7 @@ ok('haptics are on by default', await page.evaluate(() => JSON.parse(localStorag
 
 // 走完整串經，記錄每一步的節奏
 const seen = [];
-for (let i = 0; i < 64; i++) {
+for (let i = 0; i < 63; i++) {
   const at = await where();
   await clear();
   await page.click('#step-next');
@@ -48,8 +48,8 @@ const ends = seen.filter((s) => /第 10 珠/.test(s.at));
 ok('all five decades end identically', ends.length === 5 && ends.every((s) => s.buzz === decadeEnd));
 
 const closing = seen.filter((s) => s.at.includes('結束') && /共 3 遍/.test(s.at));
-ok('both three-times prayers are counted', closing.length === 6);
-ok('each repetition feels like a bead', closing.slice(0, 5).every((s) => s.buzz === ordinary));
+ok('the three-times closing prayer is counted', closing.length === 3);
+ok('each repetition feels like a bead', closing.every((s) => s.buzz === ordinary));
 
 const finish = seen[seen.length - 1].buzz;
 ok('the very end gives four pulses, the most of any signal', pulses(finish) === 4);
@@ -68,16 +68,16 @@ console.log('        ' + [...new Set(all)].join('  '));
 // 結束禱詞也要看得到珠數
 await page.click('#done-home');
 await page.click('#start-btn');
-for (let i = 0; i < 58; i++) await page.click('#step-next');
-const at58 = await where();
-ok(`closing prayer shows its own beads (${at58.split('|')[1]})`, await page.locator('#beads .bead').count() === 3);
+for (let i = 0; i < 59; i++) await page.click('#step-next');   // 開頭四段加五端，下一步就是結束祈禱
+const at59 = await where();
+ok(`closing prayer shows its own beads (${at59.split('|')[1]})`, await page.locator('#beads .bead').count() === 3);
 ok('and marks which repetition you are on', await page.locator('#beads .bead.now').count() === 1);
 ok('and counts them in words', /第 \d 遍，共 3 遍/.test(await page.textContent('#step-count')));
 
 // 一端唸畢的畫面提示
 await page.click('#prayer-exit');
 await page.click('#start-btn');
-for (let i = 0; i < 13; i++) await page.click('#step-next');   // 第一端第十珠
+for (let i = 0; i < 14; i++) await page.click('#step-next');   // 第一端第十珠
 await page.click('#step-next');                                 // 唸畢，進入第二端
 await page.waitForTimeout(120);
 ok('a decade ending also shows on screen', await page.isVisible('#flash'));

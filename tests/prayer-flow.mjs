@@ -9,7 +9,9 @@ await page.goto(BASE, { waitUntil: 'networkidle' });
 ok('starts with nothing prayed today', (await page.textContent('#today-state')).includes('尚未'));
 
 await page.click('#start-btn');
-ok('opens on 天主經', await page.textContent('#step-name') === '天主經');
+ok('opens with the sign of the cross', await page.textContent('#step-name') === '聖號經');
+await page.click('#step-next');
+ok('then 天主經', await page.textContent('#step-name') === '天主經');
 
 for (let i = 0; i < 3; i++) await page.click('#step-next');
 ok('reaches the first 大珠', await page.textContent('#step-name') === '大珠');
@@ -28,7 +30,7 @@ ok('上一步 goes back', (await page.textContent('#step-count')).includes('第 
 
 await page.click('#mode-toggle');
 await page.waitForSelector('#full:not([hidden])');
-ok('full text has 15 sections', await page.locator('.full-sec').count() === 15);
+ok('full text has 16 sections', await page.locator('.full-sec').count() === 16);
 ok('full text marks 5 decades + a close', await page.locator('.full-divider').count() === 6);
 ok('button becomes 我已誦畢', await page.textContent('#step-next') === '我已誦畢');
 
@@ -68,11 +70,17 @@ ok('accepting returns home without a record',
 // 每一步都要有經文
 await page.click('#start-btn');
 let empty = 0;
-for (let i = 0; i < 64; i++) {
+let lastName = '';
+for (let i = 0; i < 63; i++) {
   if (!(await page.textContent('#step-text')).trim()) empty++;
-  if (i < 63) await page.click('#step-next');
+  lastName = await page.textContent('#step-name');
+  if (i < 62) await page.click('#step-next');
 }
-ok('all 64 steps carry text', empty === 0);
+ok('all 63 steps carry text', empty === 0);
+ok('it ends with the sign of the cross', lastName === '聖號經');
+ok('and the trust prayer is gone', !(await page.evaluate(() => document.body.textContent.includes('信賴禱詞'))));
+await page.click('#step-next');
+ok('one more tap after the last 聖號經 finishes', await page.isVisible('#view-done.active'));
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();

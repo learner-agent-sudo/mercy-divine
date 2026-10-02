@@ -19,10 +19,10 @@ const src = async (sel) => page.evaluate(async (s) => {
 // 每段經文各自的聖像
 await page.click('#start-btn');
 const byPrayer = {};
-for (let i = 0; i < 64; i++) {
+for (let i = 0; i < 63; i++) {
   const key = `${await page.textContent('#prayer-stage')}|${await page.textContent('#step-name')}`;
   if (!byPrayer[key]) byPrayer[key] = (await src('#guided-image')).name;
-  if (i < 63) await page.click('#step-next');
+  if (i < 62) await page.click('#step-next');
 }
 ok('天主經 and 聖母經 use different images', byPrayer['開始|天主經'] !== byPrayer['開始|聖母經']);
 ok('小珠 differs from 大珠', byPrayer['第一端|小珠'] !== byPrayer['第一端|大珠']);

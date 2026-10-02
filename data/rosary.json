@@ -5,8 +5,7 @@
   "note": "奧蹟依星期自動選取，也可在首頁自行更換。days 用 0=星期日、1=星期一，依此類推。prayers 內寫 {\"from\":\"chaplet\"} 表示與該套經文共用同一篇，改一處兩邊同步。",
   "prayers": {
     "sign": {
-      "name": "聖號經",
-      "text": "因父，及子，及聖神之名，亞孟。"
+      "from": "chaplet"
     },
     "creed": {
       "from": "chaplet"
@@ -72,6 +71,9 @@
   "closing": [
     {
       "prayer": "salve"
+    },
+    {
+      "prayer": "sign"
     }
   ],
   "mysterySets": [

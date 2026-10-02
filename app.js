@@ -275,7 +275,7 @@ const plateTimer = new WeakMap();
 const SLIDE_EVERY = 6000;
 
 function showPictures(imgNode, capNode, candidates) {
-  const track = imgNode.parentElement;
+  const track = imgNode.closest('.car');
   const plate = imgNode.closest('.plate');
   const list = [].concat(candidates || []).filter((p) => p && p.file && !failedImages.has(p.file));
   const token = {};
@@ -285,7 +285,6 @@ function showPictures(imgNode, capNode, candidates) {
   const oldDots = plate.querySelector('.car-dots');
   if (oldDots) oldDots.remove();
   track.onscroll = null;
-  plate.classList.toggle('multi', list.length > 1);
 
   if (!list.length) {
     plate.hidden = true;
@@ -296,8 +295,11 @@ function showPictures(imgNode, capNode, candidates) {
   plate.hidden = false;
 
   list.forEach((p, i) => {
-    const node = i === 0 ? imgNode : track.appendChild(document.createElement('img'));
-    if (i) node.className = 'car-extra';
+    let node = imgNode;
+    if (i) {                                    // 第二張起，每張各包一格
+      const slide = track.appendChild(el('div', 'slide car-extra'));
+      node = slide.appendChild(document.createElement('img'));
+    }
     // 載不到的那張拿掉重排；但若這塊圖已經換成別的內容，就別管了
     node.onerror = () => {
       if (plateRender.get(plate) !== token) return;
@@ -325,7 +327,7 @@ function showPictures(imgNode, capNode, candidates) {
     b.addEventListener('click', (e) => { e.stopPropagation(); slideTo(i); });
     dots.appendChild(b);
   });
-  plate.appendChild(dots);
+  track.after(dots);                            // 點點在圖的正下方、說明文字之上
 
   const mark = () => {
     const i = at();
@@ -1310,6 +1312,14 @@ function renderBouquet() {
   }
   svg.appendChild(flowers);
 
+  // 畫布是照一整束滿月的花留的位置。花還少的時候，上面會空出一大片——
+  // 把畫布裁到實際有東西的地方，花束才不會孤零零地縮在卡片底部。
+  const paperTop = 0.5 * (L.cy - L.ry * 0.15) + 0.5 * (top - 40);
+  const flowerTop = Math.min(Infinity, ...bouquetFlowers.map((f) => f.y - f.r * 1.15));
+  const leafTop = L.cy - (L.ry + L.fr * 0.1) * reach - 56;
+  const vbTop = Math.max(0, Math.floor(Math.min(paperTop, flowerTop, leafTop) - 12));
+  svg.setAttribute('viewBox', `0 ${vbTop} 400 ${440 - vbTop}`);
+
   // 花很小，點不準是常態。輕觸時找離手指最近的那一朵，而不是非得點在花瓣上。
   svg.addEventListener('click', (e) => {
     const ctm = svg.getScreenCTM();
@@ -1358,7 +1368,7 @@ function clearFlower() {
 function readFlower(f, m) {
   const svg = $('#rose .bouquet');
   clearFlower();
-  svg.appendChild(svgEl('rect', { class: 'bq-veil', x: 0, y: 0, width: 400, height: 440 }));
+  svg.appendChild(svgEl('rect', { class: 'bq-veil', x: 0, y: 0, width: 400, height: 440 }));   // 蓋過整張畫布，裁過也一樣
   const lifted = svgEl('g', { class: 'bq-lifted' });
   for (const node of svg.querySelectorAll('.flower')) {
     if (node.dataset.key !== f.key) continue;

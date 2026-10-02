@@ -15,7 +15,7 @@ const beadNo = async () => {
 };
 
 // 走到第一端小珠，數字最清楚
-for (let i = 0; i < 4; i++) await page.click('#step-next');
+for (let i = 0; i < 5; i++) await page.click('#step-next');
 const target = await page.locator('#step-text').boundingBox();
 const cx = target.x + target.width / 2, cy = target.y + target.height / 2;
 
@@ -61,7 +61,7 @@ await page.click('[data-go="settings"]');
 await page.locator('#set-font').fill('180');
 await page.click('#view-settings [data-go="home"]');
 await page.click('#start-btn');
-await page.click('#step-next'); await page.click('#step-next');   // 信經，最長的一段
+for (let i = 0; i < 3; i++) await page.click('#step-next');   // 信經，最長的一段
 const scrollable = await page.evaluate(() => {
   const s = document.querySelector('#prayer-scroll');
   return s.scrollHeight > s.clientHeight + 20;
