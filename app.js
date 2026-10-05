@@ -239,10 +239,8 @@ const rolesFor = (role) => {
 function slotCandidates(key) {
   const custom = customsFor(key);
   if (custom.length) return custom;
-  const plain = key.includes(':') ? key.split(':').slice(1).join(':') : key;
-  const listed = imageRoles.get(key) || [];
+  const listed = ownBuiltins(key);
   if (listed.length) return listed;
-  if (plain !== key && (imageRoles.get(plain) || []).length) return imageRoles.get(plain);
   if (key === 'home') return [];
   const home = customsFor('home');
   return home.length ? home : imageRoles.get('home') || [];
@@ -269,21 +267,25 @@ function setImage(imgNode, capNode, candidates) {
 
 // 聖像的大畫面（首頁、祈禱、誦畢）。沒有圖就把整塊收起來；一張就是一張；
 // 好幾張就做成輪播——可以左右滑，也會每隔幾秒自己換下一張。
-// 第一張沿用原本的 <img>，其餘的接在後面。
+// 第一張沿用原本的 <img>，其餘的接在後面。圖的下面有一個「換圖」，
+// 點了可以只看其中一張、回到輪流顯示，或從相簿再加幾張。
 const plateRender = new WeakMap();   // 每塊圖目前的那一輪；圖片的錯誤回報可能晚到，要認得出是哪一輪的
 const plateTimer = new WeakMap();
+const platePick = new WeakMap();     // 每塊圖目前顯示的是哪個位置的哪幾張，「換圖」面板要用
 const SLIDE_EVERY = 6000;
 
 function showPictures(imgNode, capNode, candidates) {
   const track = imgNode.closest('.car');
   const plate = imgNode.closest('.plate');
-  const list = [].concat(candidates || []).filter((p) => p && p.file && !failedImages.has(p.file));
+  const pick = Array.isArray(candidates) || !candidates ? { list: [].concat(candidates || []) } : candidates;
+  const list = pick.list.filter((p) => p && p.file && !failedImages.has(p.file));
   const token = {};
   plateRender.set(plate, token);
+  platePick.set(plate, pick);
   clearInterval(plateTimer.get(plate));
   for (const n of track.querySelectorAll('.car-extra')) n.remove();
-  const oldDots = plate.querySelector('.car-dots');
-  if (oldDots) oldDots.remove();
+  const oldRow = plate.querySelector('.pic-row');
+  if (oldRow) oldRow.remove();
   track.onscroll = null;
 
   if (!list.length) {
@@ -312,6 +314,18 @@ function showPictures(imgNode, capNode, candidates) {
   });
   track.scrollLeft = 0;
   if (capNode) capNode.textContent = list[0].caption || '';
+
+  // 圖的正下方一列：中間是輪播的點點，右邊是「換圖」。說明文字在這一列下面。
+  const row = el('div', 'pic-row');
+  track.after(row);
+  if (pick.own) {
+    const b = el('button', 'pic-pick', '換圖');
+    b.type = 'button';
+    b.setAttribute('aria-label', '換圖或加圖');
+    b.setAttribute('aria-haspopup', 'dialog');
+    b.addEventListener('click', (e) => { e.stopPropagation(); openSheet(plate, b); });
+    row.appendChild(b);
+  }
   if (list.length < 2) return;
 
   const dots = el('div', 'car-dots');
@@ -327,7 +341,7 @@ function showPictures(imgNode, capNode, candidates) {
     b.addEventListener('click', (e) => { e.stopPropagation(); slideTo(i); });
     dots.appendChild(b);
   });
-  track.after(dots);                            // 點點在圖的正下方、說明文字之上
+  row.prepend(dots);
 
   const mark = () => {
     const i = at();
@@ -337,7 +351,7 @@ function showPictures(imgNode, capNode, candidates) {
   // 看不見的時候不換（在別的畫面、或螢幕關著），免得白白耗電
   const tick = () => {
     if (plateRender.get(plate) !== token) return;
-    if (document.hidden || !plate.offsetParent) return;
+    if (document.hidden || !plate.offsetParent || sheetOpen) return;
     slideTo((at() + 1) % list.length);
   };
   const restart = () => { clearInterval(plateTimer.get(plate)); plateTimer.set(plate, setInterval(tick, SLIDE_EVERY)); };
@@ -349,13 +363,21 @@ function showPictures(imgNode, capNode, candidates) {
 // 先找指定給這段經文的聖像；沒有就退回首頁那張，畫面才不會忽有忽無。
 // 依序找：這段經文 → 該端奧蹟 → 封面。任何一層寫了「不用圖片」就到此為止，
 // 不再往下遞補，否則使用者關掉的圖會從別處冒出來。
+// 回傳的不只是圖：own 是這段經文自己的位置（在這裡加圖就加到它），
+// from 是圖實際從哪一層來的；祈禱中點選過某一張，就只顯示那一張。
 function pickFrom(roles, fallbackIndex) {
+  const own = SET ? `${SET.id}:${roles[0]}` : roles[0];
+  const result = (all, from) => {
+    const pin = pinFor(own);
+    const pinned = pin ? all.find((p) => p.key === pin) : null;
+    return { list: pinned ? [pinned] : all, all, own, from, pinned: pinned ? pin : null };
+  };
   for (const role of roles) {
-    if (isNoPicture(role)) return [];
+    if (isNoPicture(role)) return result([], role);
     const found = rolesFor(role);
-    if (found.length) return found;
+    if (found.length) return result(found, role);
   }
-  return IMAGES.length ? [imageAt(fallbackIndex || 0)] : [];
+  return result(IMAGES.length ? [imageAt(fallbackIndex || 0)] : [], null);
 }
 
 function imageForStep(step) {
@@ -373,11 +395,144 @@ function imageForStep(step) {
 const imageForRole = (role, fallbackIndex) =>
   pickFrom(role === 'home' ? ['home'] : [role, 'home'], fallbackIndex);
 
+// 圖片或圖組一換，眼前這個畫面的聖像跟著重畫（其他畫面切過去時自然會重畫）
+function refreshPictures() {
+  if (current === 'home') renderHome();
+  else if (current === 'prayer' && session) {
+    if (session.mode === 'guided') showPictures($('#guided-image'), null, imageForStep(STEPS[session.index]));
+    else showPictures($('#full-image'), null, imageForRole('home', 0));
+  } else if (current === 'done') {
+    showPictures($('#done-image'), $('#done-caption'), imageForRole('done', records.length));
+  }
+}
+
+/* ── 換圖面板 ──────────────────────────────────────── */
+// 從畫面底部升起：這一段的每一張聖像、全部輪流、從相簿加圖，有好幾組時還能換組。
+// 開著的時候佔一格返回紀錄，手機的返回鍵先關掉它，不會直接離開祈禱。
+let sheetOpen = false;
+let sheetPlate = null;
+let sheetOpener = null;
+
+function openSheet(plate, opener) {
+  sheetPlate = plate;
+  sheetOpener = opener || null;
+  sheetOpen = true;
+  renderSheet();
+  $('#pic-sheet').hidden = false;
+  history.pushState({ sheet: true }, '');
+  $('#sheet-close').focus();
+}
+// 關閉一律走返回紀錄，popstate 再真的收起來；這樣返回鍵和 ✕ 是同一條路
+const closeSheet = () => { if (sheetOpen) history.back(); };
+function hideSheet() {
+  sheetOpen = false;
+  sheetPlate = null;
+  $('#pic-sheet').hidden = true;
+  if (sheetOpener && sheetOpener.isConnected) sheetOpener.focus();
+  sheetOpener = null;
+}
+
+const tileThumb = (p) => {
+  const img = document.createElement('img');
+  img.alt = p.caption || '';
+  img.loading = 'lazy';
+  img.src = p.file;
+  return img;
+};
+
+function renderSheet() {
+  const pick = sheetPlate && platePick.get(sheetPlate);
+  if (!pick || !pick.own) return;
+  const own = pick.own;
+  const role = own.includes(':') ? own.split(':').slice(1).join(':') : own;
+  $('#sheet-title').textContent = slotLabel(own);
+
+  // 圖組
+  const groups = groupList();
+  const chips = $('#sheet-groups');
+  chips.textContent = '';
+  chips.hidden = groups.length < 2;
+  for (const g of groups) {
+    const b = el('button', 'chip', g.name);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(g.id === activeGroup()));
+    b.addEventListener('click', () => {
+      if (g.id === activeGroup()) return;
+      settings.group = g.id;
+      saveSettings();
+      refreshPictures();
+      renderSheet();
+      toast(`改用「${g.name}」這一組`);
+    });
+    chips.appendChild(b);
+  }
+
+  // 圖從哪裡來，說清楚，免得在這裡加圖卻以為會改到別處
+  const gid = activeGroup();
+  const notes = [];
+  if (pick.from !== role) {
+    const fromKey = pick.from && SET ? `${SET.id}:${pick.from}` : pick.from;
+    const fromName = fromKey ? slotLabel(fromKey) : fromKey;
+    const where = fromName && fromName !== fromKey ? `「${fromName}」的` : '別處的';
+    notes.push(`這一段還沒有自己的圖，現在借用${where}。在這裡加圖，就成了這一段專用的。`);
+  } else if (gid !== DEFAULT_GROUP && ownSetting(own, gid) === undefined && pick.all.length) {
+    notes.push(`「${groupName(gid)}」還沒有為這一段選圖，現在沿用預設組的。在這裡加圖，就只加進這一組。`);
+  }
+  $('#sheet-note').textContent = notes.join('');
+  $('#sheet-note').hidden = !notes.length;
+
+  const grid = $('#sheet-grid');
+  grid.textContent = '';
+  const tile = (cls, label, onClick, pressed) => {
+    const b = el('button', `tile ${cls}`);
+    b.type = 'button';
+    if (pressed !== undefined) b.setAttribute('aria-pressed', String(pressed));
+    b.setAttribute('aria-label', label);
+    b.addEventListener('click', onClick);
+    grid.appendChild(b);
+    return b;
+  };
+
+  if (pick.all.length > 1) {
+    const all = tile('tile-all', '全部輪流顯示', () => {
+      setPin(own, null);
+      refreshPictures();
+      closeSheet();
+    }, !pick.pinned);
+    all.appendChild(el('span', 'tile-mark', '⟳'));
+    all.appendChild(el('span', 'tile-text', `全部輪流 · ${pick.all.length} 張`));
+  }
+  pick.all.forEach((p, i) => {
+    const chosen = pick.all.length > 1 && pick.pinned === p.key;
+    const t = tile('tile-pic', `只顯示第 ${i + 1} 張${p.caption ? `：${p.caption}` : ''}`, () => {
+      if (pick.all.length > 1) {
+        setPin(own, p.key);
+        refreshPictures();
+        toast('已固定顯示這一張，下次也一樣');
+      }
+      closeSheet();
+    }, chosen);
+    t.appendChild(tileThumb(p));
+    if (chosen) t.appendChild(el('span', 'tile-check', '✓'));
+  });
+  const add = tile('tile-add', '從相簿加圖', () => {
+    slotTarget = own;
+    $('#pic-file').click();
+  });
+  add.appendChild(el('span', 'tile-mark', '＋'));
+  add.appendChild(el('span', 'tile-text', '加圖'));
+
+  $('#sheet-foot').textContent = pick.all.length > 1
+    ? '點一張就固定顯示它，下次也一樣。要拿掉圖片，請到 設定 → 聖像。'
+    : '要拿掉圖片，請到 設定 → 聖像。';
+}
+
 /* ── 畫面切換 ──────────────────────────────────────── */
 const VIEWS = ['home', 'prayer', 'done', 'manual', 'history', 'settings'];
 let current = 'home';
 
 function go(name) {
+  if (sheetOpen) hideSheet();
   current = name;
   for (const v of VIEWS) $(`#view-${v}`).classList.toggle('active', v === name);
   if (name !== 'prayer') { releaseWake(); exitFullscreen(); }
@@ -971,11 +1126,28 @@ function renderPicker() {
   sel.value = MYSTERY ? MYSTERY.id : sets[0].id;
 }
 
+// 有兩組以上的聖像時，開始前可以先選這次用哪一組
+function renderGroupPick() {
+  const groups = groupList();
+  $('#group-pick').hidden = groups.length < 2;
+  if (groups.length < 2) return;
+  const sel = $('#group-select');
+  sel.textContent = '';
+  for (const g of groups) {
+    const o = document.createElement('option');
+    o.value = g.id;
+    o.textContent = g.name;
+    sel.appendChild(o);
+  }
+  sel.value = activeGroup();
+}
+
 function renderHome() {
   const today = new Date();
   $('#home-date').textContent = fmtFullDate(today);
   $('.home-title').textContent = SET.title;
   renderPicker();
+  renderGroupPick();
   showPictures($('#home-image'), $('#home-caption'), imageForRole('home', records.length));
 
   const todayCount = dayCounts().get(dayKey(today)) || 0;
@@ -1562,7 +1734,7 @@ const pictureUrls = new Map(); // id → object URL
 async function loadPictures() {
   if (!('indexedDB' in window)) return;
   try {
-    const wanted = new Set(Object.keys(settings.pictures || {}).flatMap(customIds));
+    const wanted = new Set(allBlobIdsInUse());   // 每一組的都算，切到別組時圖才還在
     for (const id of wanted) {
       if (pictureUrls.has(id)) continue;
       const blob = await getBlob(id);
@@ -1574,9 +1746,37 @@ async function loadPictures() {
 }
 
 // 每個位置有三種狀態：沒設定（用內建的）、自訂的一張或幾張、明確不用圖片。
-// settings.pictures[位置] 存的是：'none'，或一串圖檔代號（照加入的先後）。
+// 存的是：'none'，或一串圖片代號（照加入的先後）。代號是相簿圖檔的雜湊，
+// 或 'builtin:檔名'——指向 images 資料夾裡的內建聖像，加圖時原本那張才留得住。
 const NO_PICTURE = 'none';
-const pictureSetting = (key) => (settings.pictures || {})[key];
+const BUILTIN = 'builtin:';
+
+/* 圖組：可以準備好幾組聖像，開始前或祈禱中切換。預設組的設定沿用原本的
+   settings.pictures（舊資料與舊備份都不必轉換）；其他組放在 settings.groups。
+   某一組沒設定的位置，沿用預設組。 */
+const DEFAULT_GROUP = 'default';
+const groupList = () => [{ id: DEFAULT_GROUP, name: '預設' },
+  ...(settings.groups || []).map((g) => ({ id: g.id, name: g.name }))];
+const activeGroup = () =>
+  ((settings.groups || []).some((g) => g.id === settings.group) ? settings.group : DEFAULT_GROUP);
+const groupName = (gid) => (groupList().find((g) => g.id === gid) || { name: '預設' }).name;
+
+function groupMap(gid) {
+  if (gid === DEFAULT_GROUP) return settings.pictures || {};
+  const g = (settings.groups || []).find((x) => x.id === gid);
+  return (g && g.pictures) || {};
+}
+function writeGroupMap(gid, map) {
+  if (gid === DEFAULT_GROUP) settings.pictures = map;
+  else settings.groups = (settings.groups || []).map((g) => (g.id === gid ? { ...g, pictures: map } : g));
+}
+// 這一組自己對這個位置的設定（沒設就是 undefined）
+const ownSetting = (key, gid = activeGroup()) => groupMap(gid)[key];
+// 實際生效的：這一組沒設，就看預設組
+const pictureSetting = (key, gid = activeGroup()) => {
+  const own = ownSetting(key, gid);
+  return own !== undefined || gid === DEFAULT_GROUP ? own : ownSetting(key, DEFAULT_GROUP);
+};
 
 // 舊版每個位置只存一個代號字串；讀進來時一律整理成陣列，
 // 其他地方就只需要處理一種形狀。
@@ -1593,31 +1793,71 @@ function tidyPictures(raw) {
   return out;
 }
 
-const customIds = (key) => {
-  const v = pictureSetting(key);
+const customIds = (key, gid = activeGroup()) => {
+  const v = pictureSetting(key, gid);
   if (!v || v === NO_PICTURE) return [];
   return Array.isArray(v) ? v : [v];
 };
+const isBlobId = (entry) => !entry.startsWith(BUILTIN);
+const allBlobIdsInUse = () => [DEFAULT_GROUP, ...(settings.groups || []).map((g) => g.id)]
+  .flatMap((gid) => Object.values(groupMap(gid)))
+  .flatMap((v) => (Array.isArray(v) ? v : []))
+  .filter(isBlobId);
 
-function customsFor(key) {
+// 一個代號換成可以顯示的圖。內建的直接用 images 資料夾裡那張；相簿的用存好的檔案。
+function entryPicture(entry, caption) {
+  if (!isBlobId(entry)) return IMAGES.find((im) => im.key === entry) || null;
+  const url = pictureUrls.get(entry);
+  return url ? { file: url, caption, key: entry } : null;
+}
+
+function customsFor(key, gid = activeGroup()) {
   const listed = imageRoles.get(key) || [];
   const caption = listed.length ? listed[0].caption : '';
-  return customIds(key).map((id) => pictureUrls.get(id)).filter(Boolean).map((file) => ({ file, caption }));
+  return customIds(key, gid).map((e) => entryPicture(e, caption)).filter(Boolean);
 }
 
 // 較明確的設定蓋過較籠統的：玫瑰經自己設了就照它的，沒設才看共用的。
-function settingFor(role) {
+function settingFor(role, gid = activeGroup()) {
   const scoped = SET ? `${SET.id}:${role}` : role;
-  return pictureSetting(scoped) !== undefined ? scoped : role;
+  return pictureSetting(scoped, gid) !== undefined ? scoped : role;
 }
 const isNoPicture = (role) => pictureSetting(settingFor(role)) === NO_PICTURE;
 
-// 加進去的圖接在這個位置原有的自訂圖後面；原本是「不用圖片」的話就改成有圖。
-async function addPictures(role, files) {
+// 這個位置自己在 images.json 裡登記的內建聖像（不含借用別處的）
+function ownBuiltins(key) {
+  const listed = imageRoles.get(key) || [];
+  if (listed.length) return listed;
+  const plain = key.includes(':') ? key.split(':').slice(1).join(':') : key;
+  return plain !== key ? imageRoles.get(plain) || [] : [];
+}
+
+const slotLabel = (key) => {
+  const slot = imageSlots().flatMap((g) => g.slots).find((sl) => sl[0] === key);
+  return slot ? slot[1] : key;
+};
+
+// 這個位置現在顯示的那幾張（加圖時接在它們後面）。預設組沒設定時是內建聖像，
+// 或舊版存在共用位置的自訂圖；其他組沒設定時是空的——新的一組從自己的圖開始。
+function shownEntries(key, gid = activeGroup()) {
+  const own = ownSetting(key, gid);
+  if (Array.isArray(own)) return own;
+  if (own !== undefined || gid !== DEFAULT_GROUP) return [];
+  const plain = key.includes(':') ? key.split(':').slice(1).join(':') : key;
+  const legacy = plain !== key ? ownSetting(plain, DEFAULT_GROUP) : undefined;
+  if (Array.isArray(legacy)) return legacy;
+  return ownBuiltins(key).map((im) => im.key);
+}
+const sameList = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+// 加圖：接在這個位置原有的圖後面，原本那張不會不見。
+// 預設組裡原本顯示的是內建聖像的話，先把它記成第一張，再接上新的。
+// 其他組第一次加圖，就是這一組自己的圖，不帶入預設組的。
+async function addPictures(key, files, gid = activeGroup()) {
   const list = [...(files || [])].filter((f) => f && (!f.type || f.type.startsWith('image/')));
   if (!list.length) return;
   try {
-    const ids = [...customIds(role)];
+    const ids = [...shownEntries(key, gid)];
     for (const file of list) {
       const blob = await shrink(file);
       const id = await blobId(blob);
@@ -1625,52 +1865,132 @@ async function addPictures(role, files) {
       if (!pictureUrls.has(id)) pictureUrls.set(id, URL.createObjectURL(blob));
       if (!ids.includes(id)) ids.push(id);
     }
-    settings.pictures = { ...(settings.pictures || {}), [role]: ids };
-    saveSettings();
-    await loadPictures();
-    renderSlots();
-    renderHome();
-    const slot = imageSlots().flatMap((g) => g.slots).find((sl) => sl[0] === role);
-    const name = slot ? slot[1] : role;
+    writeGroupMap(gid, { ...groupMap(gid), [key]: ids });
+    setPin(key, null, gid);   // 剛加的圖要看得到：原本固定只看一張的，改回輪流
+    await afterPictureChange();
+    const name = slotLabel(key) + (gid === DEFAULT_GROUP ? '' : `（${groupName(gid)}）`);
     toast(ids.length > 1 ? `「${name}」現在有 ${ids.length} 張，會輪流顯示` : `已設定「${name}」的聖像`);
   } catch {
     toast('無法儲存圖片，可能是空間不足');
   }
 }
 
-// 拿掉其中一張。拿光了就回到預設，而不是變成「不用圖片」。
-async function removePicture(role, id) {
-  const ids = customIds(role).filter((x) => x !== id);
-  const pictures = { ...(settings.pictures || {}) };
-  if (ids.length) pictures[role] = ids;
-  else delete pictures[role];
-  settings.pictures = pictures;
+// 拿掉其中一張。拿光了就回到預設（其他組則回到沿用預設組），而不是變成「不用圖片」。
+async function removePicture(key, entry, gid = activeGroup()) {
+  const own = ownSetting(key, gid);
+  const ids = (Array.isArray(own) ? own : []).filter((x) => x !== entry);
+  const map = { ...groupMap(gid) };
+  // 剩下的剛好就是內建的那幾張，等於回到預設，就不必再記
+  const backToDefault = gid === DEFAULT_GROUP && sameList(ids, ownBuiltins(key).map((im) => im.key));
+  if (ids.length && !backToDefault) map[key] = ids;
+  else delete map[key];
+  writeGroupMap(gid, map);
   saveSettings();
-  await loadPictures();
-  renderSlots();
-  renderHome();
+  await afterPictureChange();
 }
 
-async function setNoPicture(role) {
-  settings.pictures = { ...(settings.pictures || {}), [role]: NO_PICTURE };
+async function setNoPicture(key, gid = activeGroup()) {
+  writeGroupMap(gid, { ...groupMap(gid), [key]: NO_PICTURE });
   saveSettings();
-  await loadPictures();
-  renderSlots();
-  renderHome();
+  await afterPictureChange();
 }
 
-async function clearPicture(role) {
-  const pictures = { ...(settings.pictures || {}) };
-  delete pictures[role];
-  settings.pictures = pictures;
+async function clearPicture(key, gid = activeGroup()) {
+  const map = { ...groupMap(gid) };
+  delete map[key];
+  writeGroupMap(gid, map);
   saveSettings();
+  await afterPictureChange();
+}
+
+/* 祈禱中點選過的那一張：同一組、同一個位置，下次唸到這裡也固定顯示它。 */
+const pinFor = (slot, gid = activeGroup()) => ((settings.pins || {})[gid] || {})[slot] || null;
+function setPin(slot, key, gid = activeGroup()) {
+  const pins = { ...(settings.pins || {}) };
+  const mine = { ...(pins[gid] || {}) };
+  if (key) mine[slot] = key;
+  else delete mine[slot];
+  pins[gid] = mine;
+  settings.pins = pins;
+  saveSettings();
+}
+
+// 圖片或圖組一有變動，看得見的畫面都要跟著換
+async function afterPictureChange() {
   await loadPictures();
-  renderSlots();
-  renderHome();
+  if (current === 'settings') renderSlots();
+  refreshPictures();
+  if (sheetOpen) renderSheet();
 }
 
 let slotTarget = null;
+
+// 設定頁上方的圖組列：選哪一組，下面的位置就是在設定那一組，祈禱時也用那一組。
+function renderGroupBar() {
+  const groups = groupList();
+  const gid = activeGroup();
+  const sel = $('#group-edit');
+  sel.textContent = '';
+  for (const g of groups) {
+    const o = document.createElement('option');
+    o.value = g.id;
+    o.textContent = g.name;
+    sel.appendChild(o);
+  }
+  sel.value = gid;
+  $('#group-rename').disabled = gid === DEFAULT_GROUP;
+  $('#group-del').disabled = gid === DEFAULT_GROUP;
+  $('#group-new').disabled = groups.length > MAX_GROUPS;
+  $('#group-hint').textContent = gid === DEFAULT_GROUP
+    ? (groups.length > 1
+      ? '現在設定的是預設組。其他組沒選圖的位置，都會沿用這裡的。'
+      : '可以多準備幾組聖像，例如節期用的、家人的照片。開始祈禱前在首頁換組，祈禱中點聖像下面的「換圖」也能換。')
+    : `現在設定的是「${groupName(gid)}」，祈禱時也用這一組。這一組沒選圖的位置，沿用預設組的。`;
+}
+
+const MAX_GROUPS = 20;
+const groupDefaultName = (n) => (n <= 10 ? `第${CN_NUM[n]}組` : `第 ${n} 組`);
+const cleanGroupName = (raw, fallback) => (String(raw || '').trim().slice(0, 20) || fallback);
+
+function newGroup() {
+  const fallback = groupDefaultName(groupList().length + 1);
+  const name = prompt('新圖組的名稱', fallback);
+  if (name === null) return;
+  const id = `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  settings.groups = [...(settings.groups || []), { id, name: cleanGroupName(name, fallback), pictures: {} }];
+  settings.group = id;
+  saveSettings();
+  afterPictureChange();
+  toast(`已新增「${groupName(id)}」，從加圖開始`);
+}
+
+function renameGroup() {
+  const gid = activeGroup();
+  if (gid === DEFAULT_GROUP) return;
+  const name = prompt('圖組的新名稱', groupName(gid));
+  if (name === null) return;
+  settings.groups = settings.groups.map((g) => (g.id === gid ? { ...g, name: cleanGroupName(name, g.name) } : g));
+  saveSettings();
+  renderSlots();
+}
+
+function deleteGroup() {
+  const gid = activeGroup();
+  if (gid === DEFAULT_GROUP) return;
+  if (!confirm(`刪除「${groupName(gid)}」這一組？這一組自己選的圖會一起拿掉，其他組不受影響。`)) return;
+  settings.groups = settings.groups.filter((g) => g.id !== gid);
+  const pins = { ...(settings.pins || {}) };
+  delete pins[gid];
+  settings.pins = pins;
+  settings.group = DEFAULT_GROUP;
+  saveSettings();
+  afterPictureChange();   // 只有那一組用到的圖檔，順便從手機裡清掉
+  toast('已刪除那一組，回到預設組');
+}
+
 function renderSlots() {
+  renderGroupBar();
+  const gid = activeGroup();
   const wrap = $('#slots');
   const wasOpen = new Set(
     [...wrap.querySelectorAll('details')].filter((d) => d.open).map((d) => d.dataset.group)
@@ -1683,7 +2003,7 @@ function renderSlots() {
     box.dataset.group = group.title;
     box.open = wasOpen.has(group.title);
 
-    const set = group.slots.filter(([key]) => pictureSetting(key) !== undefined).length;
+    const set = group.slots.filter(([key]) => ownSetting(key) !== undefined).length;
     const summary = el('summary', 'slot-group');
     summary.appendChild(el('span', 'slot-group-name', group.title));
     summary.appendChild(el('span', 'slot-group-count',
@@ -1692,9 +2012,13 @@ function renderSlots() {
 
     const list = el('ul', 'slot-list');
     for (const [key, label] of group.slots) {
+      const own = ownSetting(key);
       const none = pictureSetting(key) === NO_PICTURE;
-      const ids = customIds(key).filter((id) => pictureUrls.has(id));
-      const custom = ids.length > 0;
+      const inherited = gid !== DEFAULT_GROUP && own === undefined && pictureSetting(key) !== undefined;
+      // 這一組自己的每一張（內建的也算——加圖之後原本那張還留著）
+      const mine = (Array.isArray(own) ? own : [])
+        .map((entry) => ({ entry, pic: entryPicture(entry, '') }))
+        .filter((x) => x.pic);
       const li = el('li', 'slot');
       li.dataset.slot = key;
 
@@ -1709,12 +2033,15 @@ function renderSlots() {
 
       const text = el('div', 'slot-text');
       text.appendChild(el('span', 'slot-name', label));
-      const builtIn = custom || none ? 0 : slotCandidates(key).length;
+      const n = mine.length;
+      const shared = inherited ? customsFor(key).length : 0;
+      const builtIn = n || none || inherited ? 0 : slotCandidates(key).length;
       text.appendChild(el('span', 'slot-state',
-        none ? '不用圖片'
-          : ids.length > 1 ? `自訂 ${ids.length} 張 · 輪流顯示`
-            : custom ? '自訂圖片'
-              : builtIn > 1 ? `預設 ${builtIn} 張 · 輪流顯示` : '預設'));
+        none ? (inherited ? '不用圖片（沿用預設組）' : '不用圖片')
+          : inherited ? (shared > 1 ? `沿用預設組 · ${shared} 張` : '沿用預設組')
+            : n > 1 ? `自訂 ${n} 張 · 輪流顯示`
+              : n ? '自訂圖片'
+                : builtIn > 1 ? `預設 ${builtIn} 張 · 輪流顯示` : '預設'));
       li.appendChild(text);
 
       const actions = el('div', 'slot-actions');
@@ -1725,24 +2052,24 @@ function renderSlots() {
         actions.appendChild(b);
       };
       // 「加圖」接在原有的後面；一次可以選好幾張，就成了輪播
-      button('', custom ? '加圖' : '選圖', () => { slotTarget = key; $('#pic-file').click(); });
+      button('', '加圖', () => { slotTarget = key; $('#pic-file').click(); });
       if (!none) button('btn-quiet', '不用', () => setNoPicture(key));
-      if (none || custom) button('btn-quiet', '還原', () => clearPicture(key));
+      if (own !== undefined) button('btn-quiet', '還原', () => clearPicture(key));
       li.appendChild(actions);
 
-      // 自訂的每一張都列出來，可以單獨拿掉
-      if (custom) {
+      // 這一組自己的每一張都列出來，可以單獨拿掉
+      if (n) {
         const strip = el('div', 'slot-pics');
-        ids.forEach((id, i) => {
+        mine.forEach(({ entry, pic }, i) => {
           const cell = el('span', 'slot-pic');
           const img = document.createElement('img');
-          img.src = pictureUrls.get(id);
+          img.src = pic.file;
           img.alt = `${label} 第 ${i + 1} 張`;
           cell.appendChild(img);
           const x = el('button', 'slot-pic-x', '×');
           x.type = 'button';
           x.setAttribute('aria-label', `拿掉第 ${i + 1} 張`);
-          x.addEventListener('click', () => removePicture(key, id));
+          x.addEventListener('click', () => removePicture(key, entry));
           cell.appendChild(x);
           strip.appendChild(cell);
         });
@@ -1765,22 +2092,25 @@ const blobToDataUrl = (blob) => new Promise((resolve) => {
 });
 
 async function exportRecords() {
-  if (!records.length && !Object.keys(settings.pictures || {}).length) { toast('尚無紀錄可匯出'); return; }
-  const payload = { app: 'mercy-divine', version: 3, exportedAt: new Date().toISOString(), records };
+  const hasPictures = Object.keys(settings.pictures || {}).length || (settings.groups || []).length;
+  if (!records.length && !hasPictures) { toast('尚無紀錄可匯出'); return; }
+  const payload = { app: 'mercy-divine', version: 4, exportedAt: new Date().toISOString(), records };
 
-  // 自訂聖像一併帶走，換手機或清除資料後可完整還原
+  // 自訂聖像一併帶走（每一組的都帶），換手機或清除資料後可完整還原
   const pictures = {};
-  for (const id of new Set(Object.keys(settings.pictures || {}).flatMap(customIds))) {
+  for (const id of new Set(allBlobIdsInUse())) {
     const blob = await getBlob(id).catch(() => null);
     if (blob) {
       const url = await blobToDataUrl(blob);
       if (url) pictures[id] = url;
     }
   }
-  if (Object.keys(pictures).length) {
-    payload.pictures = pictures;
-    payload.pictureRoles = settings.pictures;
+  if (Object.keys(pictures).length) payload.pictures = pictures;
+  if (hasPictures) {
+    payload.pictureRoles = settings.pictures || {};
+    if ((settings.groups || []).length) payload.pictureGroups = settings.groups;
   }
+  if (Object.keys(settings.pins || {}).length) payload.picturePins = settings.pins;
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1802,6 +2132,62 @@ const dataUrlToBlob = (url) => {
   if (typeof url !== 'string' || !IMAGE_DATA_URL.test(url)) throw new Error('不是內嵌圖片');
   return fetch(url).then((r) => r.blob());
 };
+
+// 備份裡的聖像設定一律逐項檢查：位置要是這個程式有的、圖要是檔案裡確實
+// 存進來的（或內建聖像清單裡真的有的那一張）、組的代號與名稱要像樣。
+// 不認得的就丟掉，不會照單全收。
+const GROUP_ID = /^[\w-]{1,40}$/;
+async function importPictures(parsed) {
+  let shots = 0;
+  const stored = new Set();
+  const incoming = parsed.pictures && typeof parsed.pictures === 'object' ? parsed.pictures : {};
+  for (const [id, url] of Object.entries(incoming)) {
+    if (!id || id.length > 100 || !isBlobId(id)) continue;
+    try { await putBlob(id, await dataUrlToBlob(url)); stored.add(id); shots++; } catch { /* 略過壞掉的圖 */ }
+  }
+  const builtins = new Set(IMAGES.map((im) => im.key));
+  const validEntry = (e) => typeof e === 'string' && (isBlobId(e) ? stored.has(e) : builtins.has(e));
+  const known = new Set(allSlotKeys());
+  const cleanMap = (raw) => {
+    const out = {};
+    for (const [key, v] of Object.entries(tidyPictures(raw && typeof raw === 'object' ? raw : {}))) {
+      if (!known.has(key)) continue;
+      if (v === NO_PICTURE) { out[key] = v; continue; }
+      const ids = v.filter(validEntry);
+      if (ids.length) out[key] = ids;
+    }
+    return out;
+  };
+
+  settings.pictures = { ...(settings.pictures || {}), ...cleanMap(parsed.pictureRoles) };
+
+  // 同一個代號的組合併（後來的蓋過），新的組接在後面，總數有上限
+  const groups = [...(settings.groups || [])];
+  for (const g of Array.isArray(parsed.pictureGroups) ? parsed.pictureGroups : []) {
+    if (!g || typeof g.id !== 'string' || !GROUP_ID.test(g.id) || g.id === DEFAULT_GROUP) continue;
+    const pictures = cleanMap(g.pictures);
+    const at = groups.findIndex((x) => x.id === g.id);
+    if (at >= 0) {
+      groups[at] = { ...groups[at], name: cleanGroupName(g.name, groups[at].name),
+                     pictures: { ...(groups[at].pictures || {}), ...pictures } };
+    } else if (groups.length < MAX_GROUPS) {
+      groups.push({ id: g.id, name: cleanGroupName(g.name, groupDefaultName(groups.length + 2)), pictures });
+    }
+  }
+  settings.groups = groups;
+
+  const pinsIn = parsed.picturePins && typeof parsed.picturePins === 'object' ? parsed.picturePins : {};
+  const pins = { ...(settings.pins || {}) };
+  for (const gid of [DEFAULT_GROUP, ...groups.map((g) => g.id)]) {
+    const mine = pinsIn[gid];
+    if (!mine || typeof mine !== 'object') continue;
+    for (const [slot, entry] of Object.entries(mine)) {
+      if (known.has(slot) && validEntry(entry)) pins[gid] = { ...(pins[gid] || {}), [slot]: entry };
+    }
+  }
+  settings.pins = pins;
+  return shots;
+}
 
 function importRecords(file) {
   const reader = new FileReader();
@@ -1833,21 +2219,8 @@ function importRecords(file) {
 
     let shots = 0;
     const parsed = JSON.parse(reader.result);
-    if (parsed && parsed.pictures && parsed.pictureRoles) {
-      // 只有確實存進來的圖片才算數，被擋下的網址不應留下對應關係。
-      const stored = new Set();
-      for (const [id, url] of Object.entries(parsed.pictures)) {
-        try { await putBlob(id, await dataUrlToBlob(url)); stored.add(id); shots++; } catch { /* 略過壞掉的圖 */ }
-      }
-      const known = new Set(allSlotKeys());
-      const roles = {};
-      for (const [role, v] of Object.entries(tidyPictures(parsed.pictureRoles))) {
-        if (!known.has(role)) continue;
-        if (v === NO_PICTURE) { roles[role] = v; continue; }
-        const ids = v.filter((id) => stored.has(id));
-        if (ids.length) roles[role] = ids;
-      }
-      settings.pictures = { ...(settings.pictures || {}), ...roles };
+    if (parsed && (parsed.pictureRoles || parsed.pictureGroups)) {
+      shots = await importPictures(parsed);
       saveSettings();
       await loadPictures();
       renderSlots();
@@ -2014,8 +2387,26 @@ function bind() {
     e.target.value = '';
   });
 
-  // 手機返回鍵：先退回首頁，在首頁時才真正離開程式。
+  // 圖組：首頁選、設定頁也選，是同一件事
+  const useGroup = (gid) => {
+    settings.group = gid;
+    saveSettings();
+    afterPictureChange();
+  };
+  $('#group-select').addEventListener('change', (e) => useGroup(e.target.value));
+  $('#group-edit').addEventListener('change', (e) => useGroup(e.target.value));
+  $('#group-new').addEventListener('click', newGroup);
+  $('#group-rename').addEventListener('click', renameGroup);
+  $('#group-del').addEventListener('click', deleteGroup);
+
+  // 換圖面板：✕、點面板外面、Esc 都是關
+  $('#sheet-close').addEventListener('click', closeSheet);
+  $('#pic-sheet').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeSheet(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheetOpen) closeSheet(); });
+
+  // 手機返回鍵：先關掉換圖面板，再退回首頁，在首頁時才真正離開程式。
   window.addEventListener('popstate', () => {
+    if (sheetOpen) { hideSheet(); return; }
     if (current === 'prayer') {
       if (!mayLeavePrayer()) { history.pushState({ view: 'prayer' }, ''); return; }
       leavePrayer();
@@ -2097,7 +2488,8 @@ async function init() {
     }
     SET = setById(settings.set);
     MYSTERY = activeMystery(SET);
-    IMAGES = images.images || [];
+    // 每張內建聖像一個固定代號，自訂清單與「固定顯示這張」靠它指認
+    IMAGES = (images.images || []).map((im) => ({ ...im, key: BUILTIN + (im.id || im.file) }));
     buildImageRoles();
     rebuildSteps();
   } catch {
@@ -2111,6 +2503,7 @@ async function init() {
   // 舊版每個位置只存一張；整理成新的形狀後存回去
   const tidy = tidyPictures(settings.pictures);
   if (JSON.stringify(tidy) !== JSON.stringify(settings.pictures || {})) { settings.pictures = tidy; saveSettings(); }
+  if (settings.groups && !Array.isArray(settings.groups)) { settings.groups = []; saveSettings(); }
   await loadPictures();
   renderHome();
   go('home');

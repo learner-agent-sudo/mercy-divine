@@ -55,7 +55,7 @@ ok('the rosary borrows the chaplet picture where it has none of its own',
 
 const pick = async (slot, file) => {
   await openSlotGroup(page, slot);
-  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|加圖/ }).click();
+  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: '加圖' }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
 };
@@ -72,20 +72,32 @@ const stored = await page.evaluate(async () => {
 ok('one picture used twice is stored once', stored.blobs === 2);
 // 每個位置存的是一串圖檔代號（可以好幾張），同一張圖在兩個位置用的是同一個代號
 ok('each slot keeps a list of its pictures', Array.isArray(stored.roles['chaplet:home'])
-   && stored.roles['chaplet:home'].length === 1);
+   && stored.roles['chaplet:home'].length === 2);
+ok('adding keeps the built-in picture that was there, first in line',
+   stored.roles['chaplet:home'][0] === 'builtin:images/home.jpg'
+   && stored.roles['chaplet:done'][0] === 'builtin:images/done.jpg');
 ok('封面 and 誦畢 share the same file',
-   JSON.stringify(stored.roles['chaplet:home']) === JSON.stringify(stored.roles['chaplet:done']));
+   stored.roles['chaplet:home'][1] === stored.roles['chaplet:done'][1]);
 ok('large photos are scaled down', stored.sizes.every((s) => s < 400 * 1024));
 console.log('        stored sizes:', stored.sizes.map((s) => (s / 1024).toFixed(0) + 'KB').join(', '));
 
+// 封面現在是輪播：原本那張在前，選的那張接在後面
+const added = (sel) => page.evaluate(async (s) => {
+  const imgs = () => [...document.querySelectorAll(`${s} .car img`)];
+  for (let n = 0; n < 80 && !imgs().some((i) => i.src.startsWith('blob:') && i.naturalWidth); n++) {
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  const i = imgs().find((x) => x.src.startsWith('blob:'));
+  return i ? { blob: true, w: i.naturalWidth, h: i.naturalHeight, n: imgs().length } : { blob: false, n: imgs().length };
+}, sel);
 await page.click('#view-settings [data-go="home"]');
-const home = await src('#home-image');
-ok('chosen picture renders on the home screen', home.blob && home.w > 0);
+const home = await added('#view-home');
+ok('chosen picture renders on the home screen, next to the built-in one', home.blob && home.w > 0 && home.n === 2);
 ok('chosen picture was resized to 1600px', Math.max(home.w, home.h) === 1600);
 
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForSelector('#view-home.active');
-ok('chosen picture survives a reload', (await src('#home-image')).blob);
+ok('chosen picture survives a reload', (await added('#view-home')).blob);
 
 await page.click('[data-go="settings"]');
 await openSlotGroup(page, 'chaplet:home');
@@ -101,15 +113,16 @@ ok('a missing file is retried at most once per page load', repeats.length === 0)
 console.log(`        ${new Set(missed).size} listed file(s) not yet uploaded, ${missed.length} request(s) this page`);
 
 // ── 每套經文各有封面 ──（此時已在首頁）
+// 封面上的每一張，依序
 const cover = () => page.evaluate(async () => {
-  const i = document.querySelector('#home-image');
-  for (let n = 0; n < 60 && !i.naturalWidth; n++) await new Promise((r) => setTimeout(r, 25));
-  return i.src.startsWith('blob:') ? `blob:${i.naturalWidth}x${i.naturalHeight}` : i.src.split('/').pop();
+  const imgs = [...document.querySelectorAll('#view-home .car img')];
+  for (let n = 0; n < 60 && imgs.some((i) => !i.naturalWidth); n++) await new Promise((r) => setTimeout(r, 25));
+  return imgs.map((i) => (i.src.startsWith('blob:') ? `blob:${i.naturalWidth}x${i.naturalHeight}` : i.src.split('/').pop())).join('+');
 });
 const pickFor = async (slot, file) => {
   await page.click('[data-go="settings"]');
   await openSlotGroup(page, slot);
-  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: /選圖|加圖/ }).click();
+  await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: '加圖' }).click();
   await page.setInputFiles('#pic-file', fixture(file));
   await page.waitForTimeout(500);
   await page.click('#view-settings [data-go="home"]');
@@ -153,7 +166,7 @@ ok('there is no single shared cover slot left to confuse things',
 const state = (slot) => page.textContent(`.slot[data-slot="${slot}"] .slot-state`);
 const buttons = (slot) => page.locator(`.slot[data-slot="${slot}"] button`).allTextContents();
 
-ok('a fresh slot offers 選圖 and 不用', (await buttons('rosary:sign')).join() === '選圖,不用');
+ok('a fresh slot offers 加圖 and 不用', (await buttons('rosary:sign')).join() === '加圖,不用');
 await openSlotGroup(page, 'rosary:sign');
 await page.locator('.slot[data-slot="rosary:sign"] button', { hasText: '不用' }).click();
 await page.waitForTimeout(300);
@@ -215,7 +228,7 @@ ok('a restored backup remembers 不用圖片', await state('rosary:sign') === '�
 
 // ── 每一端奧蹟各有各的聖像，一端之內整段都用它 ──（此時已在設定頁）
 await openSlotGroup(page, 'rosary:sorrowful-2');
-await page.locator('.slot[data-slot="rosary:sorrowful-2"] button', { hasText: '選圖' }).click();
+await page.locator('.slot[data-slot="rosary:sorrowful-2"] button', { hasText: '加圖' }).click();
 // 這裡刻意用與玫瑰經封面不同的圖：相同內容的圖片只會存一份，
 // 用同一張就分不出是奧蹟的圖還是退回封面。
 await page.setInputFiles('#pic-file', fixture('pic-mercy.png'));

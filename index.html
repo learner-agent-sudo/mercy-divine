@@ -56,6 +56,11 @@
       <select id="mystery-select" aria-label="選擇奧蹟"></select>
     </div>
 
+    <div class="mystery-pick" id="group-pick" hidden>
+      <span class="mystery-label">聖像圖組</span>
+      <select id="group-select" aria-label="選擇聖像圖組"></select>
+    </div>
+
     <button type="button" id="start-btn" class="btn btn-primary btn-block btn-lg">開始祈禱</button>
     <button type="button" id="pocket-btn" class="btn btn-block">口袋模式（走路時用）</button>
     <button type="button" id="manual-btn" class="btn btn-block">補記一次祈禱</button>
@@ -263,7 +268,19 @@
 
     <div class="card">
       <h2 class="section-title">聖像</h2>
-      <p class="hint">從相簿選圖，指定給每一段經文。<b>這裡選的圖只存在目前這一部裝置</b>——手機與電腦各自獨立，不會互通。要讓另一部裝置也看到同幾張圖，可在此匯出備份檔，再到另一部裝置匯入；若要讓所有裝置一律顯示，請把圖片檔放進網站的 images 資料夾。</p>
+      <p class="hint">從相簿加圖，指定給每一段經文；一個位置放好幾張就會輪流顯示。祈禱中點聖像下面的「換圖」，也能當場選一張或加圖。<b>這裡選的圖只存在目前這一部裝置</b>——手機與電腦各自獨立，不會互通。要讓另一部裝置也看到同幾張圖，可在此匯出備份檔，再到另一部裝置匯入；若要讓所有裝置一律顯示，請把圖片檔放進網站的 images 資料夾。</p>
+      <div class="group-bar">
+        <label class="group-field">
+          <span class="field-label">圖組</span>
+          <select id="group-edit" aria-label="正在設定的圖組"></select>
+        </label>
+        <div class="group-actions">
+          <button type="button" id="group-new" class="btn btn-tiny">新增一組</button>
+          <button type="button" id="group-rename" class="btn btn-tiny btn-quiet">改名</button>
+          <button type="button" id="group-del" class="btn btn-tiny btn-quiet">刪除</button>
+        </div>
+        <p class="hint" id="group-hint"></p>
+      </div>
       <div class="slots" id="slots"></div>
       <input type="file" id="pic-file" accept="image/*" multiple hidden>
     </div>
@@ -305,6 +322,23 @@
   </section>
 
 </main>
+
+<!-- 換圖：點聖像下面的「換圖」升起來。選一張固定顯示、全部輪流、或從相簿加圖。 -->
+<div class="sheet" id="pic-sheet" hidden>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <header class="sheet-head">
+      <div>
+        <p class="sheet-kicker">換圖</p>
+        <h2 class="sheet-title" id="sheet-title"></h2>
+      </div>
+      <button type="button" id="sheet-close" class="icon-btn" aria-label="關閉">✕</button>
+    </header>
+    <div class="sheet-groups" id="sheet-groups" role="group" aria-label="聖像圖組" hidden></div>
+    <p class="sheet-note" id="sheet-note" hidden></p>
+    <div class="sheet-grid" id="sheet-grid"></div>
+    <p class="sheet-foot" id="sheet-foot"></p>
+  </div>
+</div>
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 

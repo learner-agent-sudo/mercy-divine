@@ -84,25 +84,28 @@ await page.waitForSelector('#view-home.active');
 await page.click('[data-go="settings"]');
 await page.check('#set-full');
 await openSlotGroup(page, 'chaplet:our-father');
-await page.locator('.slot[data-slot="chaplet:our-father"] button', { hasText: '選圖' }).click();
+await page.locator('.slot[data-slot="chaplet:our-father"] button', { hasText: '加圖' }).click();
 await page.setInputFiles('#pic-file', [fixture('pic-mercy.png'), fixture('pic-hail.png')]);
 await page.waitForTimeout(800);
-ok('several pictures can be chosen at once',
-   (await page.textContent('.slot[data-slot="chaplet:our-father"] .slot-state')).includes('自訂 2 張'));
+ok('several pictures can be added at once, after the one already there',
+   (await page.textContent('.slot[data-slot="chaplet:our-father"] .slot-state')).includes('自訂 3 張'));
 ok('each is listed so it can be taken out on its own',
-   await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic').count() === 2);
+   await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic').count() === 3);
+ok('the built-in picture is kept, first in line',
+   (await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic img').first().getAttribute('src'))
+     .endsWith('our-father.jpg'));
 await page.locator('.slot[data-slot="chaplet:our-father"] button', { hasText: '加圖' }).click();
 await page.setInputFiles('#pic-file', fixture('pic-mercy.png'));
 await page.waitForTimeout(500);
 ok('adding a picture already there does not duplicate it',
-   await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic').count() === 2);
+   await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic').count() === 3);
 
 await page.click('#view-settings [data-go="home"]');
 await page.click('#start-btn');
 await page.click('#step-next');                               // 聖號經之後就是天主經
 await page.waitForTimeout(500);
-ok('the step shows every picture of its slot', await page.locator('#guided .car img').count() === 2);
-ok('with a dot for each', await page.locator('#guided .car-dots button').count() === 2);
+ok('the step shows every picture of its slot', await page.locator('#guided .car img').count() === 3);
+ok('with a dot for each', await page.locator('#guided .car-dots button').count() === 3);
 const shown = () => page.evaluate(() => {
   const car = document.querySelector('#guided .car');
   return Math.round(car.scrollLeft / car.clientWidth);
@@ -139,14 +142,27 @@ await page.waitForSelector('#view-home.active');
 // ── 拿掉一張、再拿掉最後一張 ──
 await page.click('[data-go="settings"]');
 await openSlotGroup(page, 'chaplet:our-father');
+const ofState = () => page.textContent('.slot[data-slot="chaplet:our-father"] .slot-state');
 await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic-x').first().click();
 await page.waitForTimeout(400);
-ok('one picture can be taken out', await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic').count() === 1);
-ok('leaving one', (await page.textContent('.slot[data-slot="chaplet:our-father"] .slot-state')) === '自訂圖片');
+ok('one picture can be taken out — the built-in one too',
+   await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic').count() === 2
+   && await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic img[src^="blob:"]').count() === 2);
 await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic-x').first().click();
 await page.waitForTimeout(400);
-ok('taking out the last goes back to the default, not to no picture',
-   (await page.textContent('.slot[data-slot="chaplet:our-father"] .slot-state')) === '預設');
+ok('leaving one', (await ofState()) === '自訂圖片');
+await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic-x').first().click();
+await page.waitForTimeout(400);
+ok('taking out the last goes back to the default, not to no picture', (await ofState()) === '預設');
+
+// 加了圖又拿掉，只剩內建那張時，就等於沒改過
+await page.locator('.slot[data-slot="chaplet:our-father"] button', { hasText: '加圖' }).click();
+await page.setInputFiles('#pic-file', fixture('pic-hail.png'));
+await page.waitForTimeout(500);
+await page.locator('.slot[data-slot="chaplet:our-father"] .slot-pic-x').nth(1).click();
+await page.waitForTimeout(400);
+ok('taking the added one back out leaves the slot as it was', (await ofState()) === '預設'
+   && await page.evaluate(() => !('chaplet:our-father' in JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures)));
 
 // ── 不用圖片：整塊收起來 ──
 await page.locator('.slot[data-slot="chaplet:our-father"] button', { hasText: '不用' }).click();

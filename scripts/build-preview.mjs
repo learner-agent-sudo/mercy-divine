@@ -18,7 +18,7 @@ const images = JSON.parse(read('data/images.json'));
 // 圖片改為內嵌，單檔才能離開資料夾獨立運作
 let embedded = 0;
 for (const image of images.images || []) {
-  try { image.file = dataUri(image.file); embedded++; }
+  try { image.id = image.file; image.file = dataUri(image.file); embedded++; }
   catch { image.missing = true; }
 }
 images.images = (images.images || []).filter((i) => !i.missing);

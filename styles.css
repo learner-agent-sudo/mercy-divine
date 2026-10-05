@@ -152,7 +152,21 @@ img { max-width: 100%; height: auto; display: block; }
   box-shadow: 0 1px 2px rgba(43, 33, 27, .08), 0 4px 12px rgba(43, 33, 27, .13);
 }
 
-.car-dots { display: flex; justify-content: center; line-height: 1; margin: -.7rem 0 .1rem; }
+/* 圖的正下方一列：輪播的點點在正中，「換圖」靠右。
+   往上收進圖片陰影留的那段空白，不多佔高度。 */
+.pic-row {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  min-height: 2rem; margin: -.85rem 0 .2rem;
+}
+.car-dots { grid-column: 2; display: flex; justify-content: center; line-height: 1; }
+.pic-pick {
+  grid-column: 3; justify-self: end; position: relative;
+  font: inherit; font-size: .76rem; letter-spacing: .1em; line-height: 1; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: .45rem .8rem; cursor: pointer;
+}
+.pic-pick::after { content: ""; position: absolute; inset: -.45rem -.35rem; }   /* 手指的觸碰範圍比外觀大 */
+.pic-pick:active { transform: scale(.96); }
 .car-dots button {
   width: 1.5rem; height: 1.5rem; padding: 0; border: 0; background: none;
   display: grid; place-items: center; cursor: pointer;
@@ -183,7 +197,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .mystery-pick { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; }
 .mystery-label { font-size: .82rem; color: var(--muted); white-space: nowrap; }
-.mystery-pick select {
+.mystery-pick select, .group-field select {
   font: inherit; flex: 1; color: var(--fg); background: var(--sunken);
   border: 1px solid var(--line); border-radius: .65rem; padding: .6rem .7rem; min-height: 2.9rem;
 }
@@ -452,6 +466,73 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
 .slot-name { font-size: .95rem; }
 .slot-state { font-size: .72rem; color: var(--muted); }
 
+/* 圖組：設定頁上方選「正在設定哪一組」，下面的位置就是那一組的 */
+.group-bar { padding-bottom: .5rem; margin-bottom: .2rem; border-bottom: 1px solid var(--line); }
+.group-field { display: flex; align-items: center; gap: .6rem; }
+.group-field .field-label { margin: 0; white-space: nowrap; }
+.group-actions { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .55rem; }
+.group-bar .hint { margin-bottom: 0; }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn:disabled:active { transform: none; }
+
+/* ── 換圖面板 ────────────────────────────────────────── */
+.sheet {
+  position: fixed; inset: 0; z-index: 45;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(20, 14, 10, .5);
+  animation: sheetFade .18s ease;
+}
+.sheet-panel {
+  width: 100%; max-width: 34rem; max-height: 84dvh; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface); color: var(--fg);
+  border-radius: 1.2rem 1.2rem 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, .2);
+  padding: 1rem var(--gutter) calc(1.2rem + env(safe-area-inset-bottom));
+  animation: sheetUp .22s ease;
+}
+.sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+.sheet-kicker { margin: 0; font-size: .72rem; letter-spacing: .16em; color: var(--muted); }
+.sheet-title { font-size: 1.12rem; letter-spacing: .06em; }
+.sheet-head .icon-btn { margin: -.45rem -.7rem 0 0; }
+.sheet-groups {
+  display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none;
+  margin: .85rem calc(-1 * var(--gutter)) 0; padding: 0 var(--gutter);
+}
+.chip {
+  flex: none; font: inherit; font-size: .85rem; color: var(--muted);
+  background: var(--sunken); border: 1px solid var(--line); border-radius: 999px;
+  padding: .35rem .95rem; min-height: 2.5rem; cursor: pointer;
+}
+.chip[aria-pressed="true"] {
+  color: var(--fg); background: var(--surface); border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.sheet-note {
+  font-size: .8rem; color: var(--muted); line-height: 1.65;
+  margin: .85rem 0 0; padding: .55rem .75rem; background: var(--sunken); border-radius: .65rem;
+}
+.sheet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-top: .95rem; }
+.tile {
+  position: relative; aspect-ratio: 3 / 4; padding: 0; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem;
+  font: inherit; color: var(--fg); cursor: pointer;
+  background: var(--sunken); border: 1px solid var(--line); border-radius: .75rem;
+}
+.tile:active { transform: scale(.98); }
+.tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tile[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+.tile-mark { font-size: 1.6rem; line-height: 1; color: var(--gold); }
+.tile-text { font-size: .78rem; line-height: 1.4; color: var(--muted); letter-spacing: .04em; text-align: center; padding: 0 .35rem; }
+.tile-add { background: transparent; border-style: dashed; border-width: 1.5px; }
+.tile-check {
+  position: absolute; top: .35rem; right: .35rem;
+  width: 1.55rem; height: 1.55rem; border-radius: 50%; display: grid; place-items: center;
+  background: var(--gold); color: #1A0F0D; font-size: .85rem; font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+}
+.sheet-foot { font-size: .75rem; line-height: 1.65; color: var(--muted); margin: .9rem 0 0; }
+@keyframes sheetUp { from { transform: translateY(100%); } }
+@keyframes sheetFade { from { background: transparent; } }
+
 /* 一端唸畢的提示：蓋在經文上方，短暫出現後淡出。 */
 .flash {
   position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
@@ -494,5 +575,6 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
   .bead.now { animation: none; }
   .flash.show { animation: none; opacity: 1; }
   .flower .grow { animation: none; }
+  .sheet, .sheet-panel { animation: none; }
   * { transition: none !important; }
 }
