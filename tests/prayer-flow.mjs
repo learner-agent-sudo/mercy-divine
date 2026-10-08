@@ -36,6 +36,7 @@ ok('button becomes 我已誦畢', await page.textContent('#step-next') === '我�
 
 await page.click('#step-next');
 await page.waitForSelector('#view-done.active');
+ok('the last page is headed 祈禱, not another 阿們', (await page.textContent('#view-done .done-title')) === '祈禱');
 await page.fill('#done-note', '為家人祈禱');
 await page.click('#done-home');
 

@@ -269,12 +269,17 @@ function setImage(imgNode, capNode, candidates) {
 // 好幾張就做成輪播——可以左右滑，也會每隔幾秒自己換下一張。
 // 第一張沿用原本的 <img>，其餘的接在後面。圖的下面有一個「換圖」，
 // 點了可以只看其中一張、回到輪流顯示，或從相簿再加幾張。
+// 同一組圖記得輪到第幾張：下一段經文從下一張接著輪，不是每段都從第一張重來，
+// 否則一遍聖母經只來得及看前兩三張，後面的永遠輪不到。
 const plateRender = new WeakMap();   // 每塊圖目前的那一輪；圖片的錯誤回報可能晚到，要認得出是哪一輪的
 const plateTimer = new WeakMap();
 const platePick = new WeakMap();     // 每塊圖目前顯示的是哪個位置的哪幾張，「換圖」面板要用
+const plateSized = new WeakMap();    // 還沒排版的圖，等它有了寬度再翻到該翻的那張
+const carouselAt = new Map();        // 這組圖 → 上次停在第幾張
 const SLIDE_EVERY = 6000;
 
-function showPictures(imgNode, capNode, candidates) {
+// next：換了一段新的經文，從上次停的下一張開始；否則（重畫同一個畫面）停在原處。
+function showPictures(imgNode, capNode, candidates, next = false) {
   const track = imgNode.closest('.car');
   const plate = imgNode.closest('.plate');
   const pick = Array.isArray(candidates) || !candidates ? { list: [].concat(candidates || []) } : candidates;
@@ -283,6 +288,7 @@ function showPictures(imgNode, capNode, candidates) {
   plateRender.set(plate, token);
   platePick.set(plate, pick);
   clearInterval(plateTimer.get(plate));
+  if (plateSized.get(plate)) plateSized.get(plate).disconnect();
   for (const n of track.querySelectorAll('.car-extra')) n.remove();
   const oldRow = plate.querySelector('.pic-row');
   if (oldRow) oldRow.remove();
@@ -328,6 +334,9 @@ function showPictures(imgNode, capNode, candidates) {
   }
   if (list.length < 2) return;
 
+  const set = list.map((p) => p.key || p.file).join('\n');
+  const seen = carouselAt.get(set);
+  const start = seen == null ? 0 : (seen + (next ? 1 : 0)) % list.length;
   const dots = el('div', 'car-dots');
   const at = () => Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
   const slideTo = (i) => {
@@ -344,7 +353,9 @@ function showPictures(imgNode, capNode, candidates) {
   row.prepend(dots);
 
   const mark = () => {
+    if (!track.clientWidth) return;            // 畫面收著的時候量不到，別記成第一張
     const i = at();
+    carouselAt.set(set, i);
     [...dots.children].forEach((d, j) => d.setAttribute('aria-current', String(j === i)));
     if (capNode && list[i]) capNode.textContent = list[i].caption || '';
   };
@@ -356,7 +367,20 @@ function showPictures(imgNode, capNode, candidates) {
   };
   const restart = () => { clearInterval(plateTimer.get(plate)); plateTimer.set(plate, setInterval(tick, SLIDE_EVERY)); };
   track.onscroll = () => { mark(); restart(); };   // 自己滑過之後，從那張重新計時
-  mark();
+  // 翻到起始那張。祈禱一開始時畫面還沒切過來、量不到寬度，就等它排好版再翻。
+  const place = () => { track.scrollLeft = start * track.clientWidth; mark(); };
+  [...dots.children].forEach((d, j) => d.setAttribute('aria-current', String(j === start)));
+  if (capNode) capNode.textContent = list[start].caption || '';
+  if (track.clientWidth) place();
+  else if (start && window.ResizeObserver) {
+    const ro = new ResizeObserver(() => {
+      if (!track.clientWidth) return;
+      ro.disconnect();
+      if (plateRender.get(plate) === token) place();
+    });
+    plateSized.set(plate, ro);
+    ro.observe(track);
+  }
   restart();
 }
 
@@ -903,7 +927,7 @@ function renderStep() {
   $('#step-name').classList.toggle('mystery', step.kind === 'mystery');
 
   renderBeads(step);
-  showPictures($('#guided-image'), null, imageForStep(step));
+  showPictures($('#guided-image'), null, imageForStep(step), true);
 
   const pct = (session.index / (STEPS.length - 1)) * 100;
   $('#progress-fill').style.width = `${pct}%`;
