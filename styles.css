@@ -215,10 +215,6 @@ img { max-width: 100%; height: auto; display: block; }
 
 .home-nav { display: flex; gap: .5rem; justify-content: center; }
 
-.resume { border-color: var(--gold); }
-.resume .section-title { color: var(--gold); }
-.resume .hint { margin-bottom: .8rem; }
-
 /* ── 祈禱畫面 ────────────────────────────────────────── */
 .bar {
   display: flex; align-items: center; gap: .5rem;
@@ -322,23 +318,6 @@ img { max-width: 100%; height: auto; display: block; }
   border-radius: 999px; padding: .05rem .5rem; letter-spacing: .05em; font-weight: 600;
 }
 .full-divider { text-align: center; color: var(--muted); letter-spacing: .3em; font-size: .8rem; margin: 2.2rem 0; }
-
-.probe { list-style: none; margin: .9rem 0 0; padding: 0; }
-.probe li {
-  display: flex; justify-content: space-between; gap: .8rem;
-  padding: .5rem .1rem; border-bottom: 1px solid var(--line); font-size: .88rem;
-}
-.probe li:last-child { border-bottom: 0; }
-.probe-k { color: var(--muted); white-space: nowrap; }
-.probe-v { text-align: right; }
-
-/* 口袋模式的狀態條。這時螢幕多半是關的，這行是給拿出手機看一眼的人看的。 */
-.pocket-bar {
-  margin: 0; padding: .5rem var(--gutter);
-  background: var(--sunken); border-bottom: 1px solid var(--line);
-  color: var(--gold); font-size: .78rem; letter-spacing: .06em; text-align: center;
-}
-.pocket-bar.warn { background: var(--accent); color: var(--accent-ink); letter-spacing: .02em; }
 
 /* ── 完成 ───────────────────────────────────────────── */
 .done-title { text-align: center; font-size: 2rem; letter-spacing: .35em; color: var(--gold); margin-bottom: .4rem; }
