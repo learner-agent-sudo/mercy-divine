@@ -1,7 +1,7 @@
 // 備份還原：匯出後清空手機資料，再匯入，紀錄與聖像都應完整回來。
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
-import { CHROME, BASE, fixture, launch, openSlotGroup } from './helpers.mjs';
+import { CHROME, BASE, fixture, launch, openSlotGroup, setFiles } from './helpers.mjs';
 
 const { browser, page, errors } = await launch({ acceptDownloads: true });
 let failures = 0;
@@ -23,8 +23,7 @@ await page.click('[data-go="settings"]');
 for (const [slot, files] of [['chaplet:home', ['pic-mercy.png', 'pic-hail.png']], ['chaplet:hail-mary', ['pic-hail.png']]]) {
   await openSlotGroup(page, slot);
   await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: '加圖' }).click();
-  await page.setInputFiles('#pic-file', files.map(fixture));
-  await page.waitForTimeout(700);
+  await setFiles(page, '#pic-file', files.map(fixture));
 }
 
 const before = await page.evaluate(() => ({
@@ -54,8 +53,7 @@ const wiped = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.r
 ok('wipe really emptied it', wiped === 0);
 
 await page.click('[data-go="settings"]');
-await page.setInputFiles('#import-file', path);
-await page.waitForTimeout(1200);
+await setFiles(page, '#import-file', path);
 
 const after = await page.evaluate(() => ({
   records: JSON.parse(localStorage.getItem('mercy.records.v1')),

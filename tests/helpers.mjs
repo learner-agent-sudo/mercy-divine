@@ -1,5 +1,7 @@
 import { chromium } from 'playwright';
-export const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+import { existsSync } from 'node:fs';
+// 雲端環境預裝的 Chromium 版本會換，這個連結總是指向目前那一版；本機沒有就用 Playwright 自己的
+export const CHROME = process.env.CHROME_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 export const BASE = process.env.BASE_URL || 'http://localhost:8765/';
 // 聖像位置很多，預設收起來；要操作某一格得先展開它所在的那一組。
 export const openSlotGroup = (page, slot) => page.evaluate((s) => {
@@ -27,4 +29,22 @@ export async function launch(opts = {}) {
     if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('CONSOLE: ' + m.text());
   });
   return { browser, context, page, errors, autoDialog: (on) => { auto = on; } };
+}
+
+// 加圖、匯入備份都是非同步的（縮圖、寫進 IndexedDB），慢的機器要好幾秒。
+// 等存檔真的變了、而且穩定下來才往下，不靠固定的等待時間。
+export async function setFiles(page, selector, files) {
+  const snap = () => page.evaluate(() =>
+    `${localStorage.getItem('mercy.settings.v1') || ''}|${localStorage.getItem('mercy.records.v1') || ''}`);
+  const before = await snap();
+  await page.setInputFiles(selector, files);
+  const end = Date.now() + 10000;
+  let last = before, since = Date.now();
+  while (Date.now() < end) {
+    await page.waitForTimeout(150);
+    const now = await snap();
+    if (now !== last) { last = now; since = Date.now(); }
+    else if (now !== before && Date.now() - since > 500) break;
+  }
+  await page.waitForTimeout(150);   // 讓畫面跟上
 }

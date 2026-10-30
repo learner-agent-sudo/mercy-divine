@@ -1,7 +1,7 @@
 // 更多聖像：每張聖像下面的「換圖」——祈禱中當場選一張、全部輪流、從相簿加圖；
 // 以及「圖組」——準備好幾組聖像，開始前在首頁選，祈禱中也能換。
 import { readFileSync } from 'node:fs';
-import { BASE, launch, fixture, openSlotGroup } from './helpers.mjs';
+import { BASE, launch, fixture, openSlotGroup, setFiles } from './helpers.mjs';
 const ok = (l, p) => { console.log(`${p ? 'PASS' : 'FAIL ***'}  ${l}`); if (!p) failures++; };
 let failures = 0;
 
@@ -67,8 +67,7 @@ ok('and stays in the prayer, on the same step',
 // ── 從面板加圖 ──
 await page.click('#guided .pic-pick');
 await page.click('#sheet-grid .tile-add');
-await page.setInputFiles('#pic-file', [fixture('pic-mercy.png'), fixture('pic-hail.png')]);
-await page.waitForTimeout(900);
+await setFiles(page, '#pic-file', [fixture('pic-mercy.png'), fixture('pic-hail.png')]);
 ok('pictures added from the sheet show up in it straight away',
    await page.locator('#sheet-grid .tile-pic').count() === 3);
 ok('next to an "all in turn" choice, which is the current one',
@@ -121,8 +120,7 @@ await page.click('#guided .pic-pick');
 await page.waitForTimeout(200);
 ok('a prayer borrowing the cover says so', (await page.textContent('#sheet-note')).includes('借用「封面'));
 await page.click('#sheet-grid .tile-add');
-await page.setInputFiles('#pic-file', fixture('pic-hail.png'));
-await page.waitForTimeout(700);
+await setFiles(page, '#pic-file', fixture('pic-hail.png'));
 const s2 = await settings();
 ok('adding there makes a picture of its own, without the borrowed cover',
    s2.pictures['chaplet:sign'] && s2.pictures['chaplet:sign'].length === 1
@@ -178,8 +176,7 @@ ok('no slots are counted as set in a fresh group',
 
 await openSlotGroup(page, 'chaplet:home');
 await page.locator('.slot[data-slot="chaplet:home"] button', { hasText: '加圖' }).click();
-await page.setInputFiles('#pic-file', await paint('#3f6c88'));
-await page.waitForTimeout(700);
+await setFiles(page, '#pic-file', await paint('#3f6c88'));
 ok('a new group starts with just its own picture', (await state('chaplet:home')) === '自訂圖片'
    && await page.locator('.slot[data-slot="chaplet:home"] .slot-pic').count() === 1);
 ok('the default group is left alone', !('chaplet:home' in (await settings()).pictures));
@@ -257,8 +254,7 @@ await page.evaluate(async () => {
 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.click('[data-go="settings"]');
-await page.setInputFiles('#import-file', backupPath);
-await page.waitForTimeout(1200);
+await setFiles(page, '#import-file', backupPath);
 const s5 = await settings();
 ok('restoring brings the group back with its name', s5.groups && s5.groups[0].id === advent && s5.groups[0].name === '家人的照片');
 ok('with its own pictures', JSON.stringify(s5.groups[0].pictures) === JSON.stringify(backup.pictureGroups[0].pictures));
@@ -280,8 +276,7 @@ const hostile = {
   ],
   picturePins: { 'ok-group': { 'chaplet:done': 'http://198.51.100.7/z.png', 'chaplet:home': 'good1' }, nobody: { 'chaplet:home': 'good1' } },
 };
-await page.setInputFiles('#import-file', { name: 'h.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(hostile)) });
-await page.waitForTimeout(1200);
+await setFiles(page, '#import-file', { name: 'h.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(hostile)) });
 const s6 = await settings();
 const okGroup = (s6.groups || []).find((g) => g.id === 'ok-group');
 ok('no request leaves the phone', outbound.length === 0);

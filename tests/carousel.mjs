@@ -1,5 +1,5 @@
 // 一段經文放好幾張聖像時，下一段從下一張接著輪，不是每段都從第一張重來。
-import { BASE, launch, openSlotGroup } from './helpers.mjs';
+import { BASE, launch, openSlotGroup, setFiles } from './helpers.mjs';
 const ok = (l, p) => { console.log(`${p ? 'PASS' : 'FAIL ***'}  ${l}`); if (!p) failures++; };
 let failures = 0;
 
@@ -18,8 +18,7 @@ const paint = async (color) => ({ name: `${color.slice(1)}.png`, mimeType: 'imag
 const add = async (slot, colors) => {
   await openSlotGroup(page, slot);
   await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: '加圖' }).click();
-  await page.setInputFiles('#pic-file', await Promise.all(colors.map(paint)));
-  await page.waitForTimeout(900);
+  await setFiles(page, '#pic-file', await Promise.all(colors.map(paint)));
 };
 
 await page.click('[data-go="settings"]');

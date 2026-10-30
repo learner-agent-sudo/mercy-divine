@@ -1,5 +1,5 @@
 // 聖像：依經文切換、缺檔遞補、從相簿選圖、去重、縮圖、還原。
-import { BASE, fixture, launch, openSlotGroup } from './helpers.mjs';
+import { BASE, fixture, launch, openSlotGroup, setFiles } from './helpers.mjs';
 const ok = (l, p) => { console.log(`${p ? 'PASS' : 'FAIL ***'}  ${l}`); if (!p) failures++; };
 let failures = 0;
 
@@ -56,8 +56,7 @@ ok('the rosary borrows the chaplet picture where it has none of its own',
 const pick = async (slot, file) => {
   await openSlotGroup(page, slot);
   await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: '加圖' }).click();
-  await page.setInputFiles('#pic-file', fixture(file));
-  await page.waitForTimeout(500);
+  await setFiles(page, '#pic-file', fixture(file));
 };
 await pick('chaplet:home', 'pic-mercy.png');
 await pick('chaplet:hail-mary', 'pic-hail.png');
@@ -123,8 +122,7 @@ const pickFor = async (slot, file) => {
   await page.click('[data-go="settings"]');
   await openSlotGroup(page, slot);
   await page.locator(`.slot[data-slot="${slot}"] button`, { hasText: '加圖' }).click();
-  await page.setInputFiles('#pic-file', fixture(file));
-  await page.waitForTimeout(500);
+  await setFiles(page, '#pic-file', fixture(file));
   await page.click('#view-settings [data-go="home"]');
 };
 
@@ -222,8 +220,7 @@ await page.evaluate(async () => {
 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.click('[data-go="settings"]');
-await page.setInputFiles('#import-file', backupPath);
-await page.waitForTimeout(900);
+await setFiles(page, '#import-file', backupPath);
 ok('a restored backup remembers 不用圖片', await state('rosary:sign') === '不用圖片');
 
 // ── 每一端奧蹟各有各的聖像，一端之內整段都用它 ──（此時已在設定頁）
@@ -231,8 +228,7 @@ await openSlotGroup(page, 'rosary:sorrowful-2');
 await page.locator('.slot[data-slot="rosary:sorrowful-2"] button', { hasText: '加圖' }).click();
 // 這裡刻意用與玫瑰經封面不同的圖：相同內容的圖片只會存一份，
 // 用同一張就分不出是奧蹟的圖還是退回封面。
-await page.setInputFiles('#pic-file', fixture('pic-mercy.png'));
-await page.waitForTimeout(600);
+await setFiles(page, '#pic-file', fixture('pic-mercy.png'));
 ok('a mystery can take its own picture',
    await page.textContent('.slot[data-slot="rosary:sorrowful-2"] .slot-state') === '自訂圖片');
 ok('the same mystery in another set is untouched',
