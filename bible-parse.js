@@ -13,8 +13,8 @@ const BIBLE_BOOKS = [
   { id: 'act', abbr: '宗', file: 'bible/acts.md' },
 ];
 
-// 經文裡會有、小標題裡不會有的標點
-const SENTENCE_MARK = /[，。；：、！？「」『』“”]/;
+// 經文裡會有、小標題裡不會有的標點（引號不算：有個標題是「米納」的比喻）
+const SENTENCE_MARK = /[，。；：、！？“”]/;
 
 function parseBook(raw) {
   const lines = raw.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n');
@@ -73,8 +73,8 @@ function parseBook(raw) {
     } else book.stray.push(s);
     blank = false;
   }
-  // 「＊」標的是思高本略去的一節（宗 28:29），經文裡不必顯示
-  for (const list of book.chapters) for (const verse of list || []) verse.t = verse.t.replace(/＊/g, '');
+  // 「＊」或「*」標的是思高本略去的下一節（谷 9:44、宗 28:29 等），經文裡不必顯示
+  for (const list of book.chapters) for (const verse of list || []) verse.t = verse.t.replace(/\s*[*＊]/g, '');
   return book;
 }
 
