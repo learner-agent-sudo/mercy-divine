@@ -56,6 +56,17 @@
     <button type="button" id="start-btn" class="btn btn-primary btn-block btn-lg">開始祈禱</button>
     <button type="button" id="manual-btn" class="btn btn-block">補記一次祈禱</button>
 
+    <!-- 讀經：與祈禱各自獨立，內容由 bible.js 填 -->
+    <div class="card bible-home" id="bible-home">
+      <h2 class="bible-home-title">讀經</h2>
+      <p class="bible-home-line" id="bible-home-line">瑪竇、馬爾谷、路加、若望福音與宗徒大事錄</p>
+      <div class="bible-bar" aria-hidden="true"><span id="bible-home-fill"></span></div>
+      <div class="bible-home-btns">
+        <button type="button" id="bible-continue" class="btn btn-primary btn-grow">繼續讀</button>
+        <button type="button" id="bible-open" class="btn btn-grow">打開讀經</button>
+      </div>
+    </div>
+
     <div class="stats" id="home-stats"></div>
 
     <nav class="home-nav">
@@ -206,6 +217,16 @@
     <p class="empty" id="log-empty" hidden>還沒有紀錄。誦念一次串經後，這裡就會留下記號。</p>
   </section>
 
+  <!-- ── 讀經 ───────────────────────────────────────── -->
+  <section id="view-bible" class="view" aria-label="讀經">
+    <header class="bar">
+      <button type="button" id="bible-back" class="icon-btn" aria-label="返回">‹</button>
+      <div class="bar-title" id="bible-title">讀經</div>
+      <span class="bar-spacer"></span>
+    </header>
+    <div id="bible-body"></div>
+  </section>
+
   <!-- ── 設定 ───────────────────────────────────────── -->
   <section id="view-settings" class="view" aria-label="設定">
     <header class="bar">
@@ -295,6 +316,8 @@
     <div class="card">
       <h2 class="section-title">關於</h2>
       <p class="hint" id="about-text"></p>
+      <p class="hint">讀經的經文是<b>思高聖經譯本</b>，出處與授權見 <a href="bible/README.md" class="bible-notice-link" target="_blank" rel="noopener">bible/README.md</a>。</p>
+      <details class="bible-credit" hidden><div class="bible-notice"></div></details>
       <button type="button" id="check-update" class="btn btn-block">檢查更新</button>
       <p class="hint" id="update-state"></p>
     </div>
@@ -321,6 +344,8 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="bible-parse.js"></script>
 <script src="app.js"></script>
+<script src="bible.js"></script>
 </body>
 </html>
