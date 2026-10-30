@@ -61,7 +61,7 @@ await page.locator('.bible-done').first().click();
 ok('and reading is recorded offline', await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.bible.v1')).read.luk.length > 0));
 await page.goBack(); await page.goBack();
 await page.click('.bible-tab[data-tab="events"]');
-await page.waitForSelector('.tl-item', { timeout: 10000 });
+await page.waitForSelector('.tl-item', { state: 'attached', timeout: 10000 });
 ok('the event timeline works offline', (await page.locator('.tl-item').count()) > 100);
 await page.click('.bible-foot a');
 await page.waitForFunction(() => /思高/.test(document.querySelector('.bible-foot .bible-notice').textContent), null, { timeout: 5000 });

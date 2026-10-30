@@ -612,13 +612,18 @@ const badges = (ev) => {
   return row;
 };
 
+// 時期可以收起來；第一次打開時只展開「繼續讀」會讀到的那一期
+let phaseOpen = null;
 function paintEventsTab(panel) {
   if (!data.events) { panel.append(noEvents()); return; }
   const open = (e) => {
     const node = e.target.closest('[data-ev]');
     if (node) nav({ screen: 'event', id: node.dataset.ev, book: firstUnread(data.evById.get(node.dataset.ev)) });
   };
-  let list = null, phase = null;
+  if (!phaseOpen) {
+    const next = nextEvent();
+    phaseOpen = new Set(next ? [next.phase] : []);
+  }
   const count = new Map();                          // 每個時期讀完幾件
   for (const ev of data.events) {
     const c = count.get(ev.phase) || [0, 0];
@@ -626,15 +631,34 @@ function paintEventsTab(panel) {
     if (evState(ev) === 'all') c[0]++;
     count.set(ev.phase, c);
   }
+
+  const groups = [];
+  const all = btn('', 'btn btn-tiny tl-all', () => {
+    const opening = groups.some((d) => !d.open);
+    for (const d of groups) d.open = opening;
+  });
+  const label = () => { all.textContent = groups.every((d) => d.open) ? '全部收起' : '全部展開'; };
+  panel.append(el('div', 'tl-tools'));
+  panel.lastChild.append(all);
+
+  let list = null, phase = null;
   for (const ev of data.events) {
     if (!list || ev.phase !== phase) {
       phase = ev.phase;
-      const head = el('h3', 'tl-phase');
+      const d = document.createElement('details');
+      d.className = 'th-group tl-group';
+      d.open = phaseOpen.has(phase);
+      const id = phase;
+      d.addEventListener('toggle', () => { if (d.open) phaseOpen.add(id); else phaseOpen.delete(id); label(); });
+      const head = document.createElement('summary');
+      head.className = 'tl-phase';
       const c = count.get(phase);
       head.append(el('span', null, data.phases.get(phase) || '其他'), el('small', null, `${c[0]}／${c[1]}`));
       list = el('ol', 'tl');
       list.addEventListener('click', open);
-      panel.append(head, list);
+      d.append(head, list);
+      groups.push(d);
+      panel.append(d);
     }
     const li = el('li', 'tl-item');
     li.dataset.state = evState(ev);
@@ -644,6 +668,7 @@ function paintEventsTab(panel) {
     li.append(node);
     list.append(li);
   }
+  label();
 }
 
 /* 主題：奇蹟（治病、驅魔、自然、復活死人）、比喻、講道 */
@@ -653,7 +678,8 @@ function quoteOf(ev) {
   if (!k) return null;
   const book = data.byId[k.book];
   const o = ordOf(k.key);
-  const text = entriesIn(book, o, o).map((e) => e.t).join('');
+  // 外面會再加一對「」，經文自己頭尾的引號先拿掉，免得變成「「⋯」」
+  const text = entriesIn(book, o, o).map((e) => e.t).join('').replace(/^[「『]+/, '').replace(/[」』]+$/, '');
   if (!text) return null;
   return { text: text.length > 40 ? `${text.slice(0, 40)}…` : text, ref: `${book.abbr} ${k.key}` };
 }
@@ -685,9 +711,15 @@ function themeGroup(name, count, fill) {
   return d;
 }
 
+// 幾部福音共同記載的排在前面，只有一部記載的（獨有）在後；同樣多的照時間先後
+const GOSPELS = ['mat', 'mrk', 'luk', 'jhn'];
+const tellers = (ev) => GOSPELS.filter((id) => ev.acc[id]).length;
+const commonFirst = (list) => list.map((ev, i) => [ev, i])
+  .sort((a, b) => tellers(b[0]) - tellers(a[0]) || a[1] - b[1]).map(([ev]) => ev);
+
 function paintThemesTab(panel) {
   if (!data.events) { panel.append(noEvents()); return; }
-  const evs = data.events;
+  const evs = commonFirst(data.events);
   const miracles = evs.filter((ev) => ev.tags.includes('奇蹟'));
   // 一件奇蹟有好幾個細類時（雅依洛的女兒：治病、復活），只放在排第一的那個底下
   const subOf = (ev) => (ev.tags.map((t) => MIRACLES.find(([tag]) => tag === t)).find(Boolean) || [null, '其他'])[1];

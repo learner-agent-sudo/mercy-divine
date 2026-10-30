@@ -284,7 +284,7 @@ if (hasEvents) {
   // 時間軸
   await openHub();
   await hubTab('events');
-  await page.waitForSelector('.tl-item');
+  await page.waitForSelector('.tl-item', { state: 'attached' });
   ok('the timeline has the phase headings', (await page.locator('.tl-phase').count()) === events.phases.length);
   ok('and every event', (await page.locator('.tl-item').count()) === events.events.length);
   ok('phases come in order', (await page.locator('.tl-phase > span').allTextContents()).join() === events.phases.map((p) => p.title).join());
@@ -295,6 +295,19 @@ if (hasEvents) {
   ok('an event told three times has three badges and no 獨有', (await jRow.locator('.bdg').allTextContents()).join('') === '瑪谷路' && (await jRow.locator('.uniq').count()) === 0);
   ok('the continue button on this tab names the next event', (await page.textContent('.bible-next')).startsWith('下一件：'));
   ok('the timeline fits the narrow screen', await noHScroll());
+
+  // 時期可以收起來：一開始只展開「繼續讀」會讀到的那一期
+  const openPhases = () => page.locator('.tl-group').evaluateAll((ds) => ds.filter((d) => d.open).length);
+  ok('at first only one phase is open', (await openPhases()) === 1);
+  ok('and it is the one with the next event to read', await page.locator('.tl-group[open] .tl-item').first().isVisible());
+  await page.click('.tl-all');
+  ok('全部展開 opens every phase', (await openPhases()) === events.phases.length && (await page.textContent('.tl-all')) === '全部收起');
+  await page.click('.tl-all');
+  ok('全部收起 closes them all', (await openPhases()) === 0 && (await page.textContent('.tl-all')) === '全部展開');
+  await page.locator('.tl-phase').nth(3).click();
+  ok('a phase opens on its own when tapped', (await openPhases()) === 1
+     && await page.locator('.tl-group').nth(3).evaluate((d) => d.open));
+  await page.click('.tl-all');               // 下面要點到各時期裡的事件
 
   // 在事件裡讀
   await jRow.locator('.tl-node').click();
@@ -321,7 +334,8 @@ if (hasEvents) {
 
   // 讀過的事，到處都看得到
   await page.goBack();
-  await page.waitForSelector('.tl-item');
+  await page.waitForSelector('.tl-item', { state: 'attached' });
+  ok('going back keeps the phases as you left them', (await openPhases()) === events.phases.length);
   const jRow2 = page.locator('.tl-item', { hasText: jairus.title });
   ok('the timeline marks the finished accounts', (await jRow2.locator('.bdg.done').allTextContents()).join('') === '瑪路'
      && (await jRow2.getAttribute('data-state')) === 'part');
@@ -335,14 +349,14 @@ if (hasEvents) {
   // 回到原來的位置
   await page.goBack(); await page.goBack();
   await hubTab('events');
-  await page.waitForSelector('.tl-item');
+  await page.waitForSelector('.tl-item', { state: 'attached' });
   const node = page.locator('.tl-node').nth(120);
   await node.scrollIntoViewIfNeeded();
   const y0 = await page.evaluate(() => Math.round(scrollY));
   await node.click();
   await page.waitForSelector('.bible-ev-title');
   await page.goBack();
-  await page.waitForSelector('.tl-item');
+  await page.waitForSelector('.tl-item', { state: 'attached' });
   ok('going back to the timeline restores where you were', Math.abs((await page.evaluate(() => scrollY)) - y0) < 40 && y0 > 1000);
 
   // 繼續讀（事件）：下一件還有福音沒讀的
@@ -375,6 +389,17 @@ if (hasEvents) {
      mCount === events.events.filter((e) => (e.tags || []).includes('奇蹟')).length
      && (await miracles.locator('.th-item .th-quote').count()) === mCount
      && /^「.+」 (瑪|谷|路|若) \d+:\d+$/.test((await miracles.locator('.th-quote').first().textContent()).trim()));
+  const tellers = (group) => group.locator('.th-item').evaluateAll((bs) => bs.map((b) => b.querySelectorAll('.bdg').length));
+  const sorted = (xs) => xs.every((x, i) => !i || xs[i - 1] >= x);
+  ok('parables told by more Gospels come first', await (async () => {
+    const xs = await tellers(page.locator('.th-group').nth(1));
+    return xs.length > 10 && sorted(xs) && xs[0] >= 3 && xs[xs.length - 1] === 1;
+  })());
+  ok('and so do the miracles within each kind', await miracles.locator('.th-sub').evaluateAll((hs) => hs.every((h) => {
+    const xs = [];
+    for (let n = h.nextElementSibling; n && !n.classList.contains('th-sub'); n = n.nextElementSibling) xs.push(n.querySelectorAll('.bdg').length);
+    return xs.every((x, i) => !i || xs[i - 1] >= x);
+  })));
   ok('an event with two miracle tags is listed only once', (await miracles.locator('.th-item', { hasText: jairus.title }).count()) === 1);
   ok('and under the first of them', await miracles.locator('.th-sub').first().evaluate((h, t) => {
     let n = h.nextElementSibling;
@@ -483,7 +508,7 @@ ok('dark theme: readable text on a dark page', await page.evaluate(() => {
   if (hasEvents) {
     await pv.page.goBack(); await pv.page.goBack();
     await pv.page.click('.bible-tab[data-tab="events"]');
-    await pv.page.waitForSelector('.tl-item');
+    await pv.page.waitForSelector('.tl-item', { state: 'attached' });
     ok('preview: the timeline is there', (await pv.page.locator('.tl-item').count()) === events.events.length);
   }
   await pv.page.click('.bible-foot a');
