@@ -552,7 +552,7 @@ function renderSheet() {
 }
 
 /* ── 畫面切換 ──────────────────────────────────────── */
-const VIEWS = ['home', 'prayer', 'done', 'manual', 'history', 'settings'];
+const VIEWS = ['home', 'prayer', 'done', 'manual', 'history', 'settings', 'bible'];
 let current = 'home';
 
 function go(name) {
@@ -916,6 +916,8 @@ function renderHome() {
     [month, '本月次數'],
     [records.length, '累計次數'],
   ]);
+  // 讀經的卡片在 bible.js；它可能比首頁晚載入，所以先確認有這個函式
+  if (typeof renderBibleHome === 'function') renderBibleHome();
 }
 
 function renderStats(node, pairs) {
@@ -1844,8 +1846,10 @@ const blobToDataUrl = (blob) => new Promise((resolve) => {
 
 async function exportRecords() {
   const hasPictures = Object.keys(settings.pictures || {}).length || (settings.groups || []).length;
-  if (!records.length && !hasPictures) { toast('尚無紀錄可匯出'); return; }
-  const payload = { app: 'mercy-divine', version: 4, exportedAt: new Date().toISOString(), records };
+  const bible = typeof bibleExport === 'function' ? bibleExport() : null;   // 讀經進度，沒有就是 null
+  if (!records.length && !hasPictures && !bible) { toast('尚無紀錄可匯出'); return; }
+  const payload = { app: 'mercy-divine', version: 5, exportedAt: new Date().toISOString(), records };
+  if (bible) payload.bible = bible;
 
   // 自訂聖像一併帶走（每一組的都帶），換手機或清除資料後可完整還原
   const pictures = {};
@@ -1873,7 +1877,7 @@ async function exportRecords() {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   const shots = Object.keys(payload.pictures || {}).length;
-  toast(`已匯出 ${records.length} 筆紀錄${shots ? ` 與 ${shots} 張聖像` : ''}`);
+  toast(`已匯出 ${records.length} 筆紀錄${shots ? ` 與 ${shots} 張聖像` : ''}${bible ? '、讀經進度' : ''}`);
 }
 
 // 只接受內嵌的 data: 圖片。備份檔可能來自他處，若其中放的是 http 網址，
@@ -1978,9 +1982,14 @@ function importRecords(file) {
       renderSlots();
     }
 
+    // 讀經進度：已讀的節取聯集，紀錄去重（檢查都在 bible.js 裡）
+    let read = { verses: 0, logs: 0 };
+    if (parsed && parsed.bible && typeof bibleImport === 'function') read = bibleImport(parsed.bible);
+
     renderHome();
     renderHistory();
-    const parts = [added ? `${added} 筆紀錄` : '', shots ? `${shots} 張聖像` : ''].filter(Boolean);
+    const parts = [added ? `${added} 筆紀錄` : '', shots ? `${shots} 張聖像` : '',
+                   read.verses ? `讀經 ${read.verses} 節` : read.logs ? '讀經紀錄' : ''].filter(Boolean);
     toast(parts.length ? `已匯入 ${parts.join('、')}` : '沒有新的內容可匯入');
   };
   reader.onerror = () => toast('無法讀取檔案');
@@ -2142,6 +2151,8 @@ function bind() {
 
   // 手機返回鍵：先關掉換圖面板，再退回首頁，在首頁時才真正離開程式。
   window.addEventListener('popstate', () => {
+    // 讀經裡一層一層的畫面各有自己的歷史紀錄，退回到哪一層就畫哪一層
+    if (history.state && history.state.bible && typeof bibleShow === 'function') { bibleShow(history.state.bible); return; }
     if (sheetOpen) { hideSheet(); return; }
     if (current === 'prayer') {
       if (!mayLeavePrayer()) { history.pushState({ view: 'prayer' }, ''); return; }
@@ -2245,6 +2256,8 @@ async function init() {
   await loadPictures();
   renderHome();
   go('home');
+  // 重新載入時，歷史紀錄裡還留著讀經的某一層：就回到那一層，返回鍵才接得起來
+  if (history.state && history.state.bible && typeof bibleShow === 'function') bibleShow(history.state.bible);
   $('#boot').hidden = true;
   $('#app').hidden = false;
   initServiceWorker();

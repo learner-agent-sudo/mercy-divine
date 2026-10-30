@@ -27,6 +27,9 @@ const cached = await page.evaluate(async () => {
 ok('app shell cached', cached.some((p) => p.endsWith('/index.html')) && cached.some((p) => p.endsWith('/app.js')));
 ok('prayer text cached', cached.some((p) => p.endsWith('/data/prayers.json')));
 ok('images cached', cached.some((p) => p.includes('/images/')));
+ok('the five books and the Bible code cached', ['matthew', 'mark', 'luke', 'john', 'acts'].every((b) => cached.some((p) => p.endsWith(`/bible/${b}.md`)))
+   && cached.some((p) => p.endsWith('/bible.js')) && cached.some((p) => p.endsWith('/bible-parse.js')));
+ok('the event table and the source notice cached', cached.some((p) => p.endsWith('/data/gospel-events.json')) && cached.some((p) => p.endsWith('/bible/README.md')));
 console.log(`        ${cached.length} files cached`);
 
 await pray();
@@ -45,6 +48,26 @@ ok('image still loads from cache', await page.evaluate(async () => {
 await pray(); await pray(); await pray();
 ok('prayers recorded while offline', await count() === online + 3);
 const offlineStamps = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.records.v1')).map((r) => r.ts));
+
+// 讀經也要能離線：打開大廳、讀一章、看事件對照、標記已讀
+await page.click('#bible-open');
+await page.waitForSelector('.bible-book', { timeout: 10000 });
+ok('the Bible hub opens offline', (await page.locator('.bible-book').count()) === 5);
+await page.click('.bible-book[data-book="luk"]');
+await page.click('.ch-btn[data-c="1"]');
+await page.waitForSelector('.bible-sec');
+ok('a chapter reads offline', (await page.locator('.bible-text .v').count()) > 50);
+await page.locator('.bible-done').first().click();
+ok('and reading is recorded offline', await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.bible.v1')).read.luk.length > 0));
+await page.goBack(); await page.goBack();
+await page.click('.bible-tab[data-tab="events"]');
+await page.waitForSelector('.tl-item', { timeout: 10000 });
+ok('the event timeline works offline', (await page.locator('.tl-item').count()) > 100);
+await page.click('.bible-foot a');
+await page.waitForFunction(() => /思高/.test(document.querySelector('.bible-foot .bible-notice').textContent), null, { timeout: 5000 });
+ok('so does the source notice', true);
+await page.goBack();
+await page.waitForSelector('#view-home.active');
 
 // 全新分頁、仍然無網路
 const fresh = await context.newPage();

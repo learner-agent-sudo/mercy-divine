@@ -54,6 +54,32 @@ one-off choice for a feast never quietly becomes permanent.
 copy rather than repeating it — `{"from": "chaplet"}` in place of the text. Edit the
 wording once and both follow. A prayer only one of them uses keeps its own text.
 
+## Bible reading (讀經)
+
+A third thing on the home screen, separate from the two prayers: the four Gospels and the
+Acts of the Apostles in the 思高 translation, with a record of what you have read so you
+do not re-read it. **打開讀經** opens it; **繼續讀** goes straight to the next section you
+have not finished.
+
+- **書卷** — the five books with progress, a chapter grid per book, and a search box (verse
+  text and 思高 section headings, at least two characters).
+- **事件** — the life of Jesus as one timeline in harmony order, grouped by phase. Each event
+  shows which Gospels tell it (瑪 谷 路 若) or 獨有 if only one does.
+- **主題** — miracles (healing, exorcism, nature, raising the dead), parables and
+  discourses, each with its key verse.
+- **紀錄** — what you read and when, by day.
+
+In a chapter, each 思高 section ends with a **讀完了** button (tap again to undo) and, where
+the other Gospels tell the same story, chips that open that event. Each Gospel's account of
+an event is counted separately, but if you already read it in another Gospel the page says
+so. The same verses show as read everywhere they appear.
+
+Progress is kept on the phone (`mercy.bible.v1`) and is part of the backup file. The text is
+in [`bible/`](bible/) (see its README for the source and licence), parsed in the browser by
+[`bible-parse.js`](bible-parse.js); the event table is
+[`data/gospel-events.json`](data/gospel-events.json). Without that table the books and
+progress still work.
+
 ## Changing the content
 
 **The prayers** live in [`data/prayers.json`](data/prayers.json) (the chaplet) and
@@ -144,7 +170,7 @@ serving the old cached copy. The app shows a 已有新版本 banner when an upda
 
 ## Backups
 
-設定 → **匯出備份檔** writes a `.json` file to Downloads with every record. **匯入備份檔**
+設定 → **匯出備份檔** writes a `.json` file to Downloads with every record, your custom pictures and your Bible reading progress. **匯入備份檔**
 reads one back, skipping anything already present — so it is safe to import the same
 file twice, and it works for moving to a new phone.
 
@@ -252,19 +278,25 @@ Five suites cover the things that would hurt most if they broke:
 | `rose` | a petal in each ring per day, the two prayers counted apart, future days set apart from missed ones, and the calendar still reachable |
 | `rosary` | the mysteries and their scripture, the weekday cycle, the 78-step sequence, and the chaplet still intact beside it |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
+| `bible` | books, chapters and sections, marking read (and surviving a reload), parallels and the event pages, timeline, themes, log, search, the back button layer by layer, backup import checks, the single-file preview |
+| `gospel-events` | every reference in the event table exists, and every verse of the four Gospels belongs to exactly one event |
 
 The suites drive a real browser at phone size and fail on any console error.
 
 ## Layout
 
 ```
-index.html              app shell — all five screens
+index.html              app shell — every screen
 app.js                  logic: prayer flow, records, calendar, settings
+bible.js                Bible reading: books, chapters, events, progress
+bible-parse.js          splits the Bible text files into chapters, verses and sections
 styles.css              theme, light + dark
 sw.js                   service worker — the offline cache
 manifest.webmanifest    home-screen install metadata
 data/prayers.json       the prayer text
 data/images.json        the picture list
+data/gospel-events.json the Gospel events in order, with where each is told
+bible/                  the Bible text (思高) and its source notice
 images/                 the pictures
 icons/                  app icon
 scripts/make-icons.mjs  regenerates the icons (node scripts/make-icons.mjs)

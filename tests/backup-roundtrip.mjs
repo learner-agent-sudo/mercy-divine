@@ -26,16 +26,30 @@ for (const [slot, files] of [['chaplet:home', ['pic-mercy.png', 'pic-hail.png']]
   await setFiles(page, '#pic-file', files.map(fixture));
 }
 
+// 讀一段經：真福八端（瑪 5:1-12）標成已讀，備份也要帶著它
+await page.click('#view-settings [data-go="home"]');
+await page.click('#bible-open');
+await page.click('.bible-book[data-book="mat"]');
+await page.click('.ch-btn[data-c="5"]');
+await page.locator('.bible-sec:has(.bible-sec-title:has-text("真福八端")) .bible-done').click();
+await page.goBack(); await page.goBack(); await page.goBack();
+await page.waitForSelector('#view-home.active');
+await page.click('[data-go="settings"]');
+
 const before = await page.evaluate(() => ({
   records: JSON.parse(localStorage.getItem('mercy.records.v1')),
   pictures: JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures,
+  bible: JSON.parse(localStorage.getItem('mercy.bible.v1')),
 }));
+ok('the reading is in storage before the backup', before.bible.read.mat.length === 12 && before.bible.log.length === 1);
 console.log(`before: ${before.records.length} records, ${Object.keys(before.pictures).length} picture slots`);
 
 const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-btn')]);
 const path = await download.path();
 const backup = JSON.parse(readFileSync(path, 'utf8'));
-ok('backup names the app and a version', backup.app === 'mercy-divine' && backup.version >= 1);
+ok('backup names the app and a version', backup.app === 'mercy-divine' && backup.version === 5);
+ok('backup carries the Bible reading', backup.bible && backup.bible.read.mat.length === 12
+   && backup.bible.log.length === 1 && backup.bible.log[0].title === '真福八端' && backup.bible.last.c === 5);
 ok('backup carries every record', backup.records.length === before.records.length);
 ok('backup carries the notes', backup.records.filter(r => r.note).length === 3);
 ok('backup embeds the pictures', Object.keys(backup.pictures || {}).length === 2);
@@ -58,7 +72,9 @@ await setFiles(page, '#import-file', path);
 const after = await page.evaluate(() => ({
   records: JSON.parse(localStorage.getItem('mercy.records.v1')),
   pictures: JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures,
+  bible: JSON.parse(localStorage.getItem('mercy.bible.v1')),
 }));
+ok('the Bible reading is restored: verses, log and place', JSON.stringify(after.bible) === JSON.stringify(before.bible));
 ok('records restored', after.records.length === before.records.length);
 ok('notes restored', JSON.stringify(after.records.map(r => r.note).sort()) ===
                      JSON.stringify(before.records.map(r => r.note).sort()));
@@ -68,6 +84,7 @@ ok('a slot with several pictures keeps all of them, in order',
    && after.pictures['chaplet:home'][0] === 'builtin:images/home.jpg');
 
 await page.click('#view-settings [data-go="home"]');
+ok('and the home card shows it at once', /已讀 12／4,780/.test(await page.textContent('#bible-home-line')));
 const home = await page.evaluate(async () => {
   const imgs = () => [...document.querySelectorAll('#view-home .car img')].filter(i => i.src.startsWith('blob:'));
   for (let n = 0; n < 80 && !(imgs().length && imgs().every(i => i.naturalWidth)); n++) await new Promise(r => setTimeout(r, 25));
@@ -81,6 +98,46 @@ await page.setInputFiles('#import-file', path);
 await page.waitForTimeout(900);
 const twice = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.records.v1')).length);
 ok('importing twice does not duplicate', twice === before.records.length);
+const bibleTwice = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.bible.v1')));
+ok('nor does it duplicate the Bible reading', JSON.stringify(bibleTwice) === JSON.stringify(before.bible));
+
+// 讀經進度合併：已經有別的進度時取聯集，不覆蓋
+await page.evaluate(() => {
+  const b = JSON.parse(localStorage.getItem('mercy.bible.v1'));
+  b.read.mat = ['1:1', '1:2'];
+  b.read.jhn = ['3:16'];
+  b.log = [{ at: '2020-01-01T00:00:00.000Z', book: 'jhn', from: '3:16', to: '3:16', title: '另一部手機讀的' }];
+  localStorage.setItem('mercy.bible.v1', JSON.stringify(b));
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.click('[data-go="settings"]');
+await page.setInputFiles('#import-file', path);
+await page.waitForTimeout(900);
+const merged = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.bible.v1')));
+ok('importing merges Bible verses with what is already there',
+   merged.read.mat.length === 14 && merged.read.mat.includes('1:1') && merged.read.mat.includes('5:12') && merged.read.jhn.join() === '3:16');
+ok('and the logs, oldest first', merged.log.length === 2 && merged.log[0].title === '另一部手機讀的' && merged.log[1].title === '真福八端');
+ok('while keeping the place already set', merged.last.c === 5);
+
+// 只有讀經、沒有祈禱紀錄時也要能匯出
+await page.evaluate(async () => {
+  localStorage.removeItem('mercy.records.v1');
+  localStorage.removeItem('mercy.settings.v1');
+  for (const db of await indexedDB.databases()) indexedDB.deleteDatabase(db.name);
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.click('[data-go="settings"]');
+const [onlyBible] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }).catch(() => null), page.click('#export-btn')]);
+ok('with only Bible reading to show, export still works', !!onlyBible);
+if (onlyBible) {
+  const file = JSON.parse(readFileSync(await onlyBible.path(), 'utf8'));
+  ok('and the file carries just that', file.records.length === 0 && file.bible.read.mat.length === 14);
+}
+await page.evaluate(() => localStorage.removeItem('mercy.bible.v1'));
+await page.reload({ waitUntil: 'networkidle' });
+await page.click('[data-go="settings"]');
+await page.click('#export-btn');
+ok('with nothing at all, it says so', (await page.textContent('#toast')) === '尚無紀錄可匯出');
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();

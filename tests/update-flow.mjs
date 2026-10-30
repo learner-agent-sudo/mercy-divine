@@ -10,7 +10,7 @@ let failures = 0;
 
 const site = mkdtempSync(join(tmpdir(), 'mercy-site-'));
 const root = new URL('..', import.meta.url).pathname;
-for (const f of ['index.html', 'app.js', 'styles.css', 'sw.js', 'manifest.webmanifest', 'data', 'images', 'icons']) {
+for (const f of ['index.html', 'app.js', 'bible.js', 'bible-parse.js', 'styles.css', 'sw.js', 'manifest.webmanifest', 'data', 'bible', 'images', 'icons']) {
   cpSync(join(root, f), join(site, f), { recursive: true });
 }
 const PORT = 8791;

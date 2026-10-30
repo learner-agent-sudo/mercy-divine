@@ -512,6 +512,214 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
 @keyframes sheetUp { from { transform: translateY(100%); } }
 @keyframes sheetFade { from { background: transparent; } }
 
+/* ── 讀經 ───────────────────────────────────────────── */
+.bible-bar { display: block; height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bible-bar > span { display: block; height: 100%; width: 0; background: var(--gold); border-radius: 99px; }
+
+/* 首頁的卡片 */
+.bible-home { margin: 1.1rem 0 0; }
+.bible-home-title { font-size: 1.05rem; letter-spacing: .3em; color: var(--gold); }
+.bible-home-line { margin: .35rem 0 .7rem; font-size: .92rem; color: var(--muted); }
+.bible-home-btns { display: flex; gap: .6rem; margin-top: .9rem; }
+
+/* 畫面本身。上方的列固定在頂端，長長的一章讀到哪裡都能退出去。 */
+#view-bible .bar {
+  position: sticky; top: 0; z-index: 5;
+  margin: -1.25rem calc(-1 * var(--gutter)) 1rem;
+  padding-right: var(--gutter);
+}
+#view-bible .bar-title { color: var(--fg); font-size: .95rem; }
+.bible-sum { padding: .95rem 1.1rem 1rem; }
+.bible-sum-line { margin: 0 0 .6rem; font-size: .95rem; }
+.bible-sum .btn-block { margin-top: .85rem; }
+.bible-next { margin: .5rem 0 0; font-size: .8rem; }
+
+.bible-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; margin: 0 0 1rem; }
+.bible-tab {
+  font: inherit; font-weight: 600; color: var(--muted); cursor: pointer;
+  background: var(--sunken); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .6rem .2rem; min-height: 2.9rem;
+}
+.bible-tab[aria-selected="true"] {
+  background: var(--surface); color: var(--fg); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold);
+}
+.bible-noevents { text-align: center; padding: 1.2rem 0; }
+
+/* 書卷 */
+.bible-book {
+  display: block; width: 100%; text-align: left; font: inherit; color: var(--fg); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: .9rem 1.1rem; margin-bottom: .6rem;
+}
+.bible-book:active { transform: scale(.99); }
+.bb-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .5rem; }
+.bb-name { font-size: 1.05rem; font-weight: 600; letter-spacing: .06em; }
+.bb-pct { font-size: .85rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+.bb-sub { display: block; margin-top: .5rem; font-size: .75rem; color: var(--muted); }
+
+.bible-search { margin-top: 1.4rem; }
+.bible-search .field { margin-bottom: .5rem; }
+.bible-count { margin: .2rem 0 .4rem; }
+.bible-result {
+  display: flex; gap: .7rem; align-items: baseline; width: 100%; text-align: left;
+  font: inherit; font-size: .92rem; line-height: 1.6; color: var(--fg); cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid var(--line); padding: .7rem .1rem;
+}
+.br-ref { flex: none; min-width: 4.4rem; color: var(--gold); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.br-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.br-tag { margin-right: .4rem; font-size: .68rem; color: var(--muted); border: 1px solid currentColor; border-radius: 999px; padding: 0 .4rem; }
+mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inherit; border-radius: .2rem; padding: 0 .05em; }
+
+/* 章的格子 */
+.ch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(3.5rem, 1fr)); gap: .5rem; }
+.ch-btn {
+  position: relative; aspect-ratio: 1; display: grid; place-items: center; overflow: hidden;
+  font: inherit; font-size: 1rem; color: var(--fg); cursor: pointer;
+  background: linear-gradient(to top, color-mix(in srgb, var(--gold) 34%, var(--surface)) var(--p, 0%), var(--surface) var(--p, 0%));
+  border: 1px solid var(--line); border-radius: .7rem;
+}
+.ch-btn:active { transform: scale(.96); }
+.ch-btn[data-state="part"] { border-color: color-mix(in srgb, var(--gold) 60%, var(--line)); }
+.ch-btn[data-state="all"] { border-color: var(--gold); font-weight: 700; }
+.ch-btn[data-state="all"]::after { content: "✓"; position: absolute; top: .1rem; right: .3rem; font-size: .65rem; color: var(--gold); }
+
+/* 經文 */
+.bible-part {
+  margin: 2.4rem 0 .2rem; padding-top: .9rem; border-top: 1px solid var(--line);
+  font-size: 1.05rem; font-weight: 600; letter-spacing: .14em; color: var(--muted); text-align: center;
+}
+.bible-sec { margin-bottom: 2rem; scroll-margin-top: 4.5rem; }
+.bible-sec:first-child .bible-part:first-child { margin-top: .4rem; border-top: 0; }
+.bible-sec-title {
+  display: flex; justify-content: space-between; align-items: baseline; gap: .8rem;
+  margin: 1.2rem 0 .3rem; font-size: 1.12rem; font-weight: 600; letter-spacing: .06em; line-height: 1.5;
+}
+.bible-sec-ref { flex: none; font-size: .78rem; font-weight: 400; letter-spacing: .02em; color: var(--gold); font-variant-numeric: tabular-nums; }
+.bible-sec.is-read .bible-sec-title > span:first-child::before { content: "✓ "; color: var(--gold); font-weight: 400; }
+.bible-text {
+  font-size: calc(1.1rem * var(--fs)); line-height: 1.9; letter-spacing: .02em;
+  text-align: justify; overflow-wrap: anywhere; margin: .3rem 0 0;
+}
+.vn {
+  font-size: .62em; line-height: 0; vertical-align: super; margin-right: .2em;
+  color: var(--gold); font-weight: 600; letter-spacing: 0; font-variant-numeric: tabular-nums; user-select: none;
+}
+.vn-cont { margin-right: .3em; opacity: .85; }
+.v { border-radius: .3rem; transition: background .6s ease; }
+.v.hl { background: color-mix(in srgb, var(--gold) 34%, transparent); transition: none; }
+/* 事件裡的金句：自成一段，左邊一道金色的線 */
+.v.key {
+  display: block; margin: .5rem 0; padding: .3rem 0 .3rem .75rem; border-radius: 0 .4rem .4rem 0;
+  border-left: 3px solid var(--gold); background: color-mix(in srgb, var(--gold) 11%, transparent);
+}
+.bible-more { margin: .5rem 0 0; font-size: .8rem; color: var(--muted); text-align: right; }
+
+/* 對照 */
+.bible-par { margin: .9rem 0 0; display: flex; flex-direction: column; gap: .3rem; }
+.bible-par-row { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .45rem; }
+.bible-par-label { font-size: .78rem; letter-spacing: .1em; color: var(--muted); }
+.bible-par-title { font-size: .82rem; color: var(--muted); }
+.bible-chip { font-variant-numeric: tabular-nums; }
+.bible-uniq {
+  font: inherit; font-size: .72rem; color: var(--gold); background: none; cursor: pointer;
+  border: 1px solid currentColor; border-radius: 999px; padding: .3rem .7rem; min-height: 2rem;
+}
+.bible-note { margin: .15rem 0 0; }
+.bible-sec .bible-done { margin-top: .9rem; }
+.btn.is-done { color: var(--gold); border-color: var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--surface)); }
+.bible-pager { display: flex; gap: .6rem; margin-top: 1.6rem; }
+.bible-pager .btn { flex: 1; }
+
+/* 事件 */
+.bible-ev-title { font-size: 1.25rem; line-height: 1.5; margin-bottom: .4rem; }
+.bible-ev-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .45rem; margin-bottom: .4rem; }
+.bible-ev-phase { font-size: .8rem; color: var(--muted); letter-spacing: .08em; margin-right: .3rem; }
+.bible-tag { font-size: .7rem; color: var(--gold); border: 1px solid currentColor; border-radius: 999px; padding: 0 .5rem; }
+.bible-see { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .45rem; margin: .5rem 0; }
+.bible-etabs { display: flex; gap: .35rem; margin: 1rem 0 .8rem; }
+.bible-etab {
+  flex: 1; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer;
+  background: var(--sunken); border: 1px solid var(--line); border-radius: var(--radius); padding: .5rem .2rem; min-height: 2.75rem;
+}
+.bible-etab[aria-selected="true"] { background: var(--surface); color: var(--fg); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.bible-seen {
+  margin: 0 0 .8rem; padding: .6rem .8rem; font-size: .85rem; line-height: 1.7; color: var(--fg);
+  background: var(--sunken); border-left: 3px solid var(--gold); border-radius: 0 .5rem .5rem 0;
+}
+.bible-range { margin: 0 0 .2rem; font-size: .8rem; letter-spacing: .06em; color: var(--gold); }
+.bible-sub { margin: 1.1rem 0 .1rem; font-size: .85rem; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.bible-etabs + .bible-seen, .bible-etabs + .bible-range { margin-top: 0; }
+.bible-range ~ .bible-range { margin-top: 1.6rem; }
+#view-bible .bible-done { margin-top: 1.4rem; }
+
+/* 時間軸 */
+.tl-phase {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin: 1.7rem 0 .3rem; font-size: .85rem; font-weight: 600; letter-spacing: .14em; color: var(--gold);
+}
+.tl-phase small { font-size: .72rem; font-weight: 400; letter-spacing: .04em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tl { list-style: none; margin: 0 0 0 .45rem; padding: 0; border-left: 2px solid var(--line); }
+.tl-item { position: relative; padding-left: 1rem; }
+.tl-item::before {
+  content: ""; position: absolute; left: -.42rem; top: 1.12rem; width: .72rem; height: .72rem; border-radius: 50%;
+  background: var(--bg); border: 2px solid var(--line);
+}
+.tl-item[data-state="part"]::before { border-color: var(--gold); background: linear-gradient(to top, var(--gold) 50%, var(--bg) 50%); }
+.tl-item[data-state="all"]::before { border-color: var(--gold); background: var(--gold); }
+.tl-node, .th-item {
+  display: block; width: 100%; text-align: left; font: inherit; color: var(--fg); cursor: pointer;
+  background: none; border: 0; padding: .65rem .1rem; min-height: 3rem;
+}
+.tl-node:active, .th-item:active { opacity: .6; }
+.tl-title { display: block; font-size: .95rem; line-height: 1.55; }
+.tl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .3rem; }
+.bdg {
+  min-width: 1.7rem; text-align: center; font-size: .72rem; line-height: 1.55; padding: 0 .35rem;
+  color: var(--muted); background: var(--sunken); border: 1px solid var(--line); border-radius: .4rem;
+}
+.bdg.part { color: var(--gold); border-color: var(--gold); }
+.bdg.done { color: #1A0F0D; background: var(--gold); border-color: var(--gold); font-weight: 600; }
+.uniq { margin-left: .2rem; font-size: .7rem; color: var(--gold); border: 1px solid currentColor; border-radius: 999px; padding: 0 .45rem; }
+
+/* 主題 */
+.th-group { margin-bottom: .6rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.th-group > summary {
+  display: flex; justify-content: space-between; align-items: baseline; list-style: none; cursor: pointer;
+  padding: .85rem 1.1rem; font-size: 1.02rem; font-weight: 600; letter-spacing: .12em;
+}
+.th-group > summary::-webkit-details-marker { display: none; }
+.th-group > summary::after { content: "›"; color: var(--muted); transition: transform .2s ease; }
+.th-group[open] > summary::after { transform: rotate(90deg); }
+.th-group > summary small { margin-left: auto; margin-right: .7rem; font-size: .75rem; font-weight: 400; color: var(--muted); }
+.th-sub { margin: .8rem 1.1rem .1rem; font-size: .8rem; letter-spacing: .14em; color: var(--gold); }
+.th-item { padding: .7rem 1.1rem; border-top: 1px solid var(--line); }
+.th-sub + .th-item { border-top: 0; }
+.th-title { display: block; font-size: .95rem; line-height: 1.55; font-weight: 600; }
+.th-item[data-state="all"] .th-title::before { content: "✓ "; color: var(--gold); font-weight: 400; }
+.th-quote { display: block; margin-top: .15rem; font-size: .85rem; line-height: 1.65; color: var(--muted); }
+.th-ref { color: var(--gold); white-space: nowrap; }
+
+/* 紀錄 */
+.bible-log-sum { margin: 0 0 .4rem; font-size: .88rem; color: var(--muted); text-align: center; }
+.bl-day { margin: 1.4rem 0 .2rem; font-size: .85rem; font-weight: 600; letter-spacing: .06em; color: var(--gold); }
+.bl-row {
+  display: flex; gap: .8rem; align-items: baseline; width: 100%; text-align: left;
+  font: inherit; font-size: .92rem; color: var(--fg); cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid var(--line); padding: .7rem .1rem;
+}
+.bl-ref { flex: none; min-width: 6.3rem; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.bl-title { flex: 1; min-width: 0; }
+
+/* 出處與授權 */
+.bible-foot { margin-top: 2rem; text-align: center; }
+.bible-foot a, .bible-notice-link { color: var(--gold); }
+.bible-credit { margin-top: .6rem; text-align: left; }
+.bible-notice { padding: .8rem 1rem; background: var(--sunken); border-radius: .65rem; font-size: .82rem; line-height: 1.8; color: var(--muted); }
+.bible-notice h3 { margin: 1rem 0 .3rem; font-size: .9rem; color: var(--fg); }
+.bible-notice h3:first-child { margin-top: 0; }
+.bible-notice p { margin: .3rem 0; }
+.bible-notice hr { border: 0; border-top: 1px solid var(--line); margin: 1rem 0; }
+
 /* 一端唸畢的提示：蓋在經文上方，短暫出現後淡出。 */
 .flash {
   position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
@@ -536,6 +744,7 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
   position: fixed; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); transform: translateX(-50%);
   background: var(--fg); color: var(--bg); padding: .7rem 1.1rem; border-radius: 999px;
   font-size: .88rem; box-shadow: var(--shadow); z-index: 50; max-width: 90vw; text-align: center;
+  pointer-events: none;   /* 提示不是按鈕，不該擋住底下的按鈕 */
 }
 .update-bar {
   position: fixed; inset: auto 0 0 0; z-index: 40;
@@ -555,5 +764,6 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
   .flash.show { animation: none; opacity: 1; }
   .flower .grow { animation: none; }
   .sheet, .sheet-panel { animation: none; }
+  .v { transition: none; }
   * { transition: none !important; }
 }
