@@ -67,6 +67,17 @@ have not finished.
   shows which Gospels tell it (瑪 谷 路 若) or 獨有 if only one does.
 - **主題** — miracles (healing, exorcism, nature, raising the dead), parables and
   discourses, each with its key verse.
+- **人物** — who said what. People are listed by group (the Twelve, the early Church, …); a
+  person's screen is his own words in order of his life, folded into stages like the event
+  timeline (only the stage with the first thing you have not read starts open; 全部展開 opens
+  them all, and the open stages are remembered until you close the app). Each saying shows the
+  verses, with the key verse set apart; if the Gospels tell it differently there is a small tab
+  per book, and a reply (say, 耶穌回答) is shown under it. A long passage (more than five verses)
+  shows just the key verse until you tap 展開全段. 對照 chips jump to a related saying, and
+  **看上下文** opens the event it belongs to (or, for Acts, the chapter at that verse). A ✓
+  means every verse of the saying is read — it follows your existing reading record, there is
+  nothing to mark here. The event screen and the chapter view of Acts point back with a row
+  **這裡說話的人：**.
 - **紀錄** — what you read and when, by day.
 
 In a chapter, each 思高 section ends with a **讀完了** button (tap again to undo) and, where
@@ -77,8 +88,10 @@ so. The same verses show as read everywhere they appear.
 Progress is kept on the phone (`mercy.bible.v1`) and is part of the backup file. The text is
 in [`bible/`](bible/) (see its README for the source and licence), parsed in the browser by
 [`bible-parse.js`](bible-parse.js); the event table is
-[`data/gospel-events.json`](data/gospel-events.json). Without that table the books and
-progress still work.
+[`data/gospel-events.json`](data/gospel-events.json) and the people are in
+[`data/people.json`](data/people.json) (the shape is checked by `node tests/people.mjs`).
+Without the event table the books and progress still work, and without the people file
+there is simply no 人物 tab.
 
 ## Changing the content
 
@@ -278,8 +291,9 @@ Five suites cover the things that would hurt most if they broke:
 | `rose` | a petal in each ring per day, the two prayers counted apart, future days set apart from missed ones, and the calendar still reachable |
 | `rosary` | the mysteries and their scripture, the weekday cycle, the 78-step sequence, and the chaplet still intact beside it |
 | `import-safety` | a backup file from anywhere cannot make the app reach the network or write malformed data |
-| `bible` | books, chapters and sections, marking read (and surviving a reload), parallels and the event pages, timeline, themes, log, search, the back button layer by layer, backup import checks, the single-file preview |
+| `bible` | books, chapters and sections, marking read (and surviving a reload), parallels and the event pages, timeline, themes, people (their sayings, tabs, context links, speaker chips), log, search, the back button layer by layer, backup import checks, the single-file preview |
 | `gospel-events` | every reference in the event table exists, and every verse of the four Gospels belongs to exactly one event |
+| `people` | every passage in `data/people.json` exists, each key verse lies inside its passage, and every cross-reference points at a saying that exists |
 
 The suites drive a real browser at phone size and fail on any console error.
 
@@ -296,6 +310,7 @@ manifest.webmanifest    home-screen install metadata
 data/prayers.json       the prayer text
 data/images.json        the picture list
 data/gospel-events.json the Gospel events in order, with where each is told
+data/people.json        who said what: people, their stages and sayings, with the passages
 bible/                  the Bible text (思高) and its source notice
 images/                 the pictures
 icons/                  app icon

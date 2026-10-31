@@ -1,5 +1,6 @@
 /* 讀經：瑪竇、馬爾谷、路加、若望福音與宗徒大事錄。
-   經文在 bible/，拆章節的程式在 bible-parse.js，事件對照在 data/gospel-events.json。
+   經文在 bible/，拆章節的程式在 bible-parse.js，事件對照在 data/gospel-events.json，
+   「誰說了什麼」在 data/people.json。
    讀過哪幾節只存在本機（mercy.bible.v1）。與祈禱各自獨立。
    整份包在函式裡，只把 app.js 會呼叫的幾個名稱放到全域。 */
 (() => {
@@ -10,7 +11,8 @@ const LOG_MAX = 3000;
 const IDS = BIBLE_BOOKS.map((b) => b.id);
 const ABBR = Object.fromEntries(BIBLE_BOOKS.map((b) => [b.id, b.abbr]));
 const SHORT = { mat: '瑪竇', mrk: '馬爾谷', luk: '路加', jhn: '若望', act: '宗徒大事錄' };
-const TABS = [['books', '書卷'], ['events', '事件'], ['themes', '主題'], ['log', '紀錄']];
+const TABS = [['books', '書卷'], ['events', '事件'], ['themes', '主題'], ['people', '人物'], ['log', '紀錄']];
+const LONG_PASSAGE = 5;       // 一段話超過這麼多節，先只放金句，其餘按了才展開
 const KEY_RE = /^\d{1,3}:\d{1,3}$/;
 const ID_RE = /^[\w-]{1,60}$/;
 const RANGE_RE = /^(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$/;
@@ -149,17 +151,19 @@ function inline(id) {
 
 async function fetchAll() {
   const packed = inline('data-bible');            // 單檔預覽版把內容嵌在頁面裡
-  if (packed) return { raws: packed, events: inline('data-events') };
+  if (packed) return { raws: packed, events: inline('data-events'), people: inline('data-people') };
   const raws = {};
   const books = Promise.all(BIBLE_BOOKS.map(async (b) => {
     const r = await fetch(b.file);
     if (!r.ok) throw new Error(b.file);
     raws[b.id] = await r.text();
   }));
-  // 沒有對照資料也能讀經，所以這份失敗不算失敗
-  const events = fetch('data/gospel-events.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  // 沒有對照資料、沒有人物資料也能讀經，所以這兩份失敗不算失敗
+  const optional = (url) => fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const events = optional('data/gospel-events.json');
+  const people = optional('data/people.json');
   await books;
-  return { raws, events: await events };
+  return { raws, events: await events, people: await people };
 }
 
 function load() {
@@ -172,7 +176,7 @@ function load() {
 function makeBook(meta, p) {
   const book = {
     id: meta.id, abbr: meta.abbr, title: p.title, nch: p.chapters.length - 1, chapters: p.chapters,
-    entries: [], keys: [], ords: [], keyIdx: new Map(), e1: [], secs: [], chKeys: [null], ranges: [],
+    entries: [], keys: [], ords: [], keyIdx: new Map(), e1: [], secs: [], chKeys: [null], ranges: [], sayRanges: [],
   };
   p.chapters.forEach((list, c) => (list || []).forEach((e) => {
     e.c = c;
@@ -215,6 +219,23 @@ function makeBook(meta, p) {
   return book;
 }
 
+// 一卷書裡的幾段出處（'5:3'、'5:1-12'、'8:34-9:1'）→ 範圍；寫錯的、書裡沒有的略過
+function rangesOf(book, list) {
+  const ranges = [];
+  for (const r of list) {
+    const m = RANGE_RE.exec(String(r));
+    if (!m) continue;
+    const lo = m[1] * 1000 + +m[2];
+    const hi = (m[3] || m[1]) * 1000 + +(m[4] || m[2]);
+    const a = lower(book.ords, lo), z = upper(book.ords, hi);
+    if (hi < lo || z <= a) continue;
+    const keys = book.keys.slice(a, z);
+    ranges.push({ lo, hi, label: String(r), keys, from: keys[0], to: keys[keys.length - 1] });
+  }
+  return ranges;
+}
+const accOf = (ranges) => ({ ranges, keys: [...new Set(ranges.flatMap((r) => r.keys))], label: ranges.map((r) => r.label).join('、') });
+
 function makeEvents(raw, byId) {
   if (!raw || !Array.isArray(raw.events)) return null;
   const phases = new Map((Array.isArray(raw.phases) ? raw.phases : []).map((p) => [p.id, p.title]));
@@ -229,19 +250,9 @@ function makeEvents(raw, byId) {
     for (const id of IDS) {
       if (!Array.isArray(e.refs[id])) continue;
       const book = byId[id];
-      const ranges = [];
-      for (const r of e.refs[id]) {
-        const m = RANGE_RE.exec(String(r));
-        if (!m) continue;
-        const lo = m[1] * 1000 + +m[2];
-        const hi = (m[3] || m[1]) * 1000 + +(m[4] || m[2]);
-        const a = lower(book.ords, lo), z = upper(book.ords, hi);
-        if (hi < lo || z <= a) continue;
-        const keys = book.keys.slice(a, z);
-        ranges.push({ lo, hi, label: String(r), keys, from: keys[0], to: keys[keys.length - 1] });
-      }
+      const ranges = rangesOf(book, e.refs[id]);
       if (!ranges.length) continue;
-      ev.acc[id] = { ranges, keys: [...new Set(ranges.flatMap((r) => r.keys))], label: ranges.map((r) => r.label).join('、') };
+      ev.acc[id] = accOf(ranges);
       for (const r of ranges) book.ranges.push({ ev, lo: r.lo, hi: r.hi });
     }
     if (!Object.keys(ev.acc).length) continue;
@@ -253,7 +264,83 @@ function makeEvents(raw, byId) {
   return { events, evById, phases };
 }
 
-function build({ raws, events }) {
+/* 人物：誰說了什麼。資料來自 data/people.json，這裡逐項檢查：
+   出處不存在的話、沒有任何一段話的階段與人物都略過；金句不在出處裡就當作沒有金句。 */
+const clip = (x, max) => (typeof x === 'string' ? x.trim().slice(0, max) : '');
+const clipList = (x) => (Array.isArray(x) ? x.map((t) => clip(t, 40)).filter(Boolean).slice(0, 8) : []);
+
+// 一段 refs（{書卷: [範圍]}）整理成每卷的 acc；一卷都對不上就是 null
+function refsAcc(raw, byId) {
+  if (!raw || typeof raw !== 'object') return null;
+  const acc = {};
+  for (const id of IDS) {
+    if (!Array.isArray(raw[id])) continue;
+    const ranges = rangesOf(byId[id], raw[id]);
+    if (ranges.length) acc[id] = accOf(ranges);
+  }
+  const books = IDS.filter((id) => acc[id]);
+  return books.length ? { acc, books } : null;
+}
+
+function makeSaying(s, byId) {
+  if (!s || typeof s !== 'object' || typeof s.id !== 'string' || !ID_RE.test(s.id)) return null;
+  const title = clip(s.title, 60);
+  const refs = refsAcc(s.refs, byId);
+  if (!title || !refs) return null;
+  const k = /^(\w+) (\d+:\d+)$/.exec(String(s.key || ''));
+  const keyRef = k && refs.acc[k[1]] && refs.acc[k[1]].keys.includes(k[2]) ? { book: k[1], key: k[2] } : null;
+  const reply = refsAcc(s.reply, byId);
+  return {
+    id: s.id, title, to: clip(s.to, 20), acc: refs.acc, books: refs.books,
+    keyRef,
+    anchor: keyRef || { book: refs.books[0], key: refs.acc[refs.books[0]].keys[0] },   // 沒有金句就用第一節
+    reply: reply ? reply.acc : null, replyBooks: reply ? reply.books : [], replyBy: clip(s.replyBy, 20),
+    note: clip(s.note, 200), see: Array.isArray(s.see) ? s.see.filter((x) => typeof x === 'string') : [],
+    person: null, stage: 0,
+  };
+}
+
+function makePeople(raw, byId) {
+  if (!raw || !Array.isArray(raw.groups) || !Array.isArray(raw.people)) return null;
+  const groups = [];
+  for (const g of raw.groups) {
+    if (g && typeof g.id === 'string' && ID_RE.test(g.id) && clip(g.title, 40) && !groups.some((x) => x.id === g.id)) groups.push({ id: g.id, title: clip(g.title, 40) });
+  }
+  const list = [], sayings = [];
+  const personById = new Map(), sayById = new Map();
+  const index = Object.fromEntries(IDS.map((id) => [id, []]));          // 每卷：哪些話落在哪些節
+  for (const p of raw.people) {
+    if (!p || typeof p.id !== 'string' || !ID_RE.test(p.id) || personById.has(p.id)) continue;
+    const name = clip(p.name, 40);
+    if (!name || !groups.some((g) => g.id === p.group)) continue;
+    const person = { id: p.id, name, aka: clipList(p.aka), group: p.group, intro: clip(p.intro, 200), stages: [], sayings: [] };
+    for (const st of Array.isArray(p.stages) ? p.stages : []) {
+      const stage = { i: person.stages.length, title: clip(st && st.title, 40), sayings: [] };
+      for (const item of Array.isArray(st && st.sayings) ? st.sayings : []) {
+        const s = makeSaying(item, byId);
+        if (!s || sayById.has(s.id)) continue;
+        s.person = person;
+        s.stage = stage.i;
+        sayById.set(s.id, s);
+        stage.sayings.push(s);
+        person.sayings.push(s);
+      }
+      if (stage.sayings.length) person.stages.push(stage);
+    }
+    if (!person.sayings.length) continue;
+    personById.set(person.id, person);
+    list.push(person);
+    for (const s of person.sayings) {
+      sayings.push(s);
+      for (const id of s.books) for (const r of s.acc[id].ranges) index[id].push({ say: s, lo: r.lo, hi: r.hi });
+    }
+  }
+  if (!list.length) return null;
+  for (const id of IDS) byId[id].sayRanges = index[id];
+  return { groups, list, byId: personById, sayById, sayings };
+}
+
+function build({ raws, events, people }) {
   const books = BIBLE_BOOKS.map((meta) => {
     if (typeof raws[meta.id] !== 'string') throw new Error(`缺少 ${meta.file}`);
     return makeBook(meta, parseBook(raws[meta.id]));
@@ -261,9 +348,12 @@ function build({ raws, events }) {
   const byId = Object.fromEntries(books.map((b) => [b.id, b]));
   let ev = null;
   try { ev = makeEvents(events, byId); } catch { ev = null; }
+  let pe = null;
+  try { pe = makePeople(people, byId); } catch { pe = null; }
   data = {
     books, byId, secs: books.flatMap((b) => b.secs),
     events: ev ? ev.events : null, evById: ev ? ev.evById : null, phases: ev ? ev.phases : null,
+    people: pe,
   };
   return data;
 }
@@ -427,7 +517,7 @@ function paint(st) {
   host.textContent = '';
   live = [];
   window.scrollTo(0, 0);
-  const screens = { book: paintBook, chapter: paintChapter, event: paintEvent };
+  const screens = { book: paintBook, chapter: paintChapter, event: paintEvent, person: paintPerson };
   (screens[st.screen] || paintHub)(host, st);
   if (typeof st.y === 'number') window.scrollTo(0, st.y);
 }
@@ -454,12 +544,12 @@ async function homeContinue() {
 /* ── 大廳：進度、四個分頁 ─────────────────────────── */
 function paintHub(host) {
   setTitle('讀經');
-  const tab = TABS.some(([id]) => id === settings.bibleTab) ? settings.bibleTab : 'books';
+  const tab = tabsOf().some(([id]) => id === settings.bibleTab) ? settings.bibleTab : 'books';
   host.append(summary(tab), tabsRow(tab));
   const panel = el('div', 'bible-panel');
   panel.id = 'bible-panel';
   host.append(panel);
-  ({ books: paintBooksTab, events: paintEventsTab, themes: paintThemesTab, log: paintLogTab })[tab](panel);
+  ({ books: paintBooksTab, events: paintEventsTab, themes: paintThemesTab, people: paintPeopleTab, log: paintLogTab })[tab](panel);
   host.append(footer());
 }
 
@@ -490,10 +580,15 @@ function summary(tab) {
   return card;
 }
 
+// 沒有人物資料就沒有「人物」這一頁
+const tabsOf = () => TABS.filter(([id]) => id !== 'people' || data.people);
+
 function tabsRow(tab) {
   const row = el('div', 'bible-tabs');
   row.setAttribute('role', 'tablist');
-  for (const [id, label] of TABS) {
+  const list = tabsOf();
+  row.style.setProperty('--n', list.length);
+  for (const [id, label] of list) {
     const b = btn(label, 'bible-tab', () => {
       if (settings.bibleTab === id) return;
       settings.bibleTab = id;
@@ -737,6 +832,27 @@ function paintThemesTab(panel) {
   }
 }
 
+/* 人物：依群組列出，點進去看他說過的話 */
+const sayRead = (s) => s.books.every((id) => stateOf(id, s.acc[id].keys) === 'all');
+
+function paintPeopleTab(panel) {
+  for (const g of data.people.groups) {
+    const members = data.people.list.filter((p) => p.group === g.id);
+    if (!members.length) continue;
+    panel.append(el('h3', 'pp-group', g.title));
+    for (const p of members) {
+      const item = btn('', 'pp-item', () => nav({ screen: 'person', id: p.id }));
+      item.dataset.person = p.id;
+      const top = el('span', 'pp-top');
+      top.append(el('span', 'pp-name', p.name));
+      if (p.aka.length) top.append(el('small', 'pp-aka', `又名 ${p.aka.join('、')}`));
+      item.append(top, el('span', 'pp-intro', p.intro),
+        el('span', 'pp-meta', `${p.sayings.length} 段話 · 讀過 ${p.sayings.filter(sayRead).length}`));
+      panel.append(item);
+    }
+  }
+}
+
 /* 紀錄：依日期分組，新的在前 */
 const DOW = '日一二三四五六';
 const dayTitle = (d) => `${d.getFullYear() === new Date().getFullYear() ? '' : `${d.getFullYear()}年`}${d.getMonth() + 1}月${d.getDate()}日（星期${DOW[d.getDay()]}）`;
@@ -934,8 +1050,14 @@ function paintChapter(host, st) {
       const next = book.entries[blk.ents[blk.ents.length - 1].i + 1];
       node.append(el('p', 'bible-more', `（下接第${cnNum(next.c)}章）`));
     }
-    const par = parallelsEl(book, blk.ents[0].ord0, blk.ents[blk.ents.length - 1].ord1);
+    const lo = blk.ents[0].ord0, hi = blk.ents[blk.ents.length - 1].ord1;
+    const par = parallelsEl(book, lo, hi);
     if (par) node.append(par);
+    // 宗徒大事錄沒有事件可對照；金句落在這一段的話，在段尾連到那個人
+    if (book.id === 'act') {
+      const who = speakersEl(sayingsAnchoredIn(book.id, lo, hi));
+      if (who) node.append(who);
+    }
     if (isEnd) {
       node.append(doneButton(sectionUnit(book, sec)));
       live.push(() => node.classList.toggle('is-read', stateOf(book.id, sec.keys) === 'all'));
@@ -1036,6 +1158,8 @@ function paintEvent(host, st) {
     }
     lastChapter = null;
   }
+  const who = speakersEl(sayingsOverlapping(book, acc));
+  if (who) host.append(who);
   host.append(doneButton(accountUnit(book, ev)));
 
   // 上一個、下一個事件（時間順序）。翻頁用取代，返回鍵不必一個個退
@@ -1047,6 +1171,240 @@ function paintEvent(host, st) {
   next.disabled = ev.n >= data.events.length - 1;
   pager.append(prev, next);
   host.append(pager);
+}
+
+/* ── 人物：他說過的話 ─────────────────────────────── */
+// 落在這幾段經文裡的話（事件頁用）：每一段話只算一次，照在經文裡出現的先後排
+function sayingsOverlapping(book, acc) {
+  const found = new Map();
+  for (const x of book.sayRanges) {
+    for (const r of acc.ranges) {
+      if (x.hi < r.lo || x.lo > r.hi) continue;
+      const at = Math.max(x.lo, r.lo);
+      if (!found.has(x.say) || found.get(x.say) > at) found.set(x.say, at);
+    }
+  }
+  return [...found].sort((a, b) => a[1] - b[1]).map(([say]) => say);
+}
+
+// 金句落在 lo～hi 之間的話（章的畫面用）
+function sayingsAnchoredIn(id, lo, hi) {
+  if (!data.people) return [];
+  return data.people.sayings.filter((s) => {
+    if (s.anchor.book !== id) return false;
+    const o = ordOf(s.anchor.key);
+    return o >= lo && o <= hi;
+  });
+}
+
+// 「這裡說話的人：」一排小標籤，點了到那個人、那一段話
+function speakersEl(sayings) {
+  if (!sayings.length) return null;
+  const row = el('div', 'bible-see bible-who');
+  row.append(el('span', 'bible-par-label', '這裡說話的人：'));
+  for (const s of sayings) {
+    const chip = btn(`${s.person.name}：${s.title}`, 'chip', () => nav({ screen: 'person', id: s.person.id, at: s.id }));
+    chip.dataset.say = s.id;
+    row.append(chip);
+  }
+  return row;
+}
+
+// 看上下文：福音就到那一件事（開在這一卷的分頁），沒有事件可去的（宗徒大事錄）就到那一章、那一節
+function sayContext(s, id) {
+  const first = s.acc[id].ranges[0].from;
+  const o = ordOf(first);
+  const hit = data.byId[id].ranges.find((x) => x.lo <= o && o <= x.hi);
+  if (hit) { nav({ screen: 'event', id: hit.ev.id, book: id }); return; }
+  const [c, v] = first.split(':');
+  nav({ screen: 'chapter', book: id, c: +c, v: +v });
+}
+
+const peopleOpen = new Map();   // 人物 id → 展開著的階段；這次開啟期間記住，退回來時還在
+const sayTab = new Map();       // 話 id → 手動切到的書卷
+const sayWide = new Set();      // 已展開全段的經文（話 id、書卷、哪一塊）
+
+// 一段經文。超過 LONG_PASSAGE 節時先只放一節（金句，沒有就第一節），按了才展開全段
+function passageEl(acc, id, keyOrd, tag, redraw) {
+  const book = data.byId[id];
+  const wrap = el('div', 'say-pass');
+  wrap.append(el('p', 'bible-range', `${book.title} ${acc.label}`));
+  const entries = [];
+  for (const r of acc.ranges) for (const e of entriesIn(book, r.lo, r.hi)) if (!entries.includes(e)) entries.push(e);
+
+  const long = acc.keys.length > LONG_PASSAGE;
+  const wide = sayWide.has(tag);
+  let shown = entries;
+  if (long && !wide) {
+    const has = (o) => entries.filter((e) => o >= e.ord0 && o <= e.ord1);
+    shown = (keyOrd != null && has(keyOrd).length ? has(keyOrd) : has(entries[0].ord0));
+  }
+  let flow = null, prev = null;
+  for (const e of shown) {
+    if (prev && e.c !== prev.c) { flow = null; wrap.append(el('p', 'bible-sub', `第${cnNum(e.c)}章`)); }
+    if (!flow || (prev && e.i !== prev.i + 1)) { flow = el('div', 'bible-text'); wrap.append(flow); }
+    const v = verseEl(e);
+    if (keyOrd != null && keyOrd >= e.ord0 && keyOrd <= e.ord1) v.classList.add('key');
+    flow.append(v);
+    prev = e;
+  }
+  if (long) {
+    wrap.append(btn(wide ? '收合' : `展開全段（${acc.keys.length} 節）`, 'btn btn-tiny say-more', () => {
+      if (wide) sayWide.delete(tag); else sayWide.add(tag);
+      redraw();
+    }));
+  }
+  return wrap;
+}
+
+function sayingCard(s, person) {
+  const card = el('article', 'say');
+  card.dataset.say = s.id;
+  const read = sayRead(s);
+  card.classList.toggle('is-read', read);
+
+  const title = el('h3', 'say-title');
+  if (read) {
+    const ok = el('span', 'say-ok', '✓');
+    ok.setAttribute('role', 'img');
+    ok.setAttribute('aria-label', '已讀');
+    title.append(ok, ' ');
+  }
+  title.append(`「${s.title}」`);
+  card.append(title);
+
+  const sub = el('div', 'say-sub');
+  if (s.to) sub.append(el('span', 'say-to', `對 ${s.to} 說`));
+  const badge = el('span', 'tl-meta');
+  for (const id of s.books) {
+    const st = stateOf(id, s.acc[id].keys);
+    badge.append(el('span', `bdg${st === 'all' ? ' done' : st === 'part' ? ' part' : ''}`, ABBR[id]));
+  }
+  sub.append(badge);
+  card.append(sub);
+
+  // 預設開在第一個還沒讀完的書卷
+  let cur = sayTab.get(s.id);
+  if (!s.books.includes(cur)) cur = s.books.find((id) => stateOf(id, s.acc[id].keys) !== 'all') || s.books[0];
+
+  const body = el('div', 'say-body');
+  const tabs = [];
+  const show = () => {
+    for (const b of tabs) b.setAttribute('aria-selected', String(b.dataset.book === cur));
+    body.textContent = '';
+    const keyOrd = s.keyRef && s.keyRef.book === cur ? ordOf(s.keyRef.key) : null;   // 金句不在這一卷就不標
+    body.append(passageEl(s.acc[cur], cur, keyOrd, `${s.id}|${cur}`, show));
+    if (s.reply) {
+      const rid = s.reply[cur] ? cur : s.replyBooks[0];
+      const box = el('div', 'say-reply');
+      box.append(el('p', 'say-reply-label', `${s.replyBy}回答`), passageEl(s.reply[rid], rid, null, `${s.id}|r|${rid}`, show));
+      body.append(box);
+    }
+  };
+  if (s.books.length > 1) {
+    const row = el('div', 'bible-etabs say-tabs');
+    row.setAttribute('role', 'tablist');
+    for (const id of s.books) {
+      const b = btn(`${ABBR[id]}${stateOf(id, s.acc[id].keys) === 'all' ? ' ✓' : ''}`, 'bible-etab', () => {
+        if (id === cur) return;
+        cur = id;
+        sayTab.set(s.id, id);
+        show();
+      });
+      b.dataset.book = id;
+      b.setAttribute('role', 'tab');
+      tabs.push(b);
+      row.append(b);
+    }
+    card.append(row);
+  }
+  card.append(body);
+  show();
+
+  if (s.note) card.append(el('p', 'hint bible-note', s.note));
+
+  const others = s.see.map((id) => data.people.sayById.get(id)).filter((o) => o && o !== s);
+  if (others.length) {
+    const row = el('div', 'bible-see say-see');
+    for (const o of others) {
+      const label = o.person === person ? o.title : `${o.person.name} · ${o.title}`;
+      const chip = btn(`對照：${label}`, 'chip', () => nav({ screen: 'person', id: o.person.id, at: o.id }));
+      chip.dataset.say = o.id;
+      row.append(chip);
+    }
+    card.append(row);
+  }
+  card.append(btn('看上下文', 'btn btn-tiny say-ctx', () => sayContext(s, cur)));
+  return card;
+}
+
+function paintPerson(host, st) {
+  const person = data.people && data.people.byId.get(st.id);
+  if (!person) { paintHub(host); return; }
+  setTitle(person.name);
+
+  const done = person.sayings.filter(sayRead).length;
+  const head = el('div', 'card bible-sum pe-head');
+  if (person.aka.length) head.append(el('p', 'pe-aka', `又名 ${person.aka.join('、')}`));
+  if (person.intro) head.append(el('p', 'pe-intro', person.intro));
+  head.append(el('p', 'bible-sum-line pe-line', `讀完 ${done}／${person.sayings.length} 段話`));
+  const bar = el('div', 'bible-bar');
+  const fill = el('span');
+  fill.style.width = `${(done * 100) / (person.sayings.length || 1)}%`;
+  bar.append(fill);
+  head.append(bar);
+  host.append(head);
+
+  // 階段是可以收起來的卡片；第一次打開只展開有第一段沒讀的話的那一個（全讀過就全展開）
+  let open = peopleOpen.get(person.id);
+  if (!open) {
+    const first = person.stages.find((g) => !g.sayings.every(sayRead));
+    open = new Set(first ? [first.i] : person.stages.map((g) => g.i));
+    peopleOpen.set(person.id, open);
+  }
+  const target = st.at && data.people.sayById.get(st.at);
+  const goal = target && target.person === person ? target : null;
+  if (goal) open.add(goal.stage);
+
+  const groups = [];
+  const all = btn('', 'btn btn-tiny tl-all', () => {
+    const opening = groups.some((d) => !d.open);
+    for (const d of groups) d.open = opening;
+  });
+  const label = () => { all.textContent = groups.every((d) => d.open) ? '全部收起' : '全部展開'; };
+  const tools = el('div', 'tl-tools');
+  tools.append(all);
+  host.append(tools);
+
+  const cards = new Map();
+  for (const stage of person.stages) {
+    const d = document.createElement('details');
+    d.className = 'th-group tl-group pe-stage';
+    d.dataset.stage = stage.i;
+    d.open = open.has(stage.i);
+    d.addEventListener('toggle', () => { if (d.open) open.add(stage.i); else open.delete(stage.i); label(); });
+    const head1 = document.createElement('summary');
+    head1.className = 'tl-phase';
+    head1.append(el('span', null, stage.title), el('small', null, `${stage.sayings.filter(sayRead).length}／${stage.sayings.length}`));
+    const list = el('div', 'pe-list');
+    for (const s of stage.sayings) {
+      const card = sayingCard(s, person);
+      cards.set(s.id, card);
+      list.append(card);
+    }
+    d.append(head1, list);
+    groups.push(d);
+    host.append(d);
+  }
+  label();
+
+  // 從別處（對照的小標籤、這裡說話的人）跳來：捲到那一段並閃一下。從上一層退回來時位置由 paint 還原
+  const card = goal && cards.get(goal.id);
+  if (card && typeof st.y !== 'number') {
+    card.scrollIntoView({ block: 'start' });
+    card.classList.add('hl');
+    setTimeout(() => card.classList.remove('hl'), 2400);
+  }
 }
 
 /* ── 啟動 ─────────────────────────────────────────── */

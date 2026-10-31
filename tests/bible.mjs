@@ -22,6 +22,19 @@ const hasEvents = existsSync(`${root}data/gospel-events.json`);
 const events = hasEvents ? JSON.parse(readFileSync(`${root}data/gospel-events.json`, 'utf8')) : null;
 // 用出處找事件，不用代號
 const eventByRef = (book, range) => events.events.find((e) => (e.refs[book] || []).includes(range));
+// 哪一件事的哪一卷包含這一節（範圍寫法：'5:3'、'5:1-12'、'8:34-9:1'）
+const covers = (range, c, v) => {
+  const m = /^(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$/.exec(range);
+  const o = c * 1000 + v;
+  return !!m && m[1] * 1000 + +m[2] <= o && o <= (m[3] || m[1]) * 1000 + +(m[4] || m[2]);
+};
+const eventAt = (book, c, v) => events.events.find((e) => (e.refs[book] || []).some((r) => covers(r, c, v)));
+
+// 人物：只假設 peter 和他的五段話（別的人與話是另一邊在補）
+const hasPeople = existsSync(`${root}data/people.json`);
+const peopleData = hasPeople ? JSON.parse(readFileSync(`${root}data/people.json`, 'utf8')) : null;
+const sayingOf = (id) => peopleData.people.flatMap((p) => p.stages.flatMap((g) => g.sayings)).find((x) => x.id === id);
+const verseText = (book, c, v) => parsed(book).chapters[c].filter((e) => e.v === v).map((e) => e.t).join('');
 
 const { browser, page, errors } = await launch();
 const outbound = [];
@@ -82,7 +95,11 @@ ok('five books are listed', books.length === 5);
 ok('named the 思高 way', books.join('、') === '瑪竇福音、馬爾谷福音、路加福音、若望福音、宗徒大事錄');
 ok('with the overall progress and a 繼續讀 button', /已讀 0／4,780 節（0%）/.test(await page.textContent('.bible-sum-line'))
    && (await page.textContent('#bible-hub-continue')) === '繼續讀');
-ok('the four tabs are there', (await page.locator('.bible-tab').allTextContents()).join('') === '書卷事件主題紀錄');
+ok('the tabs are there, 人物 between 主題 and 紀錄', (await page.locator('.bible-tab').allTextContents()).join('') === (hasPeople ? '書卷事件主題人物紀錄' : '書卷事件主題紀錄'));
+ok('and they fit in one row', await page.evaluate(() => {
+  const t = [...document.querySelectorAll('.bible-tab')].map((b) => b.getBoundingClientRect());
+  return t.every((r) => r.top === t[0].top && r.right <= innerWidth);
+}));
 ok('the source notice is linked in the footer', await page.locator('.bible-foot a[href$="bible/README.md"]').count() === 1);
 await page.click('.bible-foot a');
 await page.waitForFunction(() => /思高/.test(document.querySelector('.bible-foot .bible-notice').textContent));
@@ -424,6 +441,389 @@ if (hasEvents) {
   console.log('SKIP  event tests: data/gospel-events.json is not there yet');
 }
 
+// ───────────── 人物：誰說了什麼 ─────────────
+if (hasPeople) {
+  const peter = peopleData.people.find((p) => p.id === 'peter');
+  const confess = sayingOf('peter-confess'), words = sayingOf('peter-words-of-life');
+  const silver = sayingOf('peter-no-silver'), sinner = sayingOf('peter-sinner');
+  ok('(data) peter and the five sayings these tests use are in data/people.json', peter && confess && words && silver && sinner && sayingOf('peter-love'));
+  const nSayings = peter.stages.reduce((n, g) => n + g.sayings.length, 0);
+  const card = (id) => page.locator(`.say[data-say="${id}"]`);
+  const inView = (sel) => page.evaluate((q) => {
+    const r = document.querySelector(q).getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight;
+  }, sel);
+  const openStages = () => page.locator('.pe-stage').evaluateAll((ds) => ds.filter((d) => d.open).length);
+  const openPeter = async () => {
+    await hubTab('people');
+    await page.click('.pp-item[data-person="peter"]');
+    await page.waitForSelector('.say', { state: 'attached' });
+  };
+  const expandAll = async () => { if ((await page.textContent('.tl-all')) === '全部展開') await page.click('.tl-all'); };
+
+  // 列表
+  await reset();
+  await openHub();
+  await hubTab('people');
+  await page.waitForSelector('.pp-item');
+  const heads = peopleData.groups.filter((g) => peopleData.people.some((p) => p.group === g.id)).map((g) => g.title);
+  ok('the 人物 tab has a heading per group, in the file order', (await page.locator('.pp-group').allTextContents()).join() === heads.join());
+  const row = page.locator('.pp-item[data-person="peter"]');
+  ok('伯多祿 is listed, with his other names', (await row.locator('.pp-name').textContent()) === '伯多祿'
+     && (await row.locator('.pp-aka').textContent()) === `又名 ${peter.aka.join('、')}`);
+  ok('his intro and 「N 段話 · 讀過 x」', (await row.locator('.pp-intro').textContent()) === peter.intro
+     && (await row.locator('.pp-meta').textContent()) === `${nSayings} 段話 · 讀過 0`);
+  ok('he sits under his own group heading', await row.evaluate((r, title) => {
+    let n = r.previousElementSibling;
+    while (n && !n.classList.contains('pp-group')) n = n.previousElementSibling;
+    return !!n && n.textContent === title;
+  }, peopleData.groups.find((g) => g.id === peter.group).title));
+  ok('the list fits the narrow screen', await noHScroll());
+
+  // 人物畫面
+  await row.click();
+  await page.waitForSelector('.say', { state: 'attached' });
+  ok('the screen is titled with the name', (await title()) === '伯多祿');
+  ok('the header has the other names, the intro and the progress', (await page.textContent('.pe-aka')) === `又名 ${peter.aka.join('、')}`
+     && (await page.textContent('.pe-intro')) === peter.intro && (await page.textContent('.pe-line')) === `讀完 0／${nSayings} 段話`
+     && (await page.evaluate(() => document.querySelector('.pe-head .bible-bar > span').style.width)) === '0%');
+  ok('one folding card per stage, one card per saying', (await page.locator('.pe-stage').count()) === peter.stages.length
+     && (await page.locator('.say').count()) === nSayings);
+  ok('the stages look like the event timeline groups', (await page.locator('details.th-group.tl-group').count()) === peter.stages.length);
+  ok('on fresh progress exactly one stage is open, the first', (await openStages()) === 1 && (await page.locator('.pe-stage').first().evaluate((d) => d.open)));
+  ok('the other stages are folded (their cards are hidden)', await page.locator('.pe-stage').first().locator('.say').first().isVisible() && (await page.locator('.say:visible').count()) < nSayings);
+  await page.click('.tl-all');
+  ok('全部展開 opens every stage', (await openStages()) === peter.stages.length && (await page.textContent('.tl-all')) === '全部收起');
+  await page.click('.tl-all');
+  ok('全部收起 closes them all', (await openStages()) === 0 && (await page.textContent('.tl-all')) === '全部展開');
+  await page.locator('.pe-stage > summary').last().click();
+  ok('a stage opens on its own when tapped, and the button follows', (await openStages()) === 1 && (await page.locator('.pe-stage').last().evaluate((d) => d.open)));
+  await page.click('.tl-all');
+  ok('the person screen fits the narrow screen', await noHScroll());
+  const histLen = await page.evaluate(() => history.length);
+  await page.goBack();
+  await page.waitForSelector('.pp-item');
+  await openPeter();
+  ok('the open stages are remembered for the session, also coming back', (await openStages()) === peter.stages.length);
+
+  // 一段話：書卷分頁、金句、回答
+  const cc = card(confess.id);
+  const pass = cc.locator('.say-body > .say-pass');
+  ok('the saying headline is in 「」 and says who it was said to', (await cc.locator('.say-title').textContent()) === `「${confess.title}」`
+     && (await cc.locator('.say-to').textContent()) === `對 ${confess.to} 說`);
+  ok('it has book badges 瑪 谷 路', (await cc.locator('.say-sub .bdg').allTextContents()).join('') === '瑪谷路');
+  ok('and small tabs for the books, opening on the first unread one', (await cc.locator('.say-tabs .bible-etab').allTextContents()).join('') === '瑪谷路'
+     && (await cc.locator('.bible-etab[data-book="mat"]').getAttribute('aria-selected')) === 'true');
+  ok('the 瑪 tab shows 瑪 16:16 with its verse number', (await pass.locator('.v').first().getAttribute('data-key')) === '16:16'
+     && (await pass.locator('.v').first().textContent()).endsWith(verseText('mat', 16, 16)) && (await pass.locator('.v .vn').first().textContent()) === '16');
+  ok('the key verse has the gold border', (await pass.locator('.v.key').count()) === 1 && (await pass.locator('.v.key').getAttribute('data-key')) === '16:16'
+     && await pass.locator('.v.key').evaluate((n) => getComputedStyle(n).borderLeftWidth === '3px'));
+  const reply = cc.locator('.say-reply');
+  ok('the 瑪 tab shows 耶穌回答 with 瑪 16:17-19', (await reply.locator('.say-reply-label').textContent()) === `${confess.replyBy}回答`
+     && (await reply.locator('.v').first().getAttribute('data-key')) === '16:17'
+     && (await reply.textContent()).includes(verseText('mat', 16, 17)) && (await reply.textContent()).includes('瑪竇福音 16:17-19'));
+  await cc.locator('.bible-etab[data-book="mrk"]').click();
+  ok('the 谷 tab switches to 谷 8:29', (await pass.locator('.v').first().getAttribute('data-key')) === '8:29'
+     && (await pass.locator('.v').first().textContent()).endsWith(verseText('mrk', 8, 29)) && (await cc.locator('.bible-etab[data-book="mrk"]').getAttribute('aria-selected')) === 'true');
+  ok('and highlights nothing, since the key verse is in 瑪', (await cc.locator('.v.key').count()) === 0);
+  ok('the reply is still shown, from the first book that has one', (await reply.locator('.v').first().getAttribute('data-key')) === '16:17');
+  await cc.locator('.bible-etab[data-book="luk"]').click();
+  ok('the 路 tab shows 路 9:20', (await pass.locator('.v').first().getAttribute('data-key')) === '9:20' && (await pass.locator('.v.key').count()) === 0);
+  ok('the note is shown like an event note', (await cc.locator('.bible-note').textContent()) === confess.note);
+  ok('switching tabs does not add history entries', (await page.evaluate(() => history.length)) === histLen);
+  await cc.locator('.bible-etab[data-book="mat"]').click();
+
+  // 對照：跳到另一段話，返回鍵回得來
+  const wc = card(words.id);
+  ok('a saying in one book has no tabs', (await wc.locator('.say-tabs').count()) === 0 && (await wc.locator('.say-body .v').first().getAttribute('data-key')) === '6:68');
+  ok('and its key verse is set apart', (await wc.locator('.v.key').getAttribute('data-key')) === '6:68');
+  const chip = wc.locator('.say-see .chip');
+  ok('the 對照 chip names the other saying of the same person', (await chip.allTextContents()).join() === `對照：${confess.title}`);
+  await wc.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, document.querySelector('.say[data-say="peter-words-of-life"]').getBoundingClientRect().top + scrollY - 80));
+  const y0 = await page.evaluate(() => Math.round(scrollY));
+  await chip.click();
+  await page.waitForSelector('.say.hl', { state: 'attached' });
+  ok('tapping it pushes a history entry for that saying', await page.evaluate(() => {
+    const b = history.state.bible;
+    return b.screen === 'person' && b.id === 'peter' && b.at === 'peter-confess';
+  }));
+  ok('the card is scrolled into view and flashes', (await page.locator('.say.hl').getAttribute('data-say')) === confess.id && await inView('.say[data-say="peter-confess"]'));
+  ok('and its stage is open', await page.locator(`.pe-stage:has(.say[data-say="peter-confess"])`).evaluate((d) => d.open));
+  ok('the flash fades by itself', await (async () => { await page.waitForFunction(() => !document.querySelector('.say.hl'), null, { timeout: 5000 }); return true; })());
+  await page.goBack();
+  await page.waitForSelector('.say', { state: 'attached' });
+  ok('back returns to where you were, without flashing again', (await title()) === '伯多祿' && Math.abs((await page.evaluate(() => scrollY)) - y0) < 40 && y0 > 200
+     && (await page.locator('.say.hl').count()) === 0 && await page.evaluate(() => history.state.bible.at === undefined));
+
+  // 看上下文
+  if (hasEvents) {
+    const mrkEv = eventAt('mrk', 8, 29), matEv = eventAt('mat', 16, 16);
+    ok('(data) 瑪 16:16 and 谷 8:29 are in events', mrkEv && matEv);
+    await card(confess.id).locator('.bible-etab[data-book="mrk"]').click();
+    await card(confess.id).locator('.say-ctx').click();
+    await page.waitForSelector('.bible-ev-title');
+    ok('看上下文 on the 谷 tab opens the event with 谷 active', (await page.textContent('.bible-ev-title')) === mrkEv.title
+       && (await page.getAttribute('.bible-etab[data-book="mrk"]', 'aria-selected')) === 'true'
+       && (await page.locator('.bible-text .v[data-key="8:29"]').count()) === 1);
+    await page.goBack();
+    await page.waitForSelector('.say', { state: 'attached' });
+    ok('back returns to the saying, with the 谷 tab still chosen', (await card(confess.id).locator('.bible-etab[data-book="mrk"]').getAttribute('aria-selected')) === 'true');
+    await card(confess.id).locator('.bible-etab[data-book="mat"]').click();
+    await card(confess.id).locator('.say-ctx').click();
+    await page.waitForSelector('.bible-ev-title');
+    ok('and on the 瑪 tab it opens that event with 瑪 active', (await page.textContent('.bible-ev-title')) === matEv.title
+       && (await page.getAttribute('.bible-etab[data-book="mat"]', 'aria-selected')) === 'true');
+    await page.goBack();
+    await page.waitForSelector('.say', { state: 'attached' });
+  } else {
+    console.log('SKIP  context-to-event tests: data/gospel-events.json is not there yet');
+  }
+  await card(silver.id).locator('.say-ctx').click();
+  await page.waitForSelector('.bible-sec');
+  ok('看上下文 on an Acts saying opens that chapter', (await title()) === '宗徒大事錄 第三章');
+  ok('with verse 6 highlighted and in view', await page.evaluate(() => {
+    const v = document.querySelector('.v.hl');
+    const r = v && v.getBoundingClientRect();
+    return !!v && v.dataset.key === '3:6' && r.top > 0 && r.bottom < innerHeight;
+  }));
+  await page.goBack();
+  await page.waitForSelector('.say', { state: 'attached' });
+
+  // ✓：全部出處都讀過才算
+  await page.evaluate(() => localStorage.setItem('mercy.bible.v1', JSON.stringify({ read: { mat: ['16:16'], mrk: ['8:29'], luk: [], jhn: [], act: [] }, log: [], last: null })));
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.say', { state: 'attached' });
+  await expandAll();
+  ok('two of three books read is not yet ✓', (await card(confess.id).locator('.say-ok').count()) === 0
+     && (await card(confess.id).locator('.say-sub .bdg.done').allTextContents()).join('') === '瑪谷');
+  ok('and the tab opens on the first unread book', (await card(confess.id).locator('.bible-etab[data-book="luk"]').getAttribute('aria-selected')) === 'true'
+     && (await card(confess.id).locator('.say-tabs .bible-etab').allTextContents()).join('') === '瑪 ✓谷 ✓路');
+  await page.evaluate(() => localStorage.setItem('mercy.bible.v1', JSON.stringify({ read: { mat: ['16:16'], mrk: ['8:29'], luk: ['9:20'], jhn: [], act: [] }, log: [], last: null })));
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.say', { state: 'attached' });
+  await expandAll();
+  ok('all three read: ✓ before the headline', (await card(confess.id).locator('.say-title').textContent()).startsWith('✓') && await card(confess.id).evaluate((n) => n.classList.contains('is-read')));
+  ok('the tab opens on the first book when everything is read', (await card(confess.id).locator('.bible-etab[data-book="mat"]').getAttribute('aria-selected')) === 'true');
+  ok('the header and the stage count it', /^讀完 [1-9]\d*／\d+ 段話$/.test(await page.textContent('.pe-line'))
+     && /^[1-9]\d*／\d+$/.test(await page.locator('.pe-stage', { has: card(confess.id) }).locator('summary small').textContent()));
+
+  // ✓：讀完事件，這裡就有 ✓
+  if (hasEvents) {
+    await reset();
+    await openHub();
+    await openPeter();
+    await expandAll();
+    ok('peter-sinner starts without a ✓', (await card(sinner.id).locator('.say-ok').count()) === 0);
+    await card(sinner.id).locator('.say-ctx').click();
+    await page.waitForSelector('.bible-ev-title');
+    await page.locator('.bible-done').click();
+    await page.goBack();
+    await page.waitForSelector('.say', { state: 'attached' });
+    ok('after marking its event read, ✓ appears on peter-sinner', (await card(sinner.id).locator('.say-ok').count()) === 1
+       && (await card(sinner.id).locator('.say-title').textContent()).startsWith('✓') && (await card(sinner.id).locator('.say-sub .bdg.done').allTextContents()).join('') === '路');
+    ok('the progress counts it', /^讀完 [1-9]\d*／\d+ 段話$/.test(await page.textContent('.pe-line')));
+    await page.goBack();
+    await page.waitForSelector('.pp-item');
+    ok('and so does the list', /讀過 [1-9]/.test(await page.textContent('.pp-item[data-person="peter"] .pp-meta')));
+  }
+
+  // 這裡說話的人
+  if (hasEvents) {
+    await reset();
+    const ev = eventAt('mat', 16, 16);
+    ok('(data) the event with 瑪 16:16 is told in 谷 too', ev && ev.refs.mrk);
+    await openChapter('mat', 16);
+    ok('Gospel chapters show no speaker row (they have the event page)', (await page.locator('.bible-who').count()) === 0);
+    const sec = page.locator('.bible-sec', { has: page.locator('.v[data-key="16:16"]') });
+    await sec.locator('.bible-chip[data-book="mrk"]').click();
+    await page.waitForSelector('.bible-ev-title');
+    const who = page.locator('.bible-who');
+    ok('the event screen says 這裡說話的人：', (await who.locator('.bible-par-label').textContent()) === '這裡說話的人：');
+    ok('with a chip 伯多祿：你是默西亞 on the 谷 tab', (await who.locator('.chip', { hasText: `伯多祿：${confess.title}` }).count()) === 1);
+    ok('after the verses, before the 讀完了 button', await page.evaluate(() => {
+      const w = document.querySelector('.bible-who'), t = document.querySelector('.bible-text'), d = document.querySelector('.bible-done');
+      return !!(t.compareDocumentPosition(w) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(w.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+    ok('the event screen still fits', await noHScroll());
+    await page.click('.bible-etab[data-book="mat"]');
+    ok('and on the 瑪 tab too', (await who.locator('.chip', { hasText: `伯多祿：${confess.title}` }).count()) === 1);
+    await who.locator('.chip', { hasText: `伯多祿：${confess.title}` }).click();
+    await page.waitForSelector('.say.hl', { state: 'attached' });
+    ok('the chip opens his screen at that saying', (await title()) === '伯多祿' && (await page.locator('.say.hl').getAttribute('data-say')) === confess.id && await inView('.say.hl'));
+    await page.goBack();
+    await page.waitForSelector('.bible-ev-title');
+    ok('back returns to the event, on the 瑪 tab', (await page.getAttribute('.bible-etab[data-book="mat"]', 'aria-selected')) === 'true');
+  }
+  await openChapter('act', 3);
+  const actSec = page.locator('.bible-sec', { has: page.locator('.v[data-key="3:6"]') });
+  ok('Acts chapters show the chip after the section holding the key verse', (await page.locator('.bible-who').count()) >= 1
+     && (await actSec.locator('.bible-who .chip', { hasText: `伯多祿：${silver.title}` }).count()) === 1
+     && (await page.locator(`.bible-who .chip[data-say="${silver.id}"]`).count()) === 1);
+  ok('after the text, before the 讀完了 button', await actSec.evaluate((n) => {
+    const w = n.querySelector('.bible-who'), t = n.querySelector('.bible-text'), d = n.querySelector('.bible-done');
+    return !!(t.compareDocumentPosition(w) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(w.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
+  ok('the chapter still fits', await noHScroll());
+  await actSec.locator('.bible-who .chip', { hasText: silver.title }).click();
+  await page.waitForSelector('.say.hl', { state: 'attached' });
+  ok('the chip opens his screen at 金銀我沒有', (await title()) === '伯多祿' && (await page.locator('.say.hl').getAttribute('data-say')) === silver.id);
+  await page.goBack();
+  await page.waitForSelector('.bible-sec');
+  ok('back returns to the chapter', (await title()) === '宗徒大事錄 第三章');
+
+  // 重新載入後仍在這個人
+  await page.goForward();
+  await page.waitForSelector('.say', { state: 'attached' });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.say', { state: 'attached' });
+  ok('a reload comes back to the same person', (await title()) === '伯多祿' && (await page.locator('.say').count()) === nSayings);
+} else {
+  console.log('SKIP  人物 tests: data/people.json is not there yet');
+}
+
+// ───────────── 人物：自備資料，檢查整理與長篇經文 ─────────────
+{
+  const mock = {
+    groups: [{ id: 'g1', title: '試驗組' }, { id: 'g1', title: '重複的組' }, { id: 'g2', title: '空的組' }],
+    people: [
+      { id: 'ann', name: '安妮', aka: ['小安', '', 7], group: 'g1', intro: '試驗用。', stages: [
+        { title: '一', sayings: [
+          { id: 'ann-long', title: '長的一段', to: '眾人', refs: { mat: ['5:3-12'], luk: ['6:20-23'] }, key: 'luk 6:20', note: '一個註' },
+          { id: 'ann-bad', title: '壞的出處', to: '誰', refs: { mat: ['99:1'] }, key: 'mat 99:1' },
+          { id: 'ann-nobook', title: '沒有這卷', to: '誰', refs: { zzz: ['1:1'] }, key: 'zzz 1:1' },
+          { id: 'ann-half', title: '一半壞', to: '誰', refs: { mat: ['5:3', '77:7'], zzz: ['1:1'] }, key: 'mat 77:7' },
+          { id: 'ann-html', title: '<img src=x onerror="window.__pwned=1">', to: '<b>誰</b>', refs: { mat: ['5:4'] }, key: 'mat 5:4' },
+          { id: 'ann-long', title: '重複的 id', to: '誰', refs: { mat: ['5:5'] }, key: 'mat 5:5' },
+        ] },
+        { title: '空的', sayings: [{ id: 'ann-x', title: 'x', to: 'y', refs: { mat: ['88:1'] }, key: 'mat 88:1' }] },
+      ] },
+      { id: 'dan', name: '但', group: 'g1', intro: '', stages: [{ title: '甲', sayings: [
+        { id: 'dan-1', title: '一句', to: '安妮', refs: { luk: ['6:20'] }, key: 'luk 6:20', see: ['ann-long', 'dan-1', 'no-such-saying'] },
+      ] }] },
+      { id: 'bob', name: '鮑伯', group: 'g1', intro: '', stages: [{ title: '壞', sayings: [{ id: 'bob-x', title: 'x', to: 'y', refs: { mat: ['99:9'] }, key: 'mat 99:9' }] }] },
+      { id: 'cat', name: '貓', group: 'nope', intro: 'x', stages: [{ title: 'a', sayings: [{ id: 'cat-1', title: 'ok', to: 'z', refs: { mat: ['5:3'] }, key: 'mat 5:3' }] }] },
+      'junk', null, 7,
+    ],
+  };
+  const mk = await launch({ serviceWorkers: 'block' });
+  const m = mk.page;
+  await m.route('**/people.json', (r) => r.fulfill({ json: mock }));
+  await m.goto(BASE, { waitUntil: 'networkidle' });
+  await m.waitForFunction(() => /節/.test(document.querySelector('#bible-home-line').textContent));
+  await m.click('#bible-open');
+  await m.waitForSelector('.bible-tab');
+  await m.click('.bible-tab[data-tab="people"]');
+  await m.waitForSelector('.pp-item');
+  const mcard = (id) => m.locator(`.say[data-say="${id}"]`);
+  ok('mock: a person with no good saying, or in an unknown group, is dropped', (await m.locator('.pp-item').allTextContents()).length === 2
+     && (await m.locator('.pp-name').allTextContents()).join() === '安妮,但');
+  ok('mock: a duplicate group, an empty group are not listed twice or at all', (await m.locator('.pp-group').allTextContents()).join() === '試驗組');
+  ok('mock: only the sayings with real passages count', (await m.locator('.pp-item[data-person="ann"] .pp-meta').textContent()) === '3 段話 · 讀過 0');
+  ok('mock: bad nicknames are skipped', (await m.locator('.pp-item[data-person="ann"] .pp-aka').textContent()) === '又名 小安');
+  await m.click('.pp-item[data-person="ann"]');
+  await m.waitForSelector('.say', { state: 'attached' });
+  ok('mock: the person screen has one stage with the three good sayings', (await m.locator('.pe-stage').count()) === 1 && (await m.locator('.say').count()) === 3
+     && (await m.locator('.say').evaluateAll((ns) => ns.map((n) => n.dataset.say))).join() === 'ann-long,ann-half,ann-html');
+  ok('mock: data is shown as text, never as markup', (await m.evaluate(() => window.__pwned)) === undefined
+     && (await mcard('ann-html').locator('.say-title').textContent()).includes('<img src=x') && (await mcard('ann-html').locator('img').count()) === 0
+     && (await mcard('ann-html').locator('.say-to').textContent()) === '對 <b>誰</b> 說');
+  ok('mock: a key that is not in the passage means no highlight', (await mcard('ann-half').locator('.v').count()) === 1 && (await mcard('ann-half').locator('.v.key').count()) === 0);
+
+  // 長篇：超過五節只放金句，按了展開全段
+  const lc = mcard('ann-long');
+  const mat312 = parsed('mat').chapters[5].filter((e) => e.v >= 3 && e.v <= 12 && !e.cont).length;
+  ok('mock: tabs open on 瑪 (first book), the key is in 路', (await lc.locator('.say-tabs .bible-etab').allTextContents()).join('') === '瑪路'
+     && (await lc.locator('.bible-etab[data-book="mat"]').getAttribute('aria-selected')) === 'true');
+  ok('mock: a passage over 5 verses shows only its first verse when the key is in another book', (await lc.locator('.say-body .v').count()) === 1
+     && (await lc.locator('.say-body .v').getAttribute('data-key')) === '5:3' && (await lc.locator('.v.key').count()) === 0);
+  const more = lc.locator('.say-more');
+  ok('mock: with a 「展開全段（N 節）」 toggle', (await more.textContent()) === `展開全段（${mat312} 節）`);
+  await more.click();
+  ok('mock: which shows the whole passage', (await lc.locator('.say-body .v').count()) === parsed('mat').chapters[5].filter((e) => e.v >= 3 && e.v <= 12).length
+     && (await lc.locator('.say-more').textContent()) === '收合');
+  await lc.locator('.say-more').click();
+  ok('mock: and folds again', (await lc.locator('.say-body .v').count()) === 1);
+  await lc.locator('.bible-etab[data-book="luk"]').click();
+  ok('mock: the 路 passage is short, so it is all shown, key verse set apart', (await lc.locator('.say-body .v').count()) >= 4 && (await lc.locator('.say-more').count()) === 0
+     && (await lc.locator('.v.key').getAttribute('data-key')) === '6:20');
+  await lc.locator('.bible-etab[data-book="mat"]').click();
+  await m.evaluate(() => { document.querySelector('.say[data-say="ann-long"] .say-more').click(); });
+  ok('mock: an expanded passage stays expanded after switching tabs and back', await (async () => {
+    await lc.locator('.bible-etab[data-book="luk"]').click();
+    await lc.locator('.bible-etab[data-book="mat"]').click();
+    return (await lc.locator('.say-body .v').count()) > 5;
+  })());
+  ok('mock: the note shows', (await lc.locator('.bible-note').textContent()) === '一個註');
+  ok('mock: a page of this still fits the narrow screen', await m.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth));
+
+  // 對照另一個人：標籤上加人名；指向不存在的話就不出現
+  await m.goBack();
+  await m.waitForSelector('.pp-item');
+  await m.click('.pp-item[data-person="dan"]');
+  await m.waitForSelector('.say', { state: 'attached' });
+  const dc = mcard('dan-1').locator('.say-see .chip');
+  ok('mock: the 對照 chip of another person carries the name; unknown and self links are dropped', (await dc.allTextContents()).join() === '對照：安妮 · 長的一段');
+  await dc.click();
+  await m.waitForSelector('.say.hl', { state: 'attached' });
+  ok('mock: it opens that person, at that saying', (await m.textContent('#bible-title')) === '安妮' && (await m.locator('.say.hl').getAttribute('data-say')) === 'ann-long');
+  await m.goBack();
+  await m.waitForSelector('.say', { state: 'attached' });
+  ok('mock: back returns to the first person', (await m.textContent('#bible-title')) === '但');
+
+  // 事件頁：沒有重疊的話，就沒有「這裡說話的人」
+  if (hasEvents) {
+    await m.goBack();
+    await m.waitForSelector('.pp-item');
+    await m.click('.bible-tab[data-tab="books"]');
+    await m.click('.bible-book[data-book="jhn"]');
+    await m.click('.ch-btn[data-c="2"]');
+    await m.waitForSelector('.bible-sec');
+    await m.locator('.bible-uniq').first().click();
+    await m.waitForSelector('.bible-ev-title');
+    ok('mock: an event with no speaker in it has no 這裡說話的人 row', (await m.locator('.bible-who').count()) === 0);
+    await m.goBack();
+    await m.waitForSelector('.bible-sec');
+    await m.goBack(); await m.goBack();
+    await m.click('.bible-book[data-book="mat"]');
+    await m.click('.ch-btn[data-c="5"]');
+    await m.waitForSelector('.bible-sec');
+    const first = m.locator('.bible-sec', { has: m.locator('.v[data-key="5:4"]') });
+    await first.locator('.bible-uniq, .bible-chip').first().click();
+    await m.waitForSelector('.bible-ev-title');
+    if (await m.locator('.bible-etab[data-book="mat"]').count()) await m.click('.bible-etab[data-book="mat"]');
+    ok('mock: and one that overlaps a saying lists it', (await m.locator('.bible-who .chip', { hasText: '安妮：長的一段' }).count()) === 1);
+  }
+  ok('mock: no errors', mk.errors.length === 0);
+  if (mk.errors.length) console.log(mk.errors.join('\n'));
+  await mk.browser.close();
+}
+
+// 人物資料不見了或壞了：沒有那一頁，其他都照常
+for (const [what, route] of [['missing', (r) => r.fulfill({ status: 404, body: 'no' })], ['not JSON', (r) => r.fulfill({ body: '{oops' })],
+  ['the wrong shape', (r) => r.fulfill({ json: { groups: 'x', people: { a: 1 } } })], ['all bad', (r) => r.fulfill({ json: { groups: [{ id: 'a', title: 'A' }], people: [{ id: 'p', name: 'P', group: 'a', stages: 5 }] } })]]) {
+  const bare = await launch({ serviceWorkers: 'block' });
+  await bare.page.route('**/people.json', route);
+  await bare.page.goto(BASE, { waitUntil: 'networkidle' });
+  await bare.page.waitForFunction(() => /節/.test(document.querySelector('#bible-home-line').textContent));
+  await bare.page.click('#bible-open');
+  await bare.page.waitForSelector('.bible-book');
+  ok(`without people (${what}): no 人物 tab, the rest is as before`, (await bare.page.locator('.bible-tab').allTextContents()).join('') === '書卷事件主題紀錄'
+     && (await bare.page.locator('.bible-book').count()) === 5);
+  // 上次停在「人物」分頁的人，打開時回到書卷
+  await bare.page.evaluate(() => { const st = JSON.parse(localStorage.getItem('mercy.settings.v1') || '{}'); st.bibleTab = 'people'; localStorage.setItem('mercy.settings.v1', JSON.stringify(st)); });
+  await bare.page.reload({ waitUntil: 'networkidle' });
+  await bare.page.waitForSelector('.bible-book', { state: 'attached' });
+  ok(`and a remembered 人物 tab falls back to 書卷 (${what})`, (await bare.page.getAttribute('.bible-tab[data-tab="books"]', 'aria-selected')) === 'true');
+  ok(`and chapters and events still work (${what})`, await (async () => {
+    await bare.page.click('.bible-tab[data-tab="events"]');
+    await bare.page.waitForSelector('.tl-item', { state: 'attached' });
+    return (await bare.page.locator('.tl-item').count()) > 100;
+  })());
+  ok(`no errors (${what})`, bare.errors.length === 0);
+  await bare.browser.close();
+}
+
 // ───────────── 紀錄 ─────────────
 await reset();
 await openChapter('mat', 5);
@@ -461,6 +861,21 @@ ok('dark theme: readable text on a dark page', await page.evaluate(() => {
   const lum = (c) => { const [r, g, b] = c.match(/\d+/g).map(Number); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
   return lum(getComputedStyle(document.querySelector('.bible-text')).color) > 180 && lum(getComputedStyle(document.body).backgroundColor) < 60;
 }));
+if (hasPeople) {
+  await home();
+  await openHub();
+  await hubTab('people');
+  await page.click('.pp-item[data-person="peter"]');
+  await page.waitForSelector('.say', { state: 'attached' });
+  if ((await page.textContent('.tl-all')) === '全部展開') await page.click('.tl-all');
+  ok('large text and dark theme: the person screen still fits the screen', await noHScroll());
+  ok('dark theme: the saying cards are dark with light text', await page.evaluate(() => {
+    const lum = (c) => { const [r, g, b] = c.match(/\d+/g).map(Number); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+    const card = document.querySelector('.say');
+    return lum(getComputedStyle(card).backgroundColor) < 60 && lum(getComputedStyle(card.querySelector('.say-title')).color) > 180
+      && lum(getComputedStyle(card.querySelector('.bible-text')).color) > 180;
+  }));
+}
 
 // ───────────── 沒有對照資料時 ─────────────
 {
@@ -505,11 +920,22 @@ ok('dark theme: readable text on a dark page', await page.evaluate(() => {
   await pv.page.click('.ch-btn[data-c="13"]');
   await pv.page.waitForSelector('.bible-sec');
   ok('preview: a chapter opens', (await pv.page.locator('.bible-text .v').count()) === 38);
+  await pv.page.goBack(); await pv.page.goBack();
+  await pv.page.waitForSelector('.bible-tab');
   if (hasEvents) {
-    await pv.page.goBack(); await pv.page.goBack();
     await pv.page.click('.bible-tab[data-tab="events"]');
     await pv.page.waitForSelector('.tl-item', { state: 'attached' });
     ok('preview: the timeline is there', (await pv.page.locator('.tl-item').count()) === events.events.length);
+  }
+  if (hasPeople) {
+    await pv.page.click('.bible-tab[data-tab="people"]');
+    await pv.page.waitForSelector('.pp-item[data-person="peter"]');
+    ok('preview: the people are there too', (await pv.page.locator('.pp-item').count()) === peopleData.people.length);
+    await pv.page.click('.pp-item[data-person="peter"]');
+    await pv.page.waitForSelector('.say', { state: 'attached' });
+    ok('preview: a person opens, with verses', (await pv.page.locator('.say .v').count()) >= 1);
+    await pv.page.goBack();
+    await pv.page.waitForSelector('.bible-tab');
   }
   await pv.page.click('.bible-foot a');
   await pv.page.waitForFunction(() => /GNU/.test(document.querySelector('.bible-foot .bible-notice').textContent));

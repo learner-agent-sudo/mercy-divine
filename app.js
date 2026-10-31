@@ -2075,8 +2075,10 @@ function bind() {
     toast('已刪除');
   });
 
-  $('#cal-prev').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() - 1); renderMonth(); });
-  $('#cal-next').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() + 1); renderMonth(); });
+  // 換月時固定用每月 1 號：31 號按「上個月」時，setMonth 會落在不存在的日子而跳回同一個月
+  const shiftMonth = (n) => { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + n, 1); renderMonth(); };
+  $('#cal-prev').addEventListener('click', () => shiftMonth(-1));
+  $('#cal-next').addEventListener('click', () => shiftMonth(1));
   $('#cal-toggle').addEventListener('click', () => {
     const showCal = $('#cal').hidden;
     $('#cal').hidden = !showCal;

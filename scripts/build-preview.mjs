@@ -23,11 +23,12 @@ for (const image of images.images || []) {
 }
 images.images = (images.images || []).filter((i) => !i.missing);
 
-// 讀經：五卷經文與事件對照一併嵌入（事件對照檔不在也沒關係，讀經照常運作）
+// 讀經：五卷經文、事件對照與人物一併嵌入（後兩份檔案不在也沒關係，讀經照常運作）
 const BIBLE_FILES = { mat: 'matthew', mrk: 'mark', luk: 'luke', jhn: 'john', act: 'acts' };
 const bible = Object.fromEntries(Object.entries(BIBLE_FILES).map(([id, f]) => [id, read(`bible/${f}.md`)]));
 bible.readme = read('bible/README.md');
 const events = existsSync('data/gospel-events.json') ? JSON.parse(read('data/gospel-events.json')) : null;
+const people = existsSync('data/people.json') ? JSON.parse(read('data/people.json')) : null;
 
 const html = read('index.html');
 const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1]
@@ -49,7 +50,7 @@ ${body}
 <script type="application/json" id="data-sets">${json(sets)}</script>
 <script type="application/json" id="data-images">${json(images)}</script>
 <script type="application/json" id="data-bible">${json(bible)}</script>
-${events ? `<script type="application/json" id="data-events">${json(events)}</script>\n` : ''}<script>
+${events ? `<script type="application/json" id="data-events">${json(events)}</script>\n` : ''}${people ? `<script type="application/json" id="data-people">${json(people)}</script>\n` : ''}<script>
 ${read('app.js')}
 </script>
 <script>
@@ -62,4 +63,5 @@ ${read('bible.js')}
 
 writeFileSync(out, page);
 console.log(`${out} — ${(Buffer.byteLength(page) / 1024).toFixed(0)} KB, `
-  + `${sets.length} prayer sets, ${embedded} images embedded, Bible text${events ? ` + ${events.events.length} events` : ' (no event table)'}`);
+  + `${sets.length} prayer sets, ${embedded} images embedded, Bible text${events ? ` + ${events.events.length} events` : ' (no event table)'}`
+  + `${people ? `, ${people.people.length} people` : ' (no people table)'}`);

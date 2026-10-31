@@ -534,7 +534,7 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
 .bible-sum .btn-block { margin-top: .85rem; }
 .bible-next { margin: .5rem 0 0; font-size: .8rem; }
 
-.bible-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; margin: 0 0 1rem; }
+.bible-tabs { display: grid; grid-template-columns: repeat(var(--n, 4), 1fr); gap: .35rem; margin: 0 0 1rem; }
 .bible-tab {
   font: inherit; font-weight: 600; color: var(--muted); cursor: pointer;
   background: var(--sunken); border: 1px solid var(--line);
@@ -546,12 +546,12 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
 .bible-noevents { text-align: center; padding: 1.2rem 0; }
 
 /* 書卷 */
-.bible-book {
+.bible-book, .pp-item {
   display: block; width: 100%; text-align: left; font: inherit; color: var(--fg); cursor: pointer;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   padding: .9rem 1.1rem; margin-bottom: .6rem;
 }
-.bible-book:active { transform: scale(.99); }
+.bible-book:active, .pp-item:active { transform: scale(.99); }
 .bb-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .5rem; }
 .bb-name { font-size: 1.05rem; font-weight: 600; letter-spacing: .06em; }
 .bb-pct { font-size: .85rem; color: var(--gold); font-variant-numeric: tabular-nums; }
@@ -703,6 +703,47 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 .th-item[data-state="all"] .th-title::before { content: "✓ "; color: var(--gold); font-weight: 400; }
 .th-quote { display: block; margin-top: .15rem; font-size: .85rem; line-height: 1.65; color: var(--muted); }
 .th-ref { color: var(--gold); white-space: nowrap; }
+
+/* 人物 */
+.pp-group { margin: 1.5rem 0 .5rem; font-size: .85rem; font-weight: 600; letter-spacing: .14em; color: var(--gold); }
+.pp-group:first-child { margin-top: .2rem; }
+.pp-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem .6rem; }
+.pp-name { font-size: 1.05rem; font-weight: 600; letter-spacing: .06em; }
+.pp-aka { font-size: .75rem; color: var(--muted); letter-spacing: .04em; }
+.pp-intro { display: block; margin-top: .4rem; font-size: .88rem; line-height: 1.7; color: var(--muted); }
+.pp-meta { display: block; margin-top: .5rem; font-size: .75rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+
+/* 一個人：標頭、階段、一段一段的話 */
+.pe-aka { margin: 0 0 .3rem; font-size: .82rem; letter-spacing: .04em; color: var(--muted); }
+.pe-intro { margin: 0 0 .8rem; font-size: .95rem; line-height: 1.8; }
+.pe-head .pe-line { margin-bottom: .5rem; font-size: .85rem; color: var(--muted); }
+.pe-list { display: flex; flex-direction: column; gap: .6rem; margin: 0 .8rem .8rem; }
+.say {
+  scroll-margin-top: 4.5rem; padding: .85rem .95rem .9rem;
+  background: var(--bg); border: 1px solid var(--line); border-radius: .75rem;
+  transition: border-color .6s ease, box-shadow .6s ease;
+}
+.say.hl { border-color: var(--gold); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 45%, transparent); transition: none; }
+.say-title { margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.55; letter-spacing: .04em; }
+.say-ok { font-weight: 400; color: var(--gold); }
+.say-sub { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .7rem; margin: .2rem 0 0; }
+.say-to { font-size: .8rem; letter-spacing: .06em; color: var(--muted); }
+.say-sub .tl-meta { margin-top: 0; }
+.say-tabs { margin: .7rem 0 .2rem; }
+.say-tabs .bible-etab { min-height: 2.4rem; padding: .3rem .2rem; font-size: .88rem; }
+.say-pass { margin-top: .7rem; }
+.say-tabs + .say-body .say-pass { margin-top: .5rem; }
+.say .bible-text { font-size: calc(1.02rem * var(--fs)); }
+.say .v.key { padding-right: .6rem; }
+.say-more { margin-top: .5rem; }
+.say-reply { margin-top: .9rem; padding: .65rem .8rem .75rem; background: var(--sunken); border: 1px solid var(--line); border-radius: .65rem; }
+.say-reply-label { margin: 0; font-size: .8rem; font-weight: 600; letter-spacing: .12em; color: var(--muted); }
+.say-reply .say-pass { margin-top: .3rem; }
+.say .bible-note { margin: .7rem 0 0; }
+.say-see, .bible-who { margin: .7rem 0 0; }
+.say-ctx { margin-top: .7rem; }
+/* 小標籤上的字可能很長（人名加話的標題），讓它在窄螢幕上換行而不是撐破版面 */
+.say-see .chip, .bible-who .chip { flex: 0 1 auto; min-width: 0; max-width: 100%; text-align: left; line-height: 1.5; border-radius: 1.2rem; }
 
 /* 紀錄 */
 .bible-log-sum { margin: 0 0 .4rem; font-size: .88rem; color: var(--muted); text-align: center; }

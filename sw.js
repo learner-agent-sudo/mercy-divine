@@ -1,5 +1,5 @@
 /* 離線快取。修改經文、圖片或程式後，請把 VERSION 加一，手機才會取得新版本。 */
-const VERSION = 'v30';
+const VERSION = 'v31';
 const CACHE = `mercy-divine-${VERSION}`;
 
 const CORE = [
@@ -15,6 +15,7 @@ const CORE = [
   './data/rosary.json',
   './data/images.json',
   './data/gospel-events.json',
+  './data/people.json',
   './bible/matthew.md',
   './bible/mark.md',
   './bible/luke.md',

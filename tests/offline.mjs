@@ -30,6 +30,7 @@ ok('images cached', cached.some((p) => p.includes('/images/')));
 ok('the five books and the Bible code cached', ['matthew', 'mark', 'luke', 'john', 'acts'].every((b) => cached.some((p) => p.endsWith(`/bible/${b}.md`)))
    && cached.some((p) => p.endsWith('/bible.js')) && cached.some((p) => p.endsWith('/bible-parse.js')));
 ok('the event table and the source notice cached', cached.some((p) => p.endsWith('/data/gospel-events.json')) && cached.some((p) => p.endsWith('/bible/README.md')));
+ok('the people table cached', cached.some((p) => p.endsWith('/data/people.json')));
 console.log(`        ${cached.length} files cached`);
 
 await pray();
@@ -63,6 +64,13 @@ await page.goBack(); await page.goBack();
 await page.click('.bible-tab[data-tab="events"]');
 await page.waitForSelector('.tl-item', { state: 'attached', timeout: 10000 });
 ok('the event timeline works offline', (await page.locator('.tl-item').count()) > 100);
+await page.click('.bible-tab[data-tab="people"]');
+await page.waitForSelector('.pp-item', { timeout: 10000 });
+await page.click('.pp-item[data-person="peter"]');
+await page.waitForSelector('.say .v', { state: 'attached', timeout: 10000 });
+ok('the 人物 screen works offline too', (await page.locator('.say').count()) > 0 && (await page.locator('.say .v').count()) > 0);
+await page.goBack();
+await page.waitForSelector('.bible-tab');
 await page.click('.bible-foot a');
 await page.waitForFunction(() => /思高/.test(document.querySelector('.bible-foot .bible-notice').textContent), null, { timeout: 5000 });
 ok('so does the source notice', true);
