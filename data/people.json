@@ -1,0 +1,42 @@
+{
+  "groups": [
+    { "id": "twelve", "title": "十二宗徒" },
+    { "id": "church", "title": "初期教會" }
+  ],
+  "people": [
+    {
+      "id": "peter",
+      "name": "伯多祿",
+      "aka": ["西滿", "刻法"],
+      "group": "twelve",
+      "intro": "加里肋亞的漁夫，安德肋的哥哥。耶穌稱他為「磐石」，宗徒之首。",
+      "stages": [
+        {
+          "title": "蒙召",
+          "sayings": [
+            { "id": "peter-sinner", "title": "主，請你離開我", "to": "耶穌", "refs": { "luk": ["5:8"] }, "key": "luk 5:8", "reply": { "luk": ["5:10"] }, "replyBy": "耶穌" }
+          ]
+        },
+        {
+          "title": "認信",
+          "sayings": [
+            { "id": "peter-words-of-life", "title": "惟你有永生的話", "to": "耶穌", "refs": { "jhn": ["6:68-69"] }, "key": "jhn 6:68", "see": ["peter-confess"] },
+            { "id": "peter-confess", "title": "你是默西亞", "to": "耶穌", "refs": { "mat": ["16:16"], "mrk": ["8:29"], "luk": ["9:20"] }, "key": "mat 16:16", "reply": { "mat": ["16:17-19"] }, "replyBy": "耶穌", "note": "三部福音說法不同：瑪竇最完整，多了「永生天主之子」。", "see": ["peter-words-of-life"] }
+          ]
+        },
+        {
+          "title": "復活之後",
+          "sayings": [
+            { "id": "peter-love", "title": "你知道我愛你", "to": "耶穌", "refs": { "jhn": ["21:15-17"] }, "key": "jhn 21:17", "note": "耶穌三次問「你愛我嗎」，對照他曾三次否認主。" }
+          ]
+        },
+        {
+          "title": "宣講",
+          "sayings": [
+            { "id": "peter-no-silver", "title": "金銀我沒有", "to": "胎生的瘸子", "refs": { "act": ["3:6"] }, "key": "act 3:6" }
+          ]
+        }
+      ]
+    }
+  ]
+}
