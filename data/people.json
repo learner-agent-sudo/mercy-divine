@@ -14,26 +14,461 @@
         {
           "title": "蒙召",
           "sayings": [
-            { "id": "peter-sinner", "title": "主，請你離開我", "to": "耶穌", "refs": { "luk": ["5:8"] }, "key": "luk 5:8", "reply": { "luk": ["5:10"] }, "replyBy": "耶穌" }
+            { "id": "peter-cast-nets", "title": "我要遵照你的話撒網", "to": "耶穌", "refs": { "luk": ["5:5"] }, "key": "luk 5:5", "note": "路加把伯多祿蒙召放在一次奇蹟捕魚之後；瑪4:18-20、谷1:16-20 沒有記他的話。", "see": ["peter-sinner", "peter-fishing", "disciples-no-fish"] },
+            { "id": "peter-sinner", "title": "主，請你離開我", "to": "耶穌", "refs": { "luk": ["5:8"] }, "key": "luk 5:8", "reply": { "luk": ["5:10"] }, "replyBy": "耶穌", "note": "在網了許多魚、船幾乎下沉之後（5:6-7）；同船的雅各伯和若望一樣驚駭。", "see": ["peter-cast-nets", "peter-fishing"] }
+          ]
+        },
+        {
+          "title": "跟隨耶穌",
+          "sayings": [
+            { "id": "peter-everyone-looks", "title": "眾人都找你呢", "to": "耶穌", "refs": { "mrk": ["1:37"] }, "key": "mrk 1:37", "reply": { "mrk": ["1:38"] }, "replyBy": "耶穌", "note": "「西滿和同他在一起的人」一起去追尋耶穌（1:36），所以說「眾人都找你」。" },
+            { "id": "peter-crowd-pressing", "title": "群眾都在擁擠著你", "to": "耶穌", "refs": { "luk": ["8:45"], "mrk": ["5:31"] }, "key": "luk 8:45", "reply": { "luk": ["8:46"], "mrk": ["5:32"] }, "replyBy": "耶穌", "note": "路加說是伯多祿；谷5:31 作「他的門徒」。" },
+            { "id": "peter-walk-water", "title": "主，救我罷", "to": "耶穌", "refs": { "mat": ["14:28", "14:30"] }, "key": "mat 14:30", "reply": { "mat": ["14:31"] }, "replyBy": "耶穌", "note": "只有瑪竇記伯多祿在水面上行走；谷6:45-52、若6:16-21 沒有這一段。", "see": ["disciples-ghost"] },
+            { "id": "peter-explain-parable", "title": "請你給我們講解這個比喻罷", "to": "耶穌", "refs": { "mat": ["15:15"] }, "key": "mat 15:15", "reply": { "mat": ["15:16-20"] }, "replyBy": "耶穌", "note": "耶穌剛說「出於口的，纔使人污穢」（15:11）；谷7:17 作「門徒」問，沒有記話。", "see": ["disciples-offended", "disciples-explain-weeds"] }
           ]
         },
         {
           "title": "認信",
           "sayings": [
-            { "id": "peter-words-of-life", "title": "惟你有永生的話", "to": "耶穌", "refs": { "jhn": ["6:68-69"] }, "key": "jhn 6:68", "see": ["peter-confess"] },
-            { "id": "peter-confess", "title": "你是默西亞", "to": "耶穌", "refs": { "mat": ["16:16"], "mrk": ["8:29"], "luk": ["9:20"] }, "key": "mat 16:16", "reply": { "mat": ["16:17-19"] }, "replyBy": "耶穌", "note": "三部福音說法不同：瑪竇最完整，多了「永生天主之子」。", "see": ["peter-words-of-life"] }
+            { "id": "peter-words-of-life", "title": "惟你有永生的話", "to": "耶穌", "refs": { "jhn": ["6:68-69"] }, "key": "jhn 6:68", "reply": { "jhn": ["6:70"] }, "replyBy": "耶穌", "note": "許多門徒退去之後，耶穌問十二人：「難道你們也願走嗎？」（6:66-67）", "see": ["peter-confess", "disciples-hard-saying"] },
+            { "id": "peter-confess", "title": "你是默西亞", "to": "耶穌", "refs": { "mat": ["16:16"], "mrk": ["8:29"], "luk": ["9:20"] }, "key": "mat 16:16", "reply": { "mat": ["16:17-19"], "mrk": ["8:30"], "luk": ["9:21"] }, "replyBy": "耶穌", "note": "三部福音說法不同：瑪竇最完整，多了「永生天主之子」；谷、路只說「默西亞」。", "see": ["peter-words-of-life", "peter-rebuke", "peter-pentecost", "disciples-people-say", "andrew-found-messiah", "nathanael-son-of-god", "thomas-my-lord-my-god", "disciples-son-of-god"] },
+            { "id": "peter-rebuke", "title": "主，千萬不可", "to": "耶穌", "refs": { "mat": ["16:22"] }, "key": "mat 16:22", "reply": { "mat": ["16:23"] }, "replyBy": "耶穌", "note": "谷8:32 只說伯多祿「開始諫責」耶穌，沒有記下他的話；耶穌的回答見谷8:33。", "see": ["peter-confess", "peter-vision-joppa"] },
+            { "id": "peter-booths", "title": "我們在這裡真好", "to": "耶穌", "refs": { "mat": ["17:4"], "mrk": ["9:5"], "luk": ["9:33"] }, "key": "mat 17:4", "reply": { "mat": ["17:5"], "mrk": ["9:7"], "luk": ["9:34-35"] }, "replyBy": "雲中聲音", "note": "谷9:6、路9:33 說他當時不知道該說什麼；瑪竇沒有這句。" }
+          ]
+        },
+        {
+          "title": "走向耶路撒冷",
+          "sayings": [
+            { "id": "peter-temple-tax", "title": "自然納的", "to": "收殿稅的人", "refs": { "mat": ["17:25", "17:26"] }, "key": "mat 17:25", "reply": { "mat": ["17:27"] }, "replyBy": "耶穌", "note": "只有瑪竇記這件事；耶穌先問他「西滿！你以為怎樣？」（17:25）" },
+            { "id": "peter-seven-times", "title": "我該寬恕他多次", "to": "耶穌", "refs": { "mat": ["18:21"] }, "key": "mat 18:21", "reply": { "mat": ["18:22"] }, "replyBy": "耶穌", "note": "耶穌隨後講君王同僕人算賬的比喻（18:23-35）。" },
+            { "id": "peter-parable-for-whom", "title": "是為我們呢，還是為眾人", "to": "耶穌", "refs": { "luk": ["12:41"] }, "key": "luk 12:41", "reply": { "luk": ["12:42"] }, "replyBy": "主", "note": "接在要醒寤準備的比喻之後（12:35-40）。" },
+            { "id": "peter-left-everything", "title": "我們捨棄了一切", "to": "耶穌", "refs": { "mat": ["19:27"], "mrk": ["10:28"], "luk": ["18:28"] }, "key": "mat 19:27", "reply": { "mat": ["19:28-30"], "mrk": ["10:29-31"], "luk": ["18:29-30"] }, "replyBy": "耶穌", "note": "接在富有青年離去、「誰還能得救」的問答之後；只有瑪竇多問「將來我們可得到什麼」。", "see": ["disciples-who-can-be-saved"] },
+            { "id": "peter-fig-tree", "title": "你所咒罵的無花果樹已枯乾了", "to": "耶穌", "refs": { "mrk": ["11:21"], "mat": ["21:20"] }, "key": "mrk 11:21", "reply": { "mrk": ["11:22-24"], "mat": ["21:21-22"] }, "replyBy": "耶穌", "note": "谷11:21 是伯多祿說；瑪21:20 作「門徒」驚異說：怎麼這無花果樹立即枯乾了。" },
+            { "id": "peter-olivet-question", "title": "什麼時候發生這些事", "to": "耶穌", "refs": { "mrk": ["13:4"], "mat": ["24:3"], "luk": ["21:7"] }, "key": "mrk 13:4", "note": "谷13:3 指明是伯多祿、雅各伯、若望和安德肋私下問；瑪24:3 作「門徒」，路21:7 作「他們」。", "see": ["disciples-temple-stones"] }
+          ]
+        },
+        {
+          "title": "最後晚餐",
+          "sayings": [
+            { "id": "peter-passover-prep", "title": "你願意我們在那裡預備", "to": "耶穌", "refs": { "luk": ["22:9"], "mat": ["26:17"], "mrk": ["14:12"] }, "key": "luk 22:9", "reply": { "luk": ["22:10-12"], "mat": ["26:18"], "mrk": ["14:13-15"] }, "replyBy": "耶穌", "note": "路22:8 耶穌先打發伯多祿和若望，兩人再問；瑪26:17、谷14:12 是「門徒」先問。" },
+            { "id": "peter-foot-washing", "title": "你永遠不可給我洗腳", "to": "耶穌", "refs": { "jhn": ["13:6", "13:8", "13:9"] }, "key": "jhn 13:8", "reply": { "jhn": ["13:10"] }, "replyBy": "耶穌", "note": "先拒絕（13:8），聽耶穌說「你就與我無分」，又要求連手帶頭都洗（13:9）。", "see": ["peter-never-fall"] },
+            { "id": "peter-who-betrays", "title": "你問他說的是誰", "to": "耶穌所愛的門徒", "refs": { "jhn": ["13:24"] }, "key": "jhn 13:24", "note": "他向耶穌所愛的門徒示意，請他去問；那人再問耶穌「主！是誰？」（13:25）", "see": ["disciples-is-it-me", "judas-is-it-me"] },
+            { "id": "peter-never-fall", "title": "我決不會跌倒", "to": "耶穌", "refs": { "mat": ["26:33", "26:35"], "mrk": ["14:29", "14:31"], "luk": ["22:33"], "jhn": ["13:36-37"] }, "key": "mat 26:33", "reply": { "mat": ["26:34"], "mrk": ["14:30"], "luk": ["22:34"], "jhn": ["13:38"] }, "replyBy": "耶穌", "note": "路22:33、若13:36-37 在晚餐席上；瑪、谷在往橄欖山的路上。眾門徒也這樣說（瑪26:35、谷14:31）。", "see": ["peter-deny", "peter-love", "peter-foot-washing"] }
+          ]
+        },
+        {
+          "title": "否認",
+          "sayings": [
+            { "id": "peter-deny", "title": "我不認識這個人", "to": "婢女與旁人", "refs": { "mat": ["26:70", "26:72", "26:74"], "mrk": ["14:68", "14:71"], "luk": ["22:57", "22:58", "22:60"], "jhn": ["18:17", "18:25"] }, "key": "mat 26:74", "note": "谷14:70、若18:27 只說他「又否認了」，沒有記話；瑪、谷、路記他想起耶穌的預言而痛哭。", "see": ["peter-never-fall", "peter-love"] }
           ]
         },
         {
           "title": "復活之後",
           "sayings": [
-            { "id": "peter-love", "title": "你知道我愛你", "to": "耶穌", "refs": { "jhn": ["21:15-17"] }, "key": "jhn 21:17", "note": "耶穌三次問「你愛我嗎」，對照他曾三次否認主。" }
+            { "id": "peter-fishing", "title": "我去打魚", "to": "眾門徒", "refs": { "jhn": ["21:3"] }, "key": "jhn 21:3", "note": "同船的有多默、納塔乃耳、載伯德的兩個兒子等人（21:2）；一夜沒有捕到，直到耶穌叫他們撒網（21:6）。", "see": ["peter-sinner", "peter-cast-nets", "disciples-no-fish", "peter-love"] },
+            { "id": "peter-love", "title": "你知道我愛你", "to": "耶穌", "refs": { "jhn": ["21:15-17"] }, "key": "jhn 21:17", "note": "耶穌三次問「你愛我嗎」，對照他曾三次否認主。", "see": ["peter-deny", "peter-never-fall", "peter-fishing", "peter-what-about-him"] },
+            { "id": "peter-what-about-him", "title": "主，他怎樣", "to": "耶穌", "refs": { "jhn": ["21:21"] }, "key": "jhn 21:21", "reply": { "jhn": ["21:22"] }, "replyBy": "耶穌", "note": "「他」指耶穌所愛的那個門徒（21:20）；21:23 說明兄弟們中間流傳的誤解。", "see": ["peter-love"] }
           ]
         },
         {
-          "title": "宣講",
+          "title": "五旬節的宣講",
           "sayings": [
-            { "id": "peter-no-silver", "title": "金銀我沒有", "to": "胎生的瘸子", "refs": { "act": ["3:6"] }, "key": "act 3:6" }
+            { "id": "peter-choose-matthias", "title": "作他復活的見證人", "to": "弟兄們", "refs": { "act": ["1:15-22"] }, "key": "act 1:22", "note": "補選猶達斯留下的缺；結果瑪弟亞當選（1:23-26）。", "see": ["judas-innocent-blood"] },
+            { "id": "peter-pentecost", "title": "立為主，立為默西亞了", "to": "耶路撒冷的人", "refs": { "act": ["2:14-36"] }, "key": "act 2:36", "reply": { "act": ["2:37"] }, "replyBy": "聽眾", "note": "引岳厄爾先知（2:16-21）和達味的聖詠（2:25-28、34-35）。", "see": ["peter-repent", "peter-confess", "peter-cornelius-speech", "paul-antioch-speech"] },
+            { "id": "peter-repent", "title": "你們悔改罷", "to": "聽眾", "refs": { "act": ["2:38-40"] }, "key": "act 2:38", "note": "回答聽眾的提問「我們該作什麼」（2:37）；當天約增添了三千人（2:41）。", "see": ["peter-pentecost", "peter-solomon-porch"] }
+          ]
+        },
+        {
+          "title": "見證與神蹟",
+          "sayings": [
+            { "id": "peter-no-silver", "title": "銀子和金子，我沒有", "to": "胎生的瘸子", "refs": { "act": ["3:4", "3:6"] }, "key": "act 3:6", "note": "與若望一起：3:4「你看我們！」是兩人同說；此人從母胎中就瘸了（3:2）。", "see": ["peter-solomon-porch", "paul-lame-lystra"] },
+            { "id": "peter-solomon-porch", "title": "你們為什麼對這事驚奇", "to": "百姓", "refs": { "act": ["3:12-26"] }, "key": "act 3:19", "note": "在撒羅滿廊下，治好瘸子之後（3:11）；引梅瑟的話（3:22-23）。", "see": ["peter-no-silver", "peter-repent"] },
+            { "id": "peter-sanhedrin-name", "title": "除他以外，無論憑誰，決無救援", "to": "公議會", "refs": { "act": ["4:8-12"] }, "key": "act 4:12", "note": "回答「你們憑什麼能力，或以誰的名義行這事」（4:7）；引「匠人所棄而不用的石頭」（4:11）。", "see": ["peter-cannot-keep-silent", "peter-obey-god"] },
+            { "id": "peter-cannot-keep-silent", "title": "我們不得不說我們所見所聞的事", "to": "公議會", "refs": { "act": ["4:19-20"] }, "key": "act 4:20", "note": "與若望一起回答；公議會嚴令他們不可再因耶穌的名發言施教（4:18）。", "see": ["peter-sanhedrin-name", "peter-obey-god"] },
+            { "id": "peter-ananias", "title": "為什麼撒殫充滿了你的心", "to": "阿納尼雅與撒斐辣", "refs": { "act": ["5:3-4", "5:8-9"] }, "key": "act 5:3", "note": "夫妻扣留了賣田價錢的一部分（5:2）；兩人先後當場斷氣（5:5、5:10）。", "see": ["peter-simon-magus"] },
+            { "id": "peter-obey-god", "title": "聽天主的命應勝過聽人的命", "to": "公議會", "refs": { "act": ["5:29-32"] }, "key": "act 5:29", "reply": { "act": ["5:35-39"] }, "replyBy": "加瑪里耳", "note": "與眾宗徒一起回答大司祭的質問（5:27-28）。", "see": ["peter-cannot-keep-silent", "peter-sanhedrin-name"] },
+            { "id": "peter-simon-magus", "title": "願你的銀錢與你一起喪亡", "to": "術士西滿", "refs": { "act": ["8:20-23"] }, "key": "act 8:20", "reply": { "act": ["8:24"] }, "replyBy": "西滿", "note": "與若望同往撒瑪黎雅（8:14）；西滿獻銀錢，求能賜人聖神的權柄（8:18-19）。", "see": ["peter-ananias", "paul-elymas"] },
+            { "id": "peter-aeneas", "title": "耶穌基督治好你了", "to": "癱瘓的艾乃阿", "refs": { "act": ["9:34"] }, "key": "act 9:34", "note": "在里達；艾乃阿癱瘓躺在床上已有八年（9:33）。", "see": ["peter-tabitha"] },
+            { "id": "peter-tabitha", "title": "塔彼達，起來", "to": "死去的塔彼達", "refs": { "act": ["9:40"] }, "key": "act 9:40", "note": "約培的女門徒，希臘文名多爾卡（9:36）；寡婦們哭著把她所製的衣服指給他看（9:39）。", "see": ["paul-eutychus", "peter-aeneas"] }
+          ]
+        },
+        {
+          "title": "外邦人也蒙召",
+          "sayings": [
+            { "id": "peter-vision-joppa", "title": "主，絕對不可", "to": "天上的聲音", "refs": { "act": ["10:14"] }, "key": "act 10:14", "reply": { "act": ["10:15"] }, "replyBy": "聲音", "note": "與瑪16:22「主，千萬不可！」措辭相近；這事一連發生三次（10:16）。", "see": ["peter-rebuke", "peter-explain-jerusalem", "peter-council", "peter-i-am-the-man", "peter-just-a-man"] },
+            { "id": "peter-i-am-the-man", "title": "我就是你們所找的人", "to": "科爾乃略的人", "refs": { "act": ["10:21"] }, "key": "act 10:21", "reply": { "act": ["10:22"] }, "replyBy": "科爾乃略的人", "note": "聖神先吩咐他同來人一起去，不必疑惑（10:19-20）。", "see": ["peter-vision-joppa"] },
+            { "id": "peter-just-a-man", "title": "沒有一個可說是污穢或不潔的人", "to": "科爾乃略和親友", "refs": { "act": ["10:26", "10:28-29"] }, "key": "act 10:28", "reply": { "act": ["10:30-33"] }, "replyBy": "科爾乃略", "note": "10:26 他拉起跪拜的科爾乃略，說「我自己也是個人」；對照保祿在宗14:15。", "see": ["paul-lystra-speech", "peter-vision-joppa"] },
+            { "id": "peter-cornelius-speech", "title": "天主是不看情面的", "to": "科爾乃略一家", "refs": { "act": ["10:34-43"] }, "key": "act 10:34", "reply": { "act": ["10:44-45"] }, "replyBy": "聖神", "note": "概述耶穌從加里肋亞開始的事跡、受難與復活（10:37-41）。", "see": ["peter-pentecost", "peter-who-can-forbid"] },
+            { "id": "peter-who-can-forbid", "title": "誰能阻止他們不受水洗呢", "to": "同來的信徒", "refs": { "act": ["10:47"] }, "key": "act 10:47", "note": "聖神降在外邦人身上，他們說各種語言，並頌揚天主（10:44-46）。", "see": ["peter-explain-jerusalem", "peter-council", "peter-cornelius-speech"] },
+            { "id": "peter-explain-jerusalem", "title": "我是什麼人，能阻止天主呢", "to": "受割損的人", "refs": { "act": ["11:5-17"] }, "key": "act 11:17", "reply": { "act": ["11:18"] }, "replyBy": "眾人", "note": "回應「你竟進了未受割損人的家」的非難（11:3）；按次重述宗10 的經過。", "see": ["peter-vision-joppa", "peter-who-can-forbid", "peter-council"] },
+            { "id": "peter-prison-escape", "title": "現今我實在知道主派了他的天使來", "to": "自己", "refs": { "act": ["12:11"] }, "key": "act 12:11", "note": "黑落德要在逾越節後提審他，教會一直為他向天主祈禱（12:4-5）。", "see": ["peter-tell-james"] },
+            { "id": "peter-tell-james", "title": "報告給雅各伯和弟兄們", "to": "聚集祈禱的人", "refs": { "act": ["12:17"] }, "key": "act 12:17", "note": "在若望（號稱馬爾谷）的母親瑪利亞家（12:12）；此後他「往別的地方去了」。", "see": ["james-council", "peter-council", "peter-prison-escape"] },
+            { "id": "peter-council", "title": "你們為什麼試探天主", "to": "宗徒和長老", "refs": { "act": ["15:7-11"] }, "key": "act 15:11", "reply": { "act": ["15:13-21"] }, "replyBy": "雅各伯", "note": "回顧科爾乃略一家領受聖神的事（宗10）；這是宗徒大事錄裡他最後一次發言。", "see": ["james-council", "peter-vision-joppa", "peter-explain-jerusalem", "peter-who-can-forbid", "peter-tell-james"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "andrew",
+      "name": "安德肋",
+      "group": "twelve",
+      "intro": "貝特賽達人，西滿伯多祿的哥哥；原是洗者若翰的門徒（若1:40）。",
+      "stages": [
+        {
+          "title": "初遇耶穌",
+          "sayings": [
+            { "id": "andrew-where-stay", "title": "你住在那裡", "to": "耶穌", "refs": { "jhn": ["1:38"] }, "key": "jhn 1:38", "reply": { "jhn": ["1:39"] }, "replyBy": "耶穌", "note": "與另一位門徒一起問；1:40 說明安德肋是那兩人之一。", "see": ["andrew-found-messiah", "philip-come-and-see"] },
+            { "id": "andrew-found-messiah", "title": "我們找到了默西亞", "to": "他弟弟西滿", "refs": { "jhn": ["1:41"] }, "key": "jhn 1:41", "reply": { "jhn": ["1:42"] }, "replyBy": "耶穌", "note": "他先找到自己的弟弟西滿，領他到耶穌跟前（1:41-42）。", "see": ["peter-confess", "philip-come-and-see", "andrew-where-stay"] }
+          ]
+        },
+        {
+          "title": "五餅二魚",
+          "sayings": [
+            { "id": "andrew-five-loaves", "title": "這裡有一個兒童", "to": "耶穌", "refs": { "jhn": ["6:9"] }, "key": "jhn 6:9", "reply": { "jhn": ["6:10"] }, "replyBy": "耶穌", "note": "斐理伯剛說二百塊「德納」的餅也不夠（6:7）；瑪14:17 作「門徒」說「只有五個餅和兩條魚」。", "see": ["philip-two-hundred", "disciples-feed-crowd"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zebedee",
+      "name": "雅各伯與若望",
+      "aka": ["載伯德的兒子", "波納爾革"],
+      "group": "twelve",
+      "intro": "載伯德的兒子，加里肋亞的漁夫；耶穌給他們起名「波納爾革」，就是「雷霆之子」。",
+      "stages": [
+        {
+          "title": "同行的日子",
+          "sayings": [
+            { "id": "zebedee-forbade", "title": "我們禁止了他", "to": "耶穌", "refs": { "mrk": ["9:38"], "luk": ["9:49"] }, "key": "mrk 9:38", "reply": { "mrk": ["9:39-40"], "luk": ["9:50"] }, "replyBy": "耶穌", "note": "這裡是若望一人說話，說的是「我們」；他們見一個不跟從他們的人奉耶穌的名驅魔。", "see": ["zebedee-fire", "disciples-greatest"] },
+            { "id": "zebedee-fire", "title": "叫火自天降下", "to": "耶穌", "refs": { "luk": ["9:54"] }, "key": "luk 9:54", "reply": { "luk": ["9:55"] }, "replyBy": "耶穌", "note": "撒瑪黎雅人的一個村莊不接待面朝耶路撒冷去的耶穌（9:52-53）；兩兄弟同聲發問。", "see": ["zebedee-forbade", "zebedee-seats"] }
+          ]
+        },
+        {
+          "title": "上耶路撒冷的路上",
+          "sayings": [
+            { "id": "zebedee-seats", "title": "一個坐在你右邊，一個坐在你左邊", "to": "耶穌", "refs": { "mrk": ["10:35", "10:37", "10:39"], "mat": ["20:22"] }, "key": "mrk 10:37", "reply": { "mrk": ["10:40"], "mat": ["20:23"] }, "replyBy": "耶穌", "note": "瑪20:20-21 說是他們的母親出面請求，兩人只在瑪20:22 答「我們能」。", "see": ["zebedee-fire", "disciples-greatest"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "philip",
+      "name": "斐理伯",
+      "group": "twelve",
+      "intro": "貝特賽達人，與安德肋和伯多祿同城；耶穌遇見他，說「你跟隨我罷」（若1:43-44）。",
+      "stages": [
+        {
+          "title": "跟隨耶穌",
+          "sayings": [
+            { "id": "philip-come-and-see", "title": "你來看一看罷", "to": "納塔乃耳", "refs": { "jhn": ["1:45", "1:46"] }, "key": "jhn 1:46", "note": "納塔乃耳在1:46 先質疑「從納匝肋還能出什麼好事嗎」，斐理伯同節回答。", "see": ["nathanael-nazareth", "andrew-where-stay", "andrew-found-messiah"] },
+            { "id": "philip-two-hundred", "title": "也不夠每人分得一小塊", "to": "耶穌", "refs": { "jhn": ["6:7"] }, "key": "jhn 6:7", "reply": { "jhn": ["6:8-9"] }, "replyBy": "安德肋", "note": "耶穌問他是為了試探他（6:5-6）；谷6:37 作門徒問「我們去買二百塊銀錢的餅給他們吃嗎」。", "see": ["andrew-five-loaves", "disciples-feed-crowd"] }
+          ]
+        },
+        {
+          "title": "最後晚餐",
+          "sayings": [
+            { "id": "philip-show-father", "title": "把父顯示給我們", "to": "耶穌", "refs": { "jhn": ["14:8"] }, "key": "jhn 14:8", "reply": { "jhn": ["14:9-11"] }, "replyBy": "耶穌", "note": "接在多默的發問之後（14:5）；之後猶達也發問（14:22）。", "see": ["thomas-which-way", "jude-show-world"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nathanael",
+      "name": "納塔乃耳",
+      "group": "twelve",
+      "intro": "加里肋亞加納人（若21:2）；斐理伯把耶穌介紹給他，耶穌說他「毫無詭詐」。",
+      "stages": [
+        {
+          "title": "初遇耶穌",
+          "sayings": [
+            { "id": "nathanael-nazareth", "title": "從納匝肋還能出什麼好事嗎", "to": "斐理伯", "refs": { "jhn": ["1:46"] }, "key": "jhn 1:46", "note": "斐理伯剛告訴他「我們找著了」那位出身納匝肋的耶穌（1:45）；斐理伯同節回答。", "see": ["philip-come-and-see"] },
+            { "id": "nathanael-how-know", "title": "你從那裡認識我呢", "to": "耶穌", "refs": { "jhn": ["1:48"] }, "key": "jhn 1:48", "note": "耶穌在同節回答：「當你還在無花果樹下時，我就看見了你。」", "see": ["nathanael-son-of-god"] },
+            { "id": "nathanael-son-of-god", "title": "你是天主子，你是以色列的君王", "to": "耶穌", "refs": { "jhn": ["1:49"] }, "key": "jhn 1:49", "reply": { "jhn": ["1:50-51"] }, "replyBy": "耶穌", "note": "稱耶穌「辣彼」，又稱「天主子」「以色列的君王」。", "see": ["peter-confess", "thomas-my-lord-my-god", "nathanael-how-know", "disciples-son-of-god"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "thomas",
+      "name": "多默",
+      "aka": ["狄狄摩"],
+      "group": "twelve",
+      "intro": "十二人中的一個，號稱「狄狄摩」；他的話都記在若望福音。",
+      "stages": [
+        {
+          "title": "受難之前",
+          "sayings": [
+            { "id": "thomas-die-with-him", "title": "我們也去，同他一起死罷", "to": "其他的同伴", "refs": { "jhn": ["11:16"] }, "key": "jhn 11:16", "note": "門徒剛提醒猶太人圖謀砸死耶穌（11:8）；耶穌說拉匝祿死了（11:14）。", "see": ["thomas-my-lord-my-god", "disciples-lazarus"] },
+            { "id": "thomas-which-way", "title": "我們不知道你往那裡去", "to": "耶穌", "refs": { "jhn": ["14:5"] }, "key": "jhn 14:5", "reply": { "jhn": ["14:6-7"] }, "replyBy": "耶穌", "note": "耶穌剛說「我去的地方，你們知道往那裡去的路」（14:4）。", "see": ["philip-show-father", "jude-show-world"] }
+          ]
+        },
+        {
+          "title": "復活之後",
+          "sayings": [
+            { "id": "thomas-unless-i-see", "title": "我除非看見他手上的釘孔", "to": "其他門徒", "refs": { "jhn": ["20:25"] }, "key": "jhn 20:25", "reply": { "jhn": ["20:26-27"] }, "replyBy": "耶穌", "note": "耶穌第一次顯現時他不在場（20:24）；其他人告訴他「我們看見了主」。", "see": ["thomas-my-lord-my-god", "disciples-we-saw-lord"] },
+            { "id": "thomas-my-lord-my-god", "title": "我主！我天主！", "to": "耶穌", "refs": { "jhn": ["20:28"] }, "key": "jhn 20:28", "reply": { "jhn": ["20:29"] }, "replyBy": "耶穌", "note": "八天以後耶穌再來，邀他伸指探入釘孔和肋膀（20:26-27）。", "see": ["thomas-die-with-him", "thomas-unless-i-see", "peter-confess", "nathanael-son-of-god"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jude",
+      "name": "猶達",
+      "aka": ["猶達斯（不是依斯加略人）"],
+      "group": "twelve",
+      "intro": "若望福音稱他「猶達斯──不是那個依斯加略人」；宗徒名單裡有「雅各伯的兄弟猶達」（路6:16）。",
+      "stages": [
+        {
+          "title": "最後晚餐",
+          "sayings": [
+            { "id": "jude-show-world", "title": "為了什麼你要將你自己顯示給我們", "to": "耶穌", "refs": { "jhn": ["14:22"] }, "key": "jhn 14:22", "reply": { "jhn": ["14:23-24"] }, "replyBy": "耶穌", "note": "接在多默（14:5）、斐理伯（14:8）發問之後。", "see": ["thomas-which-way", "philip-show-father"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "judas",
+      "name": "猶達斯",
+      "aka": ["依斯加略人"],
+      "group": "twelve",
+      "intro": "依斯加略人西滿的兒子，十二人中的一個；他把耶穌出賣給司祭長。",
+      "stages": [
+        {
+          "title": "出賣耶穌",
+          "sayings": [
+            { "id": "judas-waste", "title": "為什麼這樣浪費", "to": "在座的人", "refs": { "jhn": ["12:5"], "mat": ["26:8-9"], "mrk": ["14:4-5"] }, "key": "jhn 12:5", "reply": { "jhn": ["12:7-8"], "mat": ["26:10-13"], "mrk": ["14:6-9"] }, "replyBy": "耶穌", "note": "若12:4 指明是猶達斯說，並說他掌管錢囊（12:6）；瑪作「門徒們」，谷作「有些人」。", "see": ["judas-price"] },
+            { "id": "judas-price", "title": "你們願意給我什麼", "to": "司祭長", "refs": { "mat": ["26:15"] }, "key": "mat 26:15", "note": "他是「十二人中之一」，去見司祭長（26:14）；谷14:10-11、路22:3-6 只有間接敘述。", "see": ["judas-waste", "judas-innocent-blood"] },
+            { "id": "judas-is-it-me", "title": "辣彼，難道是我嗎", "to": "耶穌", "refs": { "mat": ["26:25"] }, "key": "mat 26:25", "note": "其他門徒也各自問「難道是我嗎」（26:22）；耶穌在同節回答「你說的是」。", "see": ["disciples-is-it-me", "peter-who-betrays"] },
+            { "id": "judas-kiss", "title": "辣彼，你好", "to": "群眾與耶穌", "refs": { "mat": ["26:48-49"], "mrk": ["14:44-45"] }, "key": "mat 26:49", "reply": { "mat": ["26:50"], "mrk": ["14:46"] }, "replyBy": "耶穌", "note": "他先給了暗號「我口親誰，誰就是」（瑪26:48、谷14:44）；路22:47-48 沒有記他的話，只記耶穌問他。" }
+          ]
+        },
+        {
+          "title": "懊悔",
+          "sayings": [
+            { "id": "judas-innocent-blood", "title": "我出賣了無辜的血，犯了罪了", "to": "司祭長和長老", "refs": { "mat": ["27:4"] }, "key": "mat 27:4", "note": "他把三十塊銀錢退還，扔在聖所裡，上吊死了（27:3、5）；宗1:16-20 伯多祿另述他的結局。", "see": ["peter-choose-matthias", "judas-price"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "disciples",
+      "name": "眾門徒",
+      "group": "twelve",
+      "intro": "福音裡「門徒們」「十二人」「宗徒們」一起說或發問的話；有名字的宗徒另見各人。",
+      "stages": [
+        {
+          "title": "傳道初期",
+          "sayings": [
+            { "id": "disciples-eat", "title": "辣彼，吃罷", "to": "耶穌", "refs": { "jhn": ["4:31", "4:33"] }, "key": "jhn 4:31", "reply": { "jhn": ["4:34"] }, "replyBy": "耶穌", "note": "在撒瑪黎雅的井旁，耶穌同一個婦人談話之後（4:27）。" },
+            { "id": "disciples-bury-father", "title": "請許我先去埋葬我的父親", "to": "耶穌", "refs": { "mat": ["8:21"], "luk": ["9:59"] }, "key": "mat 8:21", "reply": { "mat": ["8:22"], "luk": ["9:60"] }, "replyBy": "耶穌", "note": "瑪竇作「門徒中有一個」，未具名；路9:59 作耶穌召叫的「另一個人」。" },
+            { "id": "disciples-storm", "title": "我們要喪亡了", "to": "耶穌", "refs": { "mat": ["8:25"], "mrk": ["4:38"], "luk": ["8:24"] }, "key": "mat 8:25", "reply": { "mat": ["8:26"], "mrk": ["4:39-40"], "luk": ["8:25"] }, "replyBy": "耶穌", "note": "耶穌在船上睡著；瑪作「主！救命啊」，谷作「你不管嗎」，路作「老師！老師」。", "see": ["disciples-who-is-this"] },
+            { "id": "disciples-who-is-this", "title": "這人到底是誰", "to": "同伴", "refs": { "mat": ["8:27"], "mrk": ["4:41"], "luk": ["8:25"] }, "key": "mrk 4:41", "note": "瑪8:27 作「那些人」，谷、路作「他們」；都接在耶穌平定風浪之後。", "see": ["disciples-storm", "disciples-son-of-god"] },
+            { "id": "disciples-why-parables", "title": "為什麼你用比喻對他們講話", "to": "耶穌", "refs": { "mat": ["13:10"] }, "key": "mat 13:10", "reply": { "mat": ["13:11-17"] }, "replyBy": "耶穌", "note": "谷4:10、路8:9 也記門徒問比喻的意義，只是間接敘述。" },
+            { "id": "disciples-explain-weeds", "title": "請把田間莠子的比喻給我們講解一下", "to": "耶穌", "refs": { "mat": ["13:36"] }, "key": "mat 13:36", "reply": { "mat": ["13:37-43"] }, "replyBy": "耶穌", "note": "耶穌離開群眾回到家裡之後（13:36）。", "see": ["peter-explain-parable", "disciples-understood"] },
+            { "id": "disciples-understood", "title": "是的", "to": "耶穌", "refs": { "mat": ["13:51"] }, "key": "mat 13:51", "note": "耶穌問：「這一切你們都明白了嗎？」他們答「是的」。", "see": ["disciples-explain-weeds"] },
+            { "id": "disciples-feed-crowd", "title": "請遣散群眾", "to": "耶穌", "refs": { "mat": ["14:15", "14:17"], "mrk": ["6:35-38"], "luk": ["9:12-13"] }, "key": "mat 14:15", "note": "若6:5-9 同一件事記的是斐理伯和安德肋的話。", "see": ["philip-two-hundred", "andrew-five-loaves", "disciples-feed-four-thousand", "disciples-no-bread"] },
+            { "id": "disciples-ghost", "title": "是個妖怪", "to": "同伴", "refs": { "mat": ["14:26"] }, "key": "mat 14:26", "reply": { "mat": ["14:27"] }, "replyBy": "耶穌", "note": "谷6:49 也說門徒以為是妖怪、驚叫起來，沒有記話。", "see": ["peter-walk-water"] },
+            { "id": "disciples-son-of-god", "title": "你真是天主子", "to": "耶穌", "refs": { "mat": ["14:33"] }, "key": "mat 14:33", "note": "說話的是「船上的人」，在伯多祿行水、風停止之後（14:29-32）。", "see": ["disciples-who-is-this", "nathanael-son-of-god", "peter-confess"] },
+            { "id": "disciples-hard-saying", "title": "這話生硬，誰能聽得下去呢", "to": "同伴", "refs": { "jhn": ["6:60"] }, "key": "jhn 6:60", "reply": { "jhn": ["6:61-65"] }, "replyBy": "耶穌", "note": "是「門徒中的許多人」，不是十二人；許多人退去（6:66）後，耶穌問十二人，由伯多祿回答。", "see": ["peter-words-of-life"] },
+            { "id": "disciples-offended", "title": "法利塞人聽了這話，起了反感嗎", "to": "耶穌", "refs": { "mat": ["15:12"] }, "key": "mat 15:12", "reply": { "mat": ["15:13-14"] }, "replyBy": "耶穌", "note": "耶穌剛說「出於口的，纔使人污穢」（15:11）；伯多祿接著請他講解（15:15）。", "see": ["peter-explain-parable"] },
+            { "id": "disciples-send-her-away", "title": "打發她走罷", "to": "耶穌", "refs": { "mat": ["15:23"] }, "key": "mat 15:23", "reply": { "mat": ["15:24"] }, "replyBy": "耶穌", "note": "那位客納罕婦人不停地喊叫求耶穌可憐她（15:22-23）。" },
+            { "id": "disciples-feed-four-thousand", "title": "在荒野裡我們從那裡得這麼多的餅", "to": "耶穌", "refs": { "mat": ["15:33-34"], "mrk": ["8:4-5"] }, "key": "mat 15:33", "note": "耶穌問「你們有多少餅」，他們答「七個」（瑪15:34、谷8:5）；對照前一次餵飽群眾（瑪14:15-17）。", "see": ["disciples-feed-crowd", "disciples-no-bread"] },
+            { "id": "disciples-no-bread", "title": "我們沒有帶餅", "to": "同伴", "refs": { "mat": ["16:7"], "mrk": ["8:19-20"] }, "key": "mat 16:7", "note": "谷8:16 只說他們彼此議論沒有餅了（間接敘述）；谷8:19-20 另記他們答耶穌所收的碎塊「十二筐」「七籃」。", "see": ["disciples-feed-crowd", "disciples-feed-four-thousand"] }
+          ]
+        },
+        {
+          "title": "認信前後",
+          "sayings": [
+            { "id": "disciples-people-say", "title": "有人說是洗者若翰", "to": "耶穌", "refs": { "mat": ["16:14"], "mrk": ["8:28"], "luk": ["9:19"] }, "key": "mat 16:14", "reply": { "mat": ["16:15"], "mrk": ["8:29"], "luk": ["9:20"] }, "replyBy": "耶穌", "note": "耶穌先問「人們說人子是誰」，再問「你們說我是誰」。", "see": ["peter-confess"] },
+            { "id": "disciples-elijah", "title": "厄里亞應該先來呢", "to": "耶穌", "refs": { "mat": ["17:10"], "mrk": ["9:11"] }, "key": "mat 17:10", "reply": { "mat": ["17:11-13"], "mrk": ["9:12-13"] }, "replyBy": "耶穌", "note": "剛從變容的山上下來（瑪17:9）；谷9:11 的「他們」是上山的伯多祿、雅各伯、若望（谷9:2、9）。", "see": ["disciples-cast-out"] },
+            { "id": "disciples-cast-out", "title": "為什麼我們不能逐出這魔鬼呢", "to": "耶穌", "refs": { "mat": ["17:19"], "mrk": ["9:28"] }, "key": "mat 17:19", "reply": { "mat": ["17:20"], "mrk": ["9:29"] }, "replyBy": "耶穌", "note": "山下一個孩子的父親說門徒不能治好他（瑪17:14-16）。", "see": ["disciples-elijah"] },
+            { "id": "disciples-greatest", "title": "在天國裡究竟誰是最大的", "to": "耶穌", "refs": { "mat": ["18:1"] }, "key": "mat 18:1", "reply": { "mat": ["18:2-4"] }, "replyBy": "耶穌", "note": "谷9:33-35、路9:46-48 也記此事，只說他們爭論誰最大（間接敘述）；路22:24 晚餐時又有爭論。", "see": ["zebedee-seats", "zebedee-forbade"] }
+          ]
+        },
+        {
+          "title": "往耶路撒冷",
+          "sayings": [
+            { "id": "disciples-who-sinned", "title": "誰犯了罪？是他，還是他的父母", "to": "耶穌", "refs": { "jhn": ["9:2"] }, "key": "jhn 9:2", "reply": { "jhn": ["9:3"] }, "replyBy": "耶穌", "note": "他們看見一個生來瞎眼的人（9:1）。" },
+            { "id": "disciples-teach-prayer", "title": "請教給我們祈禱", "to": "耶穌", "refs": { "luk": ["11:1"] }, "key": "luk 11:1", "reply": { "luk": ["11:2-4"] }, "replyBy": "耶穌", "note": "「他的一個門徒」提出，說的是「我們」；瑪6:9-13 另有較長的主禱文，放在山上聖訓裡。" },
+            { "id": "disciples-lazarus", "title": "近來猶太人圖謀砸死你", "to": "耶穌", "refs": { "jhn": ["11:8", "11:12"] }, "key": "jhn 11:8", "reply": { "jhn": ["11:14"] }, "replyBy": "耶穌", "note": "第二句「若是他睡著了，必定好了」：他們以為耶穌說的是安眠（11:12-13）。", "see": ["thomas-die-with-him"] },
+            { "id": "disciples-increase-faith", "title": "請增加我們的信德罷", "to": "主", "refs": { "luk": ["17:5"] }, "key": "luk 17:5", "reply": { "luk": ["17:6"] }, "replyBy": "主", "note": "路17:5 稱「宗徒們」；耶穌答以芥子的比喻（17:6）。" },
+            { "id": "disciples-where", "title": "主，在那裡呢", "to": "耶穌", "refs": { "luk": ["17:37"] }, "key": "luk 17:37", "note": "耶穌剛講人子顯現的日子（17:22-35）；他在同節回答。" },
+            { "id": "disciples-marriage", "title": "倒不如不娶的好", "to": "耶穌", "refs": { "mat": ["19:10"] }, "key": "mat 19:10", "reply": { "mat": ["19:11-12"] }, "replyBy": "耶穌", "note": "接在耶穌論休妻之後（19:3-9）。" },
+            { "id": "disciples-who-can-be-saved", "title": "這樣，誰還能得救呢", "to": "同伴", "refs": { "mat": ["19:25"], "mrk": ["10:26"], "luk": ["18:26"] }, "key": "mat 19:25", "reply": { "mat": ["19:26"], "mrk": ["10:27"], "luk": ["18:27"] }, "replyBy": "耶穌", "note": "接在富有青年離去之後；路18:26 作「聽眾」，不一定專指門徒。", "see": ["peter-left-everything"] },
+            { "id": "disciples-hosanna", "title": "因上主之名而來的君王，應受讚頌", "to": "天主", "refs": { "luk": ["19:37-38"] }, "key": "luk 19:38", "reply": { "luk": ["19:40"] }, "replyBy": "耶穌", "note": "路19:37 稱「眾門徒」；瑪21:9、谷11:9、若12:13 記的是群眾的歡呼。" },
+            { "id": "disciples-temple-stones", "title": "這是何等的石頭！何等的建築", "to": "耶穌", "refs": { "mrk": ["13:1"] }, "key": "mrk 13:1", "reply": { "mrk": ["13:2"] }, "replyBy": "耶穌", "note": "「他的門徒中有一個」說；瑪24:1、路21:5 只說有人指給他看或談論聖殿，沒有記話。", "see": ["peter-olivet-question"] }
+          ]
+        },
+        {
+          "title": "最後晚餐",
+          "sayings": [
+            { "id": "disciples-is-it-me", "title": "難道是我嗎", "to": "耶穌", "refs": { "mat": ["26:22"], "mrk": ["14:19"] }, "key": "mat 26:22", "reply": { "mat": ["26:23-24"], "mrk": ["14:20-21"] }, "replyBy": "耶穌", "note": "路22:23 只說他們彼此相問誰要做這事，是間接敘述；猶達斯的問見瑪26:25。", "see": ["judas-is-it-me", "peter-who-betrays"] },
+            { "id": "disciples-little-while", "title": "我們不明白他講什麼", "to": "同伴", "refs": { "jhn": ["16:17-18"] }, "key": "jhn 16:18", "reply": { "jhn": ["16:19"] }, "replyBy": "耶穌", "note": "他們議論的是耶穌說的「只有片時，你們就看不見我了」（16:16）。", "see": ["disciples-now-plain"] },
+            { "id": "disciples-now-plain", "title": "現在你明明地講論，不用什麼比喻了", "to": "耶穌", "refs": { "jhn": ["16:29-30"] }, "key": "jhn 16:30", "reply": { "jhn": ["16:31-32"] }, "replyBy": "耶穌", "note": "在告別講話的末尾，說「我們相信你是出自天主」（16:30）。", "see": ["disciples-little-while"] },
+            { "id": "disciples-two-swords", "title": "主，看，這裡有兩把劍", "to": "耶穌", "refs": { "luk": ["22:35", "22:38"] }, "key": "luk 22:38", "note": "22:35 耶穌問他們派遣時缺少什麼，他們答「什麼也沒有缺」；耶穌在22:38 答「夠了」。", "see": ["disciples-strike-sword"] },
+            { "id": "disciples-strike-sword", "title": "主，我們可以用劍砍嗎", "to": "耶穌", "refs": { "luk": ["22:49"] }, "key": "luk 22:49", "reply": { "luk": ["22:51"] }, "replyBy": "耶穌", "note": "路加作「耶穌左右的人」，隨即有一人砍了（22:50）；若18:10 說這人是西滿伯多祿。", "see": ["disciples-two-swords"] }
+          ]
+        },
+        {
+          "title": "復活之後",
+          "sayings": [
+            { "id": "disciples-we-saw-lord", "title": "我們看見了主", "to": "多默", "refs": { "jhn": ["20:25"] }, "key": "jhn 20:25", "note": "其他門徒對沒有在場的多默說；多默在同節回答「我決不信」。", "see": ["thomas-unless-i-see"] },
+            { "id": "disciples-emmaus-hoped", "title": "我們原指望他就是那要拯救以色列的", "to": "耶穌", "refs": { "luk": ["24:18-24"] }, "key": "luk 24:21", "reply": { "luk": ["24:25-27"] }, "replyBy": "耶穌", "note": "兩個門徒之一名叫克羅帕（24:18），他們不是十二人；耶穌同行而他們認不出來（24:15-16）。", "see": ["disciples-emmaus-stay"] },
+            { "id": "disciples-emmaus-stay", "title": "請同我們一起住下罷", "to": "耶穌", "refs": { "luk": ["24:29"] }, "key": "luk 24:29", "note": "耶穌裝作還要前行（24:28）；他們強留他。", "see": ["disciples-emmaus-hoped", "disciples-emmaus-hearts"] },
+            { "id": "disciples-emmaus-hearts", "title": "我們的心不是火熱的嗎", "to": "同伴", "refs": { "luk": ["24:32"] }, "key": "luk 24:32", "note": "擘餅時他們認出耶穌，耶穌隨即隱沒（24:30-31）。", "see": ["disciples-emmaus-stay", "disciples-lord-risen"] },
+            { "id": "disciples-lord-risen", "title": "主真復活了，並顯現給西滿了", "to": "厄瑪烏回來的人", "refs": { "luk": ["24:34"] }, "key": "luk 24:34", "note": "說話的是「十一門徒及同他們一起的人」；接著那二人述說路上的事（24:35）。", "see": ["disciples-emmaus-hearts"] },
+            { "id": "disciples-no-fish", "title": "沒有", "to": "耶穌", "refs": { "jhn": ["21:5"] }, "key": "jhn 21:5", "reply": { "jhn": ["21:6"] }, "replyBy": "耶穌", "note": "耶穌站在岸上問「孩子們，你們有些魚吃嗎」，門徒還沒認出他（21:4）。", "see": ["peter-fishing", "peter-cast-nets"] }
+          ]
+        },
+        {
+          "title": "初期教會",
+          "sayings": [
+            { "id": "disciples-restore-kingdom", "title": "是此時要給以色列復興國家嗎", "to": "耶穌", "refs": { "act": ["1:6"] }, "key": "act 1:6", "reply": { "act": ["1:7-8"] }, "replyBy": "耶穌", "note": "耶穌復活後四十天之久向他們講論天主國的事（1:3）。" },
+            { "id": "disciples-seven", "title": "我們要專務祈禱，並為真道服役", "to": "眾門徒", "refs": { "act": ["6:2-4"] }, "key": "act 6:4", "reply": { "act": ["6:5"] }, "replyBy": "全體", "note": "「十二宗徒召集眾門徒」說；起因是希臘化的猶太人抱怨寡婦被疏忽（6:1）。", "see": ["stephen-defense", "philip-deacon-understand"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stephen",
+      "name": "斯德望",
+      "group": "church",
+      "intro": "宗徒選出的七人之一，充滿信德和聖神；在公議會辯護後，被石頭砸死。",
+      "stages": [
+        {
+          "title": "在公議會前",
+          "sayings": [
+            { "id": "stephen-defense", "title": "你們時常反抗聖神", "to": "公議會", "refs": { "act": ["7:2-53"] }, "key": "act 7:51", "reply": { "act": ["7:54"] }, "replyBy": "公議會", "note": "回答大司祭的問話（7:1）；由亞巴郎、若瑟、梅瑟講到殿宇，最後責備聽眾（7:51-53）。", "see": ["stephen-forgive", "disciples-seven"] }
+          ]
+        },
+        {
+          "title": "殉道",
+          "sayings": [
+            { "id": "stephen-son-of-man", "title": "看，我見天開了", "to": "公議會", "refs": { "act": ["7:56"] }, "key": "act 7:56", "note": "對照耶穌在公議會前的話：人子要坐在大能者的右邊（瑪26:64、谷14:62、路22:69）。", "see": ["stephen-receive-spirit"] },
+            { "id": "stephen-receive-spirit", "title": "主耶穌！接我的靈魂去罷", "to": "主耶穌", "refs": { "act": ["7:59"] }, "key": "act 7:59", "note": "對照路23:46：耶穌說「父啊！我把我的靈魂交托在你手中」。", "see": ["stephen-son-of-man", "stephen-forgive"] },
+            { "id": "stephen-forgive", "title": "主，不要向他們算這罪債", "to": "主", "refs": { "act": ["7:60"] }, "key": "act 7:60", "note": "對照路23:34：耶穌說「父啊！寬赦他們罷」；證人把衣服放在名叫掃祿的青年人腳前（7:58）。", "see": ["paul-defence-crowd", "stephen-defense", "stephen-receive-spirit"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "philip-deacon",
+      "name": "斐理伯（執事）",
+      "aka": ["傳福音者斐理伯"],
+      "group": "church",
+      "intro": "七位被選出的人之一，稱「傳福音者」（宗21:8）；在撒瑪黎雅傳教，又給厄提約丕雅的太監付洗。",
+      "stages": [
+        {
+          "title": "往迦薩的路上",
+          "sayings": [
+            { "id": "philip-deacon-understand", "title": "你明白所誦讀的嗎", "to": "厄提約丕雅太監", "refs": { "act": ["8:30"] }, "key": "act 8:30", "reply": { "act": ["8:31"] }, "replyBy": "太監", "note": "聖神吩咐他走近那輛車子（8:29）；太監讀的是依撒意亞先知（8:28）。", "see": ["disciples-seven", "philip-deacon-believe"] },
+            { "id": "philip-deacon-believe", "title": "你若全心相信，便可以", "to": "厄提約丕雅太監", "refs": { "act": ["8:37"] }, "key": "act 8:37", "note": "此節印在【】內；太監的宣認「我信耶穌基督就是天主子」在同一節。", "see": ["philip-deacon-understand"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "paul",
+      "name": "保祿",
+      "aka": ["掃祿"],
+      "group": "church",
+      "intro": "原名掃祿，生於基里基雅的塔爾索，是法利塞人；在往大馬士革的路上被主召叫。",
+      "stages": [
+        {
+          "title": "歸化",
+          "sayings": [
+            { "id": "paul-who-are-you", "title": "主！你是誰？", "to": "耶穌", "refs": { "act": ["9:5"] }, "key": "act 9:5", "reply": { "act": ["9:6"] }, "replyBy": "耶穌", "note": "此時他還叫掃祿；聲音先說「掃祿，掃祿，你為什麼迫害我？」（9:4）", "see": ["paul-defence-crowd", "paul-defence-agrippa"] }
+          ]
+        },
+        {
+          "title": "初次出外傳教",
+          "sayings": [
+            { "id": "paul-elymas", "title": "你這滿懷各種欺詐和各種奸惡的人", "to": "術士厄呂瑪", "refs": { "act": ["13:10-11"] }, "key": "act 13:10", "note": "經文在此說「掃祿，也即是保祿」（13:9）；術士立刻昏黑，找人領路（13:11）。", "see": ["peter-simon-magus"] },
+            { "id": "paul-antioch-speech", "title": "憑著他，凡信的人都可成義", "to": "會堂裡的人", "refs": { "act": ["13:16-41"] }, "key": "act 13:39", "reply": { "act": ["13:42"] }, "replyBy": "眾人", "note": "在丕息狄雅的安提約基雅；與宗2 伯多祿的講辭同引「聖者不見腐朽」（宗2:27、13:35）。", "see": ["peter-pentecost", "paul-turn-to-gentiles"] },
+            { "id": "paul-turn-to-gentiles", "title": "我們就要轉向外邦人", "to": "猶太人", "refs": { "act": ["13:46-47"] }, "key": "act 13:46", "note": "與巴爾納伯一同說；猶太人看見眾多的人，滿心嫉妒（13:45）。", "see": ["paul-corinth-blood", "paul-rome-isaiah", "paul-antioch-speech"] },
+            { "id": "paul-lame-lystra", "title": "直直地站起來", "to": "呂斯特辣的跛子", "refs": { "act": ["14:10"] }, "key": "act 14:10", "note": "此人由母胎中即是跛子（14:8）；群眾因此稱巴爾納伯和保祿為神（14:11-12）。", "see": ["peter-no-silver", "paul-lystra-speech"] },
+            { "id": "paul-lystra-speech", "title": "我們也是人啊", "to": "呂斯特辣的群眾", "refs": { "act": ["14:15-17"] }, "key": "act 14:15", "note": "與巴爾納伯一同說，阻止群眾獻祭（14:13-14、18）。", "see": ["peter-just-a-man", "paul-areopagus", "paul-lame-lystra"] }
+          ]
+        },
+        {
+          "title": "二次出外傳教",
+          "sayings": [
+            { "id": "paul-split-barnabas", "title": "看看弟兄怎麼樣了", "to": "巴爾納伯", "refs": { "act": ["15:36"] }, "key": "act 15:36", "note": "巴爾納伯想帶馬爾谷同去，保祿不同意，二人起了爭執而分離（15:37-39）。" },
+            { "id": "paul-spirit-girl", "title": "命你從她身上出去", "to": "那惡神", "refs": { "act": ["16:18"] }, "key": "act 16:18", "note": "在斐理伯；附占卜之神的女孩多日跟著他們喊叫（16:16-18），她的主人們因此控告他們（16:19-21）。" },
+            { "id": "paul-jailer-calm", "title": "不要傷害自己", "to": "獄警", "refs": { "act": ["16:28"] }, "key": "act 16:28", "note": "地震後監門全開，獄警以為囚犯逃走，拔劍想要自殺（16:26-27）。", "see": ["paul-jailer-believe"] },
+            { "id": "paul-jailer-believe", "title": "你信主耶穌罷！你和你一家就必得救", "to": "獄警", "refs": { "act": ["16:31"] }, "key": "act 16:31", "note": "與息拉一同說（「他們說」）；獄警先問「我當作什麼纔可得救」（16:30）。", "see": ["paul-jailer-calm"] },
+            { "id": "paul-roman-citizens", "title": "我們是羅馬人", "to": "官長的侍衛", "refs": { "act": ["16:37"] }, "key": "act 16:37", "note": "官長聽說他們是羅馬人就害怕了（16:38）；對照宗22:25-28。", "see": ["paul-roman-citizen"] },
+            { "id": "paul-thessalonica", "title": "我向你們所傳報的耶穌，就是默西亞", "to": "猶太人", "refs": { "act": ["17:3"] }, "key": "act 17:3", "note": "在得撒洛尼的會堂，一連三個安息日根據聖經辯論（17:1-3）。" },
+            { "id": "paul-areopagus", "title": "我們生活、行動、存在，都在他內", "to": "雅典人", "refs": { "act": ["17:22-31"] }, "key": "act 17:28", "reply": { "act": ["17:32"] }, "replyBy": "聽眾", "note": "在阿勒約帕哥；引雅典祭壇上的「給未識之神」（17:23）和詩人的話（17:28）。", "see": ["paul-lystra-speech"] },
+            { "id": "paul-corinth-blood", "title": "從今以後，我要到外邦人那裡去了", "to": "格林多的猶太人", "refs": { "act": ["18:6"] }, "key": "act 18:6", "note": "猶太人反對並說褻瀆的話（18:6）；對照宗13:46-47 和宗28:28。", "see": ["paul-turn-to-gentiles", "paul-rome-isaiah"] },
+            { "id": "paul-ephesus-promise", "title": "我還要回到你們這裡來", "to": "厄弗所的猶太人", "refs": { "act": ["18:21"] }, "key": "act 18:21", "note": "眾人求他多住些時候，他沒有應允（18:20）；他後來又到了厄弗所（19:1）。", "see": ["paul-miletus"] }
+          ]
+        },
+        {
+          "title": "三次出外傳教",
+          "sayings": [
+            { "id": "paul-ephesus-disciples", "title": "你們信教的時候，領了聖神沒有", "to": "厄弗所的幾個門徒", "refs": { "act": ["19:2-4"] }, "key": "act 19:2", "note": "他們只受過若翰的洗；聽了以後因主耶穌之名領洗，聖神降在他們身上（19:5-6）。" },
+            { "id": "paul-see-rome", "title": "也該看看羅馬", "to": "自己", "refs": { "act": ["19:21"] }, "key": "act 19:21", "note": "他決意經馬其頓和阿哈雅往耶路撒冷去（19:21）；宗28:14-16 他到達羅馬。", "see": ["paul-rome-jews"] },
+            { "id": "paul-eutychus", "title": "他的靈魂還在他身上", "to": "特洛阿的信徒", "refs": { "act": ["20:10"] }, "key": "act 20:10", "note": "青年厄烏提曷從三樓墮下，扶起來時已經死了（20:9）；後來被領走時活著（20:12）。", "see": ["peter-tabitha"] },
+            { "id": "paul-miletus", "title": "施予比領受更為有福", "to": "厄弗所的長老", "refs": { "act": ["20:18-35"] }, "key": "act 20:35", "note": "引主耶穌的話；眾人聽他說以後不得再見他的面，就大哭起來（20:25、37-38）。", "see": ["paul-ephesus-promise", "paul-dont-weep"] },
+            { "id": "paul-dont-weep", "title": "你們為什麼啼哭，使我心碎呢", "to": "請求他的人", "refs": { "act": ["21:13"] }, "key": "act 21:13", "note": "先知阿加波用保祿的腰帶綁自己，預言他將被交在外邦人手中（21:11）。", "see": ["paul-miletus"] }
+          ]
+        },
+        {
+          "title": "保祿被捕",
+          "sayings": [
+            { "id": "paul-ask-to-speak", "title": "許我向你說句話嗎", "to": "千夫長", "refs": { "act": ["21:37", "21:39"] }, "key": "act 21:39", "note": "千夫長問他是否前些日子作亂的埃及人（21:38）；他說自己是塔爾索人。", "see": ["paul-defence-crowd", "james-paul-vow"] },
+            { "id": "paul-defence-crowd", "title": "請聽我現在對你們的分辯", "to": "聖殿的群眾", "refs": { "act": ["22:1-21"] }, "key": "act 22:21", "reply": { "act": ["22:22"] }, "replyBy": "群眾", "note": "用希伯來話致辭（21:40）；再述大馬士革路上的事（22:6-16），並提到斯德望（22:20）。", "see": ["paul-who-are-you", "paul-defence-agrippa", "stephen-forgive", "paul-ask-to-speak"] },
+            { "id": "paul-roman-citizen", "title": "一個羅馬人，又沒有被定罪", "to": "百夫長、千夫長", "refs": { "act": ["22:25", "22:27-28"] }, "key": "act 22:25", "note": "千夫長說他花大錢纔購得公民權，保祿答「我卻生來就是」（22:28）；對照宗16:37。", "see": ["paul-roman-citizens"] },
+            { "id": "paul-good-conscience", "title": "全憑純善的良心，直到今天", "to": "公議會", "refs": { "act": ["23:1"] }, "key": "act 23:1", "note": "大司祭阿納尼雅隨即命站在旁邊的人打他的嘴（23:2）。", "see": ["paul-whitewashed"] },
+            { "id": "paul-whitewashed", "title": "粉白的牆啊！天主將要打擊你", "to": "大司祭與旁人", "refs": { "act": ["23:3", "23:5"] }, "key": "act 23:3", "note": "旁人責他辱罵大司祭（23:4）；他答不知道他是大司祭，並引經上「不可詛咒你百姓的首長」。", "see": ["paul-good-conscience"] },
+            { "id": "paul-resurrection-hope", "title": "我是為了希望死者的復活，現在受審", "to": "公議會", "refs": { "act": ["23:6"] }, "key": "act 23:6", "note": "他的話使法利塞人和撒杜塞人起了爭辯（23:7-9）。", "see": ["paul-felix"] },
+            { "id": "paul-centurion-youth", "title": "請領這個青年到千夫長那裡去", "to": "一個百夫長", "refs": { "act": ["23:17"] }, "key": "act 23:17", "note": "保祿姊妹的兒子聽到四十多人的陰謀，來營裡報告（23:12-16）。" }
+          ]
+        },
+        {
+          "title": "在總督與王前",
+          "sayings": [
+            { "id": "paul-felix", "title": "義人及不義的人將要復活", "to": "總督斐理斯", "refs": { "act": ["24:10-21"] }, "key": "act 24:15", "reply": { "act": ["24:22"] }, "replyBy": "斐理斯", "note": "回答律師特爾突羅的控告（24:2-8）；結尾再提「為了死者的復活」（24:21）。", "see": ["paul-resurrection-hope"] },
+            { "id": "paul-appeal-caesar", "title": "我向凱撒上訴", "to": "總督斐斯托", "refs": { "act": ["25:8", "25:10-11"] }, "key": "act 25:11", "reply": { "act": ["25:12"] }, "replyBy": "斐斯托", "note": "斐斯托問他願不願上耶路撒冷受審（25:9），他不從，改向凱撒上訴。", "see": ["paul-defence-agrippa", "paul-storm-assurance", "paul-rome-jews"] },
+            { "id": "paul-defence-agrippa", "title": "我對這天上的異像並沒有失信", "to": "阿格黎帕王", "refs": { "act": ["26:2-23"] }, "key": "act 26:19", "reply": { "act": ["26:24"] }, "replyBy": "斐斯托", "note": "宗9 由敘述者講歸化的事，宗22、26 是保祿自己再述；這裡主親口託付他（26:16-18）。", "see": ["paul-who-are-you", "paul-defence-crowd", "paul-almost", "paul-appeal-caesar"] },
+            { "id": "paul-almost", "title": "差一點也罷！差的多也罷", "to": "斐斯托和王", "refs": { "act": ["26:25-27", "26:29"] }, "key": "act 26:29", "note": "斐斯托說他瘋了（26:24）；阿格黎帕說「你差一點就勸服我作了基督徒」（26:28）。", "see": ["paul-defence-agrippa"] }
+          ]
+        },
+        {
+          "title": "解往羅馬",
+          "sayings": [
+            { "id": "paul-ship-warning", "title": "也將要遭受災害和重大的損失", "to": "同船的人", "refs": { "act": ["27:10"] }, "key": "act 27:10", "reply": { "act": ["27:11"] }, "replyBy": "百夫長", "note": "「他們說」指保祿：27:11 說百夫長不聽保祿所說的話。", "see": ["paul-storm-assurance"] },
+            { "id": "paul-storm-assurance", "title": "我信天主對我怎樣說，也必怎樣成就", "to": "同船的人", "refs": { "act": ["27:21-26"] }, "key": "act 27:25", "note": "天主的使者夜間向他顯現，說他必要站在凱撒面前（27:23-24）。", "see": ["paul-appeal-caesar", "paul-ship-warning", "paul-sailors-flee", "paul-eat"] },
+            { "id": "paul-sailors-flee", "title": "你們便不能獲救", "to": "百夫長和士兵", "refs": { "act": ["27:31"] }, "key": "act 27:31", "reply": { "act": ["27:32"] }, "replyBy": "士兵", "note": "水手想坐小艇逃走，假裝要從船頭拋錨（27:30）。", "see": ["paul-storm-assurance"] },
+            { "id": "paul-eat", "title": "我勸你們用飯", "to": "同船的人", "refs": { "act": ["27:33-34"] }, "key": "act 27:34", "note": "他說完便拿起餅來感謝天主，擘開，開始吃（27:35）；船上共有二百七十六人（27:37）。", "see": ["paul-storm-assurance"] }
+          ]
+        },
+        {
+          "title": "在羅馬",
+          "sayings": [
+            { "id": "paul-rome-jews", "title": "纔帶上了這條鎖鏈", "to": "猶太人的首領", "refs": { "act": ["28:17-20"] }, "key": "act 28:20", "reply": { "act": ["28:21-22"] }, "replyBy": "猶太人首領", "note": "到羅馬三天後召集他們（28:17）；他說自己向凱撒上訴，並非要控告自己的人民。", "see": ["paul-see-rome", "paul-appeal-caesar"] },
+            { "id": "paul-rome-isaiah", "title": "天主的這個救恩已送給了外邦人", "to": "猶太人", "refs": { "act": ["28:25-28"] }, "key": "act 28:28", "note": "眾人彼此不合，散去之前他說了這段話（28:25）；引依撒意亞先知的話（28:26-27）。", "see": ["paul-turn-to-gentiles", "paul-corinth-blood"] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "james-jerusalem",
+      "name": "雅各伯（耶路撒冷）",
+      "group": "church",
+      "intro": "耶路撒冷教會的雅各伯，不是載伯德的兒子；在宗徒會議上發言，也接見保祿。",
+      "stages": [
+        {
+          "title": "宗徒會議",
+          "sayings": [
+            { "id": "james-council", "title": "不要再加給由外邦歸依天主的人煩難", "to": "宗徒和長老", "refs": { "act": ["15:13-21"] }, "key": "act 15:19", "reply": { "act": ["15:23-29"] }, "replyBy": "宗徒和長老", "note": "接在伯多祿發言之後，提到「西滿述說了天主當初怎樣關心外邦人」（15:14）。", "see": ["peter-council", "peter-tell-james", "james-paul-vow"] }
+          ]
+        },
+        {
+          "title": "接見保祿",
+          "sayings": [
+            { "id": "james-paul-vow", "title": "你帶這些人，同他們一起行取潔禮", "to": "保祿", "refs": { "act": ["21:20-25"] }, "key": "act 21:24", "note": "雅各伯與眾長老（21:18）一同說；21:25 提到宗15 議定的書信。", "see": ["james-council", "paul-ask-to-speak"] }
           ]
         }
       ]

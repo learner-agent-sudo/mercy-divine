@@ -526,7 +526,9 @@ if (hasPeople) {
   ok('the 谷 tab switches to 谷 8:29', (await pass.locator('.v').first().getAttribute('data-key')) === '8:29'
      && (await pass.locator('.v').first().textContent()).endsWith(verseText('mrk', 8, 29)) && (await cc.locator('.bible-etab[data-book="mrk"]').getAttribute('aria-selected')) === 'true');
   ok('and highlights nothing, since the key verse is in 瑪', (await cc.locator('.v.key').count()) === 0);
-  ok('the reply is still shown, from the first book that has one', (await reply.locator('.v').first().getAttribute('data-key')) === '16:17');
+  // 谷有自己的回答就顯示谷的，沒有就顯示第一部有回答的書
+  const mrkReply = confess.reply.mrk ? confess.reply.mrk[0].split('-')[0] : '16:17';
+  ok('the reply follows the tab when that book has one, else the first book that has one', (await reply.locator('.v').first().getAttribute('data-key')) === mrkReply);
   await cc.locator('.bible-etab[data-book="luk"]').click();
   ok('the 路 tab shows 路 9:20', (await pass.locator('.v').first().getAttribute('data-key')) === '9:20' && (await pass.locator('.v.key').count()) === 0);
   ok('the note is shown like an event note', (await cc.locator('.bible-note').textContent()) === confess.note);
@@ -537,8 +539,10 @@ if (hasPeople) {
   const wc = card(words.id);
   ok('a saying in one book has no tabs', (await wc.locator('.say-tabs').count()) === 0 && (await wc.locator('.say-body .v').first().getAttribute('data-key')) === '6:68');
   ok('and its key verse is set apart', (await wc.locator('.v.key').getAttribute('data-key')) === '6:68');
-  const chip = wc.locator('.say-see .chip');
-  ok('the 對照 chip names the other saying of the same person', (await chip.allTextContents()).join() === `對照：${confess.title}`);
+  const chip = wc.locator('.say-see .chip', { hasText: confess.title });
+  const titleOf = (id) => { const s = sayingOf(id); return s && peter.stages.some((st) => st.sayings.includes(s)) ? `對照：${s.title}` : null; };
+  ok('the 對照 chips name the other sayings, one per see link', (await wc.locator('.say-see .chip').count()) === words.see.length
+     && (await chip.textContent()) === titleOf(confess.id));
   await wc.scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollTo(0, document.querySelector('.say[data-say="peter-words-of-life"]').getBoundingClientRect().top + scrollY - 80));
   const y0 = await page.evaluate(() => Math.round(scrollY));
@@ -582,11 +586,13 @@ if (hasPeople) {
   await card(silver.id).locator('.say-ctx').click();
   await page.waitForSelector('.bible-sec');
   ok('看上下文 on an Acts saying opens that chapter', (await title()) === '宗徒大事錄 第三章');
-  ok('with verse 6 highlighted and in view', await page.evaluate(() => {
+  // 跳到這段話的第一節（資料裡可能是 3:4 或 3:6）
+  const silverFirst = silver.refs.act[0].split('-')[0];
+  ok('with the first verse of the saying highlighted and in view', await page.evaluate((k) => {
     const v = document.querySelector('.v.hl');
     const r = v && v.getBoundingClientRect();
-    return !!v && v.dataset.key === '3:6' && r.top > 0 && r.bottom < innerHeight;
-  }));
+    return !!v && v.dataset.key === k && r.top > 0 && r.bottom < innerHeight;
+  }, silverFirst));
   await page.goBack();
   await page.waitForSelector('.say', { state: 'attached' });
 
