@@ -99,21 +99,32 @@ Another card on the home screen, separate from the prayers and the Bible: the sa
 confession, for getting ready before going and for the words said inside the confessional.
 **準備辦告解** opens the steps; **告明時** opens the rite.
 
+The screen has three tabs, in this order:
+
 - **步驟** — the six steps (省察 痛悔 定改 告明 赦罪 補贖), each a card that opens to its points.
-  Step 4 links to the rite.
+  省察 has a **開始省察** button; 告明 links to the rite.
+- **省察** — the examination of conscience in three forms (第一式 by the Ten Commandments, the Four
+  Precepts of the Church and the Seven Deadly Sins; 第二式 by the Gospel; 第三式 by attitudes to
+  faith, others and oneself). The chosen form is remembered. Each part's sections open as cards, and
+  each item is ticked as you go; a ticked item can be counted up with − n + (for example, three times
+  the same sin). The 天主十誡 card at the top of 第一式 is for reference. Below the list, **其他（自己寫）**
+  takes anything not on the list, and **清除勾選** empties the ticks and the note.
 - **告明時** — the ten steps of the rite in order, each with who speaks (懺悔者 / 神父 / 一起) and
-  the stage direction. The penitent's words have the gold border used for key verses; the
-  priest's are plain. Where the rite asks for the date of the last confession, the screen says how
-  long ago it was. Step 5 shows the 痛悔經; when more than one version is listed, buttons choose
-  one and the choice is remembered.
-- **今天已辦告解** at the foot of the rite records today's date (on the phone's clock) after a
-  confirm. The home card then shows **上次告解** and how long ago. A mistaken tap is undone with
-  **移除** beside the date.
+  the stage direction. The penitent's words have the gold border used for key verses; the priest's
+  are plain. Step 3 gives how long since the last confession and, under it, **我的省察**: the ticked
+  items with their source (for example 第一式 · 第一誡), the note, and a link back to 省察. Step 5
+  shows the 痛悔經; there are six, chosen with the buttons 一 to 六 (the default is 二).
+  At the foot, **今天已辦告解** records today's date (on the phone's clock) after a confirm, and
+  clears the ticks and the note, since they have been brought to confession. The home card then shows
+  **上次告解** and how long ago. A mistaken date is undone with **移除** beside it.
 
 The text is [`data/confession.json`](data/confession.json) — plain wording, edited like the
-prayers. The examination checklists (省察式) are not in yet: `exams` is empty and nothing shows for
-them. The dates are kept on the phone (`mercy.confession.v1`) and are part of the backup file;
-importing adds the dates it does not already have, and never one in the future.
+prayers. The examination items are there too (190 in all), in `exams`; the 天主十誡 in `decalogue`.
+
+The dates are kept on the phone (`mercy.confession.v1`) and are part of the backup file; importing
+adds the dates it does not already have, and never one in the future. The ticks and the note are
+kept separately (`mercy.examen.v1`) and are **not** in the backup, and an import never writes them:
+they are for the examination at hand, and are cleared once the confession is recorded.
 
 ## Changing the content
 
@@ -316,7 +327,7 @@ Five suites cover the things that would hurt most if they broke:
 | `bible` | books, chapters and sections, marking read (and surviving a reload), parallels and the event pages, timeline, themes, people (their sayings, tabs, context links, speaker chips), log, search, the back button layer by layer, backup import checks, the single-file preview |
 | `gospel-events` | every reference in the event table exists, and every verse of the four Gospels belongs to exactly one event |
 | `people` | every passage in `data/people.json` exists, each key verse lies inside its passage, and every cross-reference points at a saying that exists |
-| `confession` | the home card and its lines, the six steps in order, the rite with its gold-bordered words, the 痛悔經 choice, recording and removing a day, the wording of "how long ago", the back button |
+| `confession` | the home card and its lines, the six steps in order, the three tabs, the 省察 forms, sections and ticks (with counts, kept through a reload), the rite with its gold-bordered words and 我的省察, the 痛悔經 choice, recording and removing a day, the wording of "how long ago", the back button |
 
 The suites drive a real browser at phone size and fail on any console error.
 

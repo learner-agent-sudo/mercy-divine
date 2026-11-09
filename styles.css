@@ -795,7 +795,7 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 #view-confession .bar-title { color: var(--fg); font-size: .95rem; }
 .conf-panel { min-width: 0; }
 
-.conf-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; margin: 0 0 1rem; }
+.conf-tabs { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); gap: .35rem; margin: 0 0 1rem; }
 .conf-tab {
   font: inherit; font-weight: 600; color: var(--muted); cursor: pointer;
   background: var(--sunken); border: 1px solid var(--line);
@@ -842,12 +842,14 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 }
 /* 懺悔者要說的話：和讀經的金句一樣，左邊一道金線 */
 .conf-quote.key { border-left: 3px solid var(--gold); background: color-mix(in srgb, var(--gold) 11%, transparent); }
+.conf-quote p { margin: 0 0 .5rem; }
+.conf-quote p:last-child { margin-bottom: 0; }
 .conf-fill { margin: .55rem 0 0; font-size: .85rem; color: var(--gold); }
 .conf-act-title { margin: .6rem 0 0; font-size: .85rem; letter-spacing: .08em; color: var(--muted); }
 .conf-acts { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
 .conf-act-btn {
-  font: inherit; font-size: .85rem; color: var(--muted); cursor: pointer;
-  background: var(--sunken); border: 1px solid var(--line); border-radius: 999px; padding: .35rem .9rem; min-height: 2.2rem;
+  font: inherit; font-size: .85rem; color: var(--muted); cursor: pointer; min-width: 2.4rem; text-align: center;
+  background: var(--sunken); border: 1px solid var(--line); border-radius: 999px; padding: .35rem .5rem; min-height: 2.2rem;
 }
 .conf-act-btn[aria-pressed="true"] { color: var(--fg); border-color: var(--gold); background: var(--surface); }
 
@@ -857,6 +859,85 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 .conf-rm {
   font: inherit; font-size: .85rem; color: var(--gold); cursor: pointer;
   background: none; border: 0; text-decoration: underline; padding: .2rem .35rem; min-height: 2rem;
+}
+
+/* 省察 */
+.cx-forms { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; margin: 0 0 .9rem; }
+.cx-form {
+  font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: .25rem;
+  min-height: 3.4rem; padding: .55rem .3rem; min-width: 0;
+  background: var(--sunken); color: var(--muted); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.cx-form[aria-pressed="true"] { background: var(--surface); color: var(--fg); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.cx-form-name { font-weight: 600; font-size: .95rem; }
+.cx-form-sub { font-size: .7rem; line-height: 1.45; text-align: center; overflow-wrap: anywhere; }
+.cx-angle { margin: 0 0 .5rem; font-size: .9rem; line-height: 1.7; color: var(--gold); }
+.cx-explain { margin: 0 0 1rem; }
+.cx-intro { margin: 0 0 .7rem; font-size: calc(.98rem * var(--fs)); line-height: 1.85; }
+.cx-part { margin-top: 1.6rem; }
+.cx-part-title {
+  margin: 0 0 .5rem; padding-bottom: .4rem; border-bottom: 1px solid var(--line);
+  font-size: .95rem; font-weight: 600; letter-spacing: .1em; color: var(--gold);
+}
+.cx-part-end { margin: .8rem 0 0; font-size: .85rem; line-height: 1.7; color: var(--gold); }
+.cx-before {
+  margin: .9rem 0 .35rem; padding-left: .6rem; border-left: 2px solid var(--line);
+  font-size: .82rem; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere;
+}
+.cx-sec-wrap { margin-bottom: .2rem; }
+.cx-sec { margin-bottom: .6rem; }
+.cx-sum { align-items: baseline; }
+.cx-sum-head { flex: 1; min-width: 0; text-align: left; line-height: 1.6; }
+.cx-sum-title { font-size: .95rem; font-weight: 600; letter-spacing: .06em; color: var(--fg); }
+.cx-sum-law { font-size: .85rem; font-weight: 400; letter-spacing: .02em; color: var(--muted); overflow-wrap: anywhere; }
+.cx-count { flex: none; margin-left: .6rem; font-size: .75rem; font-weight: 400; color: var(--gold); white-space: nowrap; }
+.cx-items { list-style: none; margin: 0; padding: 0 1.1rem .5rem; border-top: 1px solid var(--line); }
+.cx-row { display: flex; align-items: center; gap: .4rem; border-top: 1px solid var(--line); }
+.cx-row:first-child { border-top: 0; }
+.cx-check {
+  flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: .6rem; text-align: left;
+  font: inherit; font-size: calc(.95rem * var(--fs)); line-height: 1.7; color: var(--fg);
+  background: none; border: 0; padding: .6rem 0; min-height: 2.75rem; cursor: pointer;
+}
+.cx-box {
+  flex: none; width: 1.35rem; height: 1.35rem; margin-top: .2rem; border: 1.5px solid var(--muted); border-radius: .35rem;
+  display: grid; place-items: center; font-size: .8rem; line-height: 1; color: #1A0F0D;
+}
+.cx-check[aria-checked="true"] .cx-box { background: var(--gold); border-color: var(--gold); }
+.cx-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cx-x { flex: none; margin-top: .25rem; font-size: .8rem; color: var(--gold); }
+.cx-step { flex: none; display: inline-flex; align-items: center; gap: .2rem; }
+.cx-minus, .cx-plus {
+  font: inherit; width: 2.2rem; height: 2.2rem; border-radius: 50%; cursor: pointer;
+  background: var(--sunken); color: var(--fg); border: 1px solid var(--line);
+}
+.cx-n { min-width: 1.6rem; text-align: center; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.cx-note { margin-top: 1.4rem; }
+.cx-note-label { display: block; }
+.cx-note-title { display: block; margin-bottom: .4rem; font-size: .82rem; color: var(--muted); }
+.cx-note textarea {
+  display: block; width: 100%; box-sizing: border-box; resize: vertical;
+  font: inherit; font-size: 1rem; line-height: 1.7; color: var(--fg);
+  background: var(--surface); border: 1px solid var(--line); border-radius: .6rem; padding: .6rem .7rem;
+}
+.cx-dec > summary { color: var(--gold); letter-spacing: .1em; }
+.cx-dec-body { padding: 0 1.1rem 1rem; border-top: 1px solid var(--line); }
+.cx-dec-head { margin: .9rem 0 .2rem; font-size: .9rem; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
+.cx-dec-lines { margin: 0; padding-left: 1.8rem; }
+.cx-dec-lines li { font-size: calc(.98rem * var(--fs)); line-height: 1.8; }
+.cx-dec-end { margin: .8rem 0 0; font-size: .85rem; color: var(--gold); }
+
+/* 告明時：我的省察 */
+.cx-mine { margin: .8rem 0 0; padding: .7rem .85rem .8rem; background: var(--sunken); border-left: 3px solid var(--gold); border-radius: 0 .5rem .5rem 0; }
+.cx-mine-title { margin: 0 0 .4rem; font-size: .8rem; letter-spacing: .12em; color: var(--gold); }
+.cx-mine-list { margin: 0; padding-left: 1.1rem; }
+.cx-mine-item { font-size: .9rem; line-height: 1.6; margin-bottom: .4rem; overflow-wrap: anywhere; }
+.cx-mine-x { margin-left: .35rem; font-size: .8rem; color: var(--gold); }
+.cx-mine-src { display: block; font-size: .74rem; color: var(--muted); }
+.cx-mine-note { margin: .5rem 0 0; font-size: .9rem; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.conf-link {
+  font: inherit; font-size: .82rem; color: var(--gold); cursor: pointer; margin-top: .4rem; padding: .3rem 0; min-height: 2rem;
+  background: none; border: 0; text-decoration: underline;
 }
 
 /* ── 提示與更新 ──────────────────────────────────────── */
