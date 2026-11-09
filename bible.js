@@ -731,6 +731,7 @@ function paintEventsTab(panel) {
   const all = btn('', 'btn btn-tiny tl-all', () => {
     const opening = groups.some((d) => !d.open);
     for (const d of groups) d.open = opening;
+    label();     // 標籤立刻跟上；details 的 toggle 事件是稍後才觸發的
   });
   const label = () => { all.textContent = groups.every((d) => d.open) ? '全部收起' : '全部展開'; };
   panel.append(el('div', 'tl-tools'));
@@ -1370,6 +1371,7 @@ function paintPerson(host, st) {
   const all = btn('', 'btn btn-tiny tl-all', () => {
     const opening = groups.some((d) => !d.open);
     for (const d of groups) d.open = opening;
+    label();     // 標籤立刻跟上；details 的 toggle 事件是稍後才觸發的
   });
   const label = () => { all.textContent = groups.every((d) => d.open) ? '全部收起' : '全部展開'; };
   const tools = el('div', 'tl-tools');

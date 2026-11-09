@@ -67,6 +67,16 @@
       </div>
     </div>
 
+    <!-- 修和聖事：與祈禱、讀經各自獨立，內容由 confession.js 填 -->
+    <div class="card bible-home" id="confession-home">
+      <h2 class="bible-home-title">修和聖事</h2>
+      <p class="bible-home-line" id="confession-home-line">辦告解前的準備與步驟</p>
+      <div class="bible-home-btns">
+        <button type="button" id="confession-steps" class="btn btn-primary btn-grow">準備辦告解</button>
+        <button type="button" id="confession-rite" class="btn btn-grow">告明時</button>
+      </div>
+    </div>
+
     <div class="stats" id="home-stats"></div>
 
     <nav class="home-nav">
@@ -227,6 +237,16 @@
     <div id="bible-body"></div>
   </section>
 
+  <!-- ── 修和聖事 ───────────────────────────────────── -->
+  <section id="view-confession" class="view" aria-label="修和聖事">
+    <header class="bar">
+      <button type="button" id="confession-back" class="icon-btn" aria-label="返回">‹</button>
+      <div class="bar-title">修和聖事</div>
+      <span class="bar-spacer"></span>
+    </header>
+    <div id="confession-body"></div>
+  </section>
+
   <!-- ── 設定 ───────────────────────────────────────── -->
   <section id="view-settings" class="view" aria-label="設定">
     <header class="bar">
@@ -347,5 +367,6 @@
 <script src="bible-parse.js"></script>
 <script src="app.js"></script>
 <script src="bible.js"></script>
+<script src="confession.js"></script>
 </body>
 </html>

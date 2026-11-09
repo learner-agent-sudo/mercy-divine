@@ -1,6 +1,8 @@
 // 備份還原：匯出後清空手機資料，再匯入，紀錄與聖像都應完整回來。
 import { chromium } from 'playwright';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { CHROME, BASE, fixture, launch, openSlotGroup, setFiles } from './helpers.mjs';
 
 const { browser, page, errors } = await launch({ acceptDownloads: true });
@@ -34,20 +36,31 @@ await page.click('.ch-btn[data-c="5"]');
 await page.locator('.bible-sec:has(.bible-sec-title:has-text("真福八端")) .bible-done').click();
 await page.goBack(); await page.goBack(); await page.goBack();
 await page.waitForSelector('#view-home.active');
+
+// 修和聖事：記下今天辦了告解（對話框預設按確定）
+const TODAY = (() => { const d = new Date(); const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; })();
+await page.click('#confession-rite');
+await page.click('#conf-today');
+await page.click('#confession-back');
+await page.waitForSelector('#view-home.active');
 await page.click('[data-go="settings"]');
 
 const before = await page.evaluate(() => ({
   records: JSON.parse(localStorage.getItem('mercy.records.v1')),
   pictures: JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures,
   bible: JSON.parse(localStorage.getItem('mercy.bible.v1')),
+  confession: JSON.parse(localStorage.getItem('mercy.confession.v1')),
 }));
+ok('the confession day is in storage before the backup', JSON.stringify(before.confession.dates) === JSON.stringify([TODAY]));
 ok('the reading is in storage before the backup', before.bible.read.mat.length === 12 && before.bible.log.length === 1);
 console.log(`before: ${before.records.length} records, ${Object.keys(before.pictures).length} picture slots`);
 
 const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-btn')]);
 const path = await download.path();
 const backup = JSON.parse(readFileSync(path, 'utf8'));
-ok('backup names the app and a version', backup.app === 'mercy-divine' && backup.version === 5);
+ok('backup names the app and a version', backup.app === 'mercy-divine' && backup.version === 6);
+ok('backup carries the confession dates', JSON.stringify(backup.confession) === JSON.stringify({ dates: [TODAY] }));
 ok('backup carries the Bible reading', backup.bible && backup.bible.read.mat.length === 12
    && backup.bible.log.length === 1 && backup.bible.log[0].title === '真福八端' && backup.bible.last.c === 5);
 ok('backup carries every record', backup.records.length === before.records.length);
@@ -73,8 +86,10 @@ const after = await page.evaluate(() => ({
   records: JSON.parse(localStorage.getItem('mercy.records.v1')),
   pictures: JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures,
   bible: JSON.parse(localStorage.getItem('mercy.bible.v1')),
+  confession: JSON.parse(localStorage.getItem('mercy.confession.v1')),
 }));
 ok('the Bible reading is restored: verses, log and place', JSON.stringify(after.bible) === JSON.stringify(before.bible));
+ok('the confession dates are restored', JSON.stringify(after.confession) === JSON.stringify(before.confession));
 ok('records restored', after.records.length === before.records.length);
 ok('notes restored', JSON.stringify(after.records.map(r => r.note).sort()) ===
                      JSON.stringify(before.records.map(r => r.note).sort()));
@@ -100,6 +115,8 @@ const twice = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.r
 ok('importing twice does not duplicate', twice === before.records.length);
 const bibleTwice = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.bible.v1')));
 ok('nor does it duplicate the Bible reading', JSON.stringify(bibleTwice) === JSON.stringify(before.bible));
+const confTwice = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.confession.v1')));
+ok('nor does it duplicate a confession day', JSON.stringify(confTwice) === JSON.stringify(before.confession));
 
 // 讀經進度合併：已經有別的進度時取聯集，不覆蓋
 await page.evaluate(() => {
@@ -108,6 +125,7 @@ await page.evaluate(() => {
   b.read.jhn = ['3:16'];
   b.log = [{ at: '2020-01-01T00:00:00.000Z', book: 'jhn', from: '3:16', to: '3:16', title: '另一部手機讀的' }];
   localStorage.setItem('mercy.bible.v1', JSON.stringify(b));
+  localStorage.setItem('mercy.confession.v1', JSON.stringify({ dates: ['2020-01-01'] }));
 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.click('[data-go="settings"]');
@@ -118,11 +136,26 @@ ok('importing merges Bible verses with what is already there',
    merged.read.mat.length === 14 && merged.read.mat.includes('1:1') && merged.read.mat.includes('5:12') && merged.read.jhn.join() === '3:16');
 ok('and the logs, oldest first', merged.log.length === 2 && merged.log[0].title === '另一部手機讀的' && merged.log[1].title === '真福八端');
 ok('while keeping the place already set', merged.last.c === 5);
+const confMerged = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.confession.v1')));
+ok('confession days merge too, oldest first', JSON.stringify(confMerged.dates) === JSON.stringify(['2020-01-01', TODAY]));
+
+// 告解日期：不是日期、不存在的日子、未來的日子、重複的，都不收；只收真的新日子
+const badDir = mkdtempSync(join(tmpdir(), 'mercy-conf-'));
+const badPath = join(badDir, 'bad-dates.json');
+writeFileSync(badPath, JSON.stringify({ app: 'mercy-divine', version: 6, records: [], confession: {
+  dates: ['2026-02-30', '2999-01-01', '10/01/2026', '2026-1-5', 'yesterday', 7, null, '2020-05-17', '2020-05-17'] } }));
+await page.setInputFiles('#import-file', badPath);
+await page.waitForTimeout(900);
+const badMerged = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.confession.v1')));
+ok('bad and future dates are rejected, a new real one is added once',
+   JSON.stringify(badMerged.dates) === JSON.stringify(['2020-01-01', '2020-05-17', TODAY]));
+ok('and the toast counts only what was added', (await page.textContent('#toast')) === '已匯入 告解 1 筆');
 
 // 只有讀經、沒有祈禱紀錄時也要能匯出
 await page.evaluate(async () => {
   localStorage.removeItem('mercy.records.v1');
   localStorage.removeItem('mercy.settings.v1');
+  localStorage.removeItem('mercy.confession.v1');
   for (const db of await indexedDB.databases()) indexedDB.deleteDatabase(db.name);
 });
 await page.reload({ waitUntil: 'networkidle' });

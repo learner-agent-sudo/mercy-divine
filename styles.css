@@ -785,6 +785,80 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 }
 .view-full.active { position: relative; }   /* flash 以祈禱畫面為定位基準 */
 
+/* ── 修和聖事 ───────────────────────────────────────── */
+/* 畫面頂端的列固定，與讀經相同 */
+#view-confession .bar {
+  position: sticky; top: 0; z-index: 5;
+  margin: -1.25rem calc(-1 * var(--gutter)) 1rem;
+  padding-right: var(--gutter);
+}
+#view-confession .bar-title { color: var(--fg); font-size: .95rem; }
+.conf-panel { min-width: 0; }
+
+.conf-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; margin: 0 0 1rem; }
+.conf-tab {
+  font: inherit; font-weight: 600; color: var(--muted); cursor: pointer;
+  background: var(--sunken); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .6rem .2rem; min-height: 2.9rem;
+}
+.conf-tab[aria-selected="true"] {
+  background: var(--surface); color: var(--fg); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold);
+}
+
+/* 步驟：卡片沿用事件時間軸的樣式；摘要是「1 省察」加一行說明 */
+.conf-step > .conf-sum { align-items: center; }
+.conf-head { display: flex; flex-direction: column; gap: .3rem; min-width: 0; margin-right: .6rem; text-align: left; }
+.conf-name { font-size: .95rem; font-weight: 600; letter-spacing: .08em; color: var(--gold); }
+.conf-lead { font-size: .85rem; font-weight: 400; line-height: 1.7; letter-spacing: .02em; color: var(--muted); }
+.conf-body { padding: 0 1.1rem 1rem; border-top: 1px solid var(--line); }
+.conf-body:empty { display: none; }
+.conf-points { margin: .9rem 0 0; padding-left: 1.1rem; }
+.conf-points li { font-size: calc(.98rem * var(--fs)); line-height: 1.85; margin-bottom: .6rem; overflow-wrap: anywhere; }
+.conf-go { margin-top: .4rem; }
+
+/* 告明時：十個步驟，照次序編號 */
+.conf-rite { list-style: none; margin: 0; padding: 0; counter-reset: rite; }
+.conf-line {
+  counter-increment: rite; position: relative;
+  padding: 1rem 0 1rem 2.4rem; border-top: 1px solid var(--line);
+}
+.conf-line:first-child { border-top: 0; }
+.conf-line::before {
+  content: counter(rite); position: absolute; left: 0; top: 1rem;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%; text-align: center; line-height: 1.6rem;
+  font-size: .8rem; font-weight: 600; color: var(--gold); border: 1px solid var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.conf-role {
+  display: inline-block; font-size: .72rem; line-height: 1.5; letter-spacing: .08em; padding: 0 .55rem;
+  color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
+}
+.conf-role-penitent { color: var(--gold); border-color: var(--gold); }
+.conf-do { margin: .4rem 0 0; font-size: calc(.92rem * var(--fs)); line-height: 1.75; color: var(--muted); overflow-wrap: anywhere; }
+.conf-quote {
+  margin: .6rem 0 0; padding: .55rem .8rem .6rem .9rem;
+  font-size: calc(1.08rem * var(--fs)); line-height: 1.9; color: var(--fg); overflow-wrap: anywhere;
+  border-left: 2px solid var(--line); border-radius: 0 .5rem .5rem 0;
+}
+/* 懺悔者要說的話：和讀經的金句一樣，左邊一道金線 */
+.conf-quote.key { border-left: 3px solid var(--gold); background: color-mix(in srgb, var(--gold) 11%, transparent); }
+.conf-fill { margin: .55rem 0 0; font-size: .85rem; color: var(--gold); }
+.conf-act-title { margin: .6rem 0 0; font-size: .85rem; letter-spacing: .08em; color: var(--muted); }
+.conf-acts { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+.conf-act-btn {
+  font: inherit; font-size: .85rem; color: var(--muted); cursor: pointer;
+  background: var(--sunken); border: 1px solid var(--line); border-radius: 999px; padding: .35rem .9rem; min-height: 2.2rem;
+}
+.conf-act-btn[aria-pressed="true"] { color: var(--fg); border-color: var(--gold); background: var(--surface); }
+
+/* 最下面：今天已辦告解，以及已記下的日期 */
+.conf-record { margin-top: 1.4rem; }
+.conf-dates { margin: .8rem 0 0; font-size: .85rem; line-height: 1.9; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
+.conf-rm {
+  font: inherit; font-size: .85rem; color: var(--gold); cursor: pointer;
+  background: none; border: 0; text-decoration: underline; padding: .2rem .35rem; min-height: 2rem;
+}
+
 /* ── 提示與更新 ──────────────────────────────────────── */
 .toast {
   position: fixed; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); transform: translateX(-50%);

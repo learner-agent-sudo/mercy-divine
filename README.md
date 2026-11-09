@@ -93,6 +93,28 @@ in [`bible/`](bible/) (see its README for the source and licence), parsed in the
 Without the event table the books and progress still work, and without the people file
 there is simply no 人物 tab.
 
+## 修和聖事 (confession)
+
+Another card on the home screen, separate from the prayers and the Bible: the sacrament of
+confession, for getting ready before going and for the words said inside the confessional.
+**準備辦告解** opens the steps; **告明時** opens the rite.
+
+- **步驟** — the six steps (省察 痛悔 定改 告明 赦罪 補贖), each a card that opens to its points.
+  Step 4 links to the rite.
+- **告明時** — the ten steps of the rite in order, each with who speaks (懺悔者 / 神父 / 一起) and
+  the stage direction. The penitent's words have the gold border used for key verses; the
+  priest's are plain. Where the rite asks for the date of the last confession, the screen says how
+  long ago it was. Step 5 shows the 痛悔經; when more than one version is listed, buttons choose
+  one and the choice is remembered.
+- **今天已辦告解** at the foot of the rite records today's date (on the phone's clock) after a
+  confirm. The home card then shows **上次告解** and how long ago. A mistaken tap is undone with
+  **移除** beside the date.
+
+The text is [`data/confession.json`](data/confession.json) — plain wording, edited like the
+prayers. The examination checklists (省察式) are not in yet: `exams` is empty and nothing shows for
+them. The dates are kept on the phone (`mercy.confession.v1`) and are part of the backup file;
+importing adds the dates it does not already have, and never one in the future.
+
 ## Changing the content
 
 **The prayers** live in [`data/prayers.json`](data/prayers.json) (the chaplet) and
@@ -183,7 +205,7 @@ serving the old cached copy. The app shows a 已有新版本 banner when an upda
 
 ## Backups
 
-設定 → **匯出備份檔** writes a `.json` file to Downloads with every record, your custom pictures and your Bible reading progress. **匯入備份檔**
+設定 → **匯出備份檔** writes a `.json` file to Downloads with every record, your custom pictures, your Bible reading progress and your confession dates. **匯入備份檔**
 reads one back, skipping anything already present — so it is safe to import the same
 file twice, and it works for moving to a new phone.
 
@@ -294,6 +316,7 @@ Five suites cover the things that would hurt most if they broke:
 | `bible` | books, chapters and sections, marking read (and surviving a reload), parallels and the event pages, timeline, themes, people (their sayings, tabs, context links, speaker chips), log, search, the back button layer by layer, backup import checks, the single-file preview |
 | `gospel-events` | every reference in the event table exists, and every verse of the four Gospels belongs to exactly one event |
 | `people` | every passage in `data/people.json` exists, each key verse lies inside its passage, and every cross-reference points at a saying that exists |
+| `confession` | the home card and its lines, the six steps in order, the rite with its gold-bordered words, the 痛悔經 choice, recording and removing a day, the wording of "how long ago", the back button |
 
 The suites drive a real browser at phone size and fail on any console error.
 
@@ -303,6 +326,7 @@ The suites drive a real browser at phone size and fail on any console error.
 index.html              app shell — every screen
 app.js                  logic: prayer flow, records, calendar, settings
 bible.js                Bible reading: books, chapters, events, progress
+confession.js           修和聖事: the steps, the rite, the date of the last confession
 bible-parse.js          splits the Bible text files into chapters, verses and sections
 styles.css              theme, light + dark
 sw.js                   service worker — the offline cache
@@ -311,6 +335,7 @@ data/prayers.json       the prayer text
 data/images.json        the picture list
 data/gospel-events.json the Gospel events in order, with where each is told
 data/people.json        who said what: people, their stages and sayings, with the passages
+data/confession.json    修和聖事: the steps, the rite, the prayers of contrition
 bible/                  the Bible text (思高) and its source notice
 images/                 the pictures
 icons/                  app icon

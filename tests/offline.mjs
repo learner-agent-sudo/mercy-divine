@@ -31,6 +31,7 @@ ok('the five books and the Bible code cached', ['matthew', 'mark', 'luke', 'john
    && cached.some((p) => p.endsWith('/bible.js')) && cached.some((p) => p.endsWith('/bible-parse.js')));
 ok('the event table and the source notice cached', cached.some((p) => p.endsWith('/data/gospel-events.json')) && cached.some((p) => p.endsWith('/bible/README.md')));
 ok('the people table cached', cached.some((p) => p.endsWith('/data/people.json')));
+ok('the confession code and text cached', cached.some((p) => p.endsWith('/confession.js')) && cached.some((p) => p.endsWith('/data/confession.json')));
 console.log(`        ${cached.length} files cached`);
 
 await pray();
@@ -77,6 +78,21 @@ ok('so does the source notice', true);
 await page.goBack();
 await page.waitForSelector('#view-home.active');
 
+// 修和聖事也要能離線：看步驟、看告明時（含痛悔經），記下今天
+await page.click('#confession-steps');
+await page.waitForSelector('details.conf-step');
+ok('the confession steps open offline', (await page.locator('details.conf-step').count()) === 6);
+await page.click('.conf-tab[data-tab="rite"]');
+await page.waitForSelector('li.conf-line');
+ok('the rite works offline, with the 痛悔經', (await page.locator('li.conf-line').count()) === 10
+   && (await page.textContent('li.conf-line:nth-child(5) .conf-quote')).includes('全心痛悔'));
+await page.click('#conf-today');
+await page.waitForFunction(() => JSON.parse(localStorage.getItem('mercy.confession.v1')).dates.length === 1);
+const confOffline = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.confession.v1')).dates);
+ok('a confession day is recorded offline', confOffline.length === 1);
+await page.click('#confession-back');
+await page.waitForSelector('#view-home.active');
+
 // 全新分頁、仍然無網路
 const fresh = await context.newPage();
 await fresh.goto(BASE, { waitUntil: 'load' });
@@ -90,6 +106,8 @@ await page.waitForSelector('#view-home.active');
 const back = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.records.v1')).map((r) => r.ts));
 ok('every offline record survives reconnecting', offlineStamps.every((t) => back.includes(t)));
 ok('nothing lost or duplicated', back.length === offlineStamps.length);
+const confBack = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.confession.v1')).dates);
+ok('the confession day survives reconnecting too', JSON.stringify(confBack) === JSON.stringify(confOffline));
 
 await pray();
 ok('praying online still records', await count() === online + 4);
