@@ -126,6 +126,29 @@ adds the dates it does not already have, and never one in the future. The ticks 
 kept separately (`mercy.examen.v1`) and are **not** in the backup, and an import never writes them:
 they are for the examination at hand, and are cleared once the confession is recorded.
 
+## 九日敬禮 (novenas)
+
+Another card on the home screen: novenas, prayed every day for nine days in a row. **打開** lists
+them; **念第 N 天** (once one is under way) opens the next day. The first novena is the 煉靈九日敬禮
+(for the souls in purgatory): nine days, each with a theme, the souls' answer, their appeal, and the
+closing prayers (天主經 and 聖母經 open on the page).
+
+- The day screen has the question, the answer and the appeal, then the closing prayer and the
+  two prayers, which open to show their text. **念完第 N 天** marks the day with today's date (after the ninth, every day reads 九天都念完了 until tomorrow);
+  **取消這天的紀錄** undoes it after a confirm. ‹ and › move between days.
+- Each novena keeps one run at a time. The screen shows how many days are done and when it began.
+  If a day was missed, it says how many days have passed and that you can carry on or start again;
+  **重新開始** clears the run.
+- **為誰祈禱（可留空）** is kept with the novena across runs, and is copied into the record when
+  the ninth day is marked. Finished novenas are listed under the novena with their dates.
+
+The text is [`data/novenas.json`](data/novenas.json), written in the same way as the prayers. Nothing in
+the code names a particular novena: a new one is another entry in `novenas`.
+
+The progress, the finished runs and the intentions are kept on the phone (`mercy.novena.v1`) and are
+part of the backup file; importing adds what is not already there, and never replaces what is on the
+phone.
+
 ## Changing the content
 
 **The prayers** live in [`data/prayers.json`](data/prayers.json) (the chaplet) and
@@ -216,7 +239,7 @@ serving the old cached copy. The app shows a 已有新版本 banner when an upda
 
 ## Backups
 
-設定 → **匯出備份檔** writes a `.json` file to Downloads with every record, your custom pictures, your Bible reading progress and your confession dates. **匯入備份檔**
+設定 → **匯出備份檔** writes a `.json` file to Downloads with every record, your custom pictures, your Bible reading progress, your confession dates and your novena progress. **匯入備份檔**
 reads one back, skipping anything already present — so it is safe to import the same
 file twice, and it works for moving to a new phone.
 
@@ -327,6 +350,7 @@ Five suites cover the things that would hurt most if they broke:
 | `bible` | books, chapters and sections, marking read (and surviving a reload), parallels and the event pages, timeline, themes, people (their sayings, tabs, context links, speaker chips), log, search, the back button layer by layer, backup import checks, the single-file preview |
 | `gospel-events` | every reference in the event table exists, and every verse of the four Gospels belongs to exactly one event |
 | `people` | every passage in `data/people.json` exists, each key verse lies inside its passage, and every cross-reference points at a saying that exists |
+| `novena` | the home card, the list and the nine days, the texts verbatim, marking and undoing a day, the gap notice, the intention kept and copied into the finished record, restart, the back button layer by layer, bad storage |
 | `confession` | the home card and its lines, the six steps in order, the three tabs, the 省察 forms, sections and ticks (with counts, kept through a reload), the rite with its gold-bordered words and 我的省察, the 痛悔經 choice, recording and removing a day, the wording of "how long ago", the back button |
 
 The suites drive a real browser at phone size and fail on any console error.
@@ -338,6 +362,7 @@ index.html              app shell — every screen
 app.js                  logic: prayer flow, records, calendar, settings
 bible.js                Bible reading: books, chapters, events, progress
 confession.js           修和聖事: the steps, the rite, the date of the last confession
+novena.js              九日敬禮: the novenas, day by day, the finished runs
 bible-parse.js          splits the Bible text files into chapters, verses and sections
 styles.css              theme, light + dark
 sw.js                   service worker — the offline cache
@@ -347,6 +372,7 @@ data/images.json        the picture list
 data/gospel-events.json the Gospel events in order, with where each is told
 data/people.json        who said what: people, their stages and sayings, with the passages
 data/confession.json    修和聖事: the steps, the rite, the prayers of contrition
+data/novenas.json       九日敬禮: the novenas, nine days each, with their closing prayers
 bible/                  the Bible text (思高) and its source notice
 images/                 the pictures
 icons/                  app icon

@@ -940,6 +940,100 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
   background: none; border: 0; text-decoration: underline;
 }
 
+/* ── 九日敬禮 ───────────────────────────────────────── */
+#view-novena .bar {
+  position: sticky; top: 0; z-index: 5;
+  margin: -1.25rem calc(-1 * var(--gutter)) 1rem;
+  padding-right: var(--gutter);
+}
+#view-novena .bar-title { color: var(--fg); font-size: .95rem; }
+
+/* 列表：每個九日敬禮一張卡片，整張都能按 */
+.nov-list { display: grid; gap: .6rem; }
+.nov-card {
+  font: inherit; text-align: left; cursor: pointer; color: var(--fg);
+  display: flex; flex-direction: column; gap: .3rem; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 1rem 1.1rem; box-shadow: var(--shadow);
+}
+.nov-card-name { font-size: 1.02rem; font-weight: 600; letter-spacing: .04em; overflow-wrap: anywhere; }
+.nov-card-sub { font-size: .88rem; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
+.nov-card-status { margin-top: .2rem; font-size: .85rem; color: var(--gold); }
+
+/* 一個九日敬禮：標題、進度、為誰祈禱、九天的目錄 */
+.nov-title { margin: .2rem 0 .3rem; font-size: 1.2rem; letter-spacing: .06em; color: var(--gold); overflow-wrap: anywhere; }
+.nov-sub { margin: 0 0 1rem; font-size: .92rem; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
+.nov-status {
+  margin: 0 0 1rem; padding: .8rem .9rem; background: var(--sunken);
+  border-left: 3px solid var(--gold); border-radius: 0 .5rem .5rem 0;
+}
+.nov-progress { margin: 0; font-size: .92rem; color: var(--fg); }
+.nov-dots { display: flex; gap: .45rem; margin-top: .6rem; }
+.nov-dot { width: .7rem; height: .7rem; border-radius: 50%; border: 1px solid var(--gold); background: transparent; }
+.nov-dot.on { background: var(--gold); }
+.nov-hint { margin: .6rem 0 0; font-size: .85rem; line-height: 1.75; color: var(--muted); overflow-wrap: anywhere; }
+.nov-intent { display: block; margin: 0 0 1rem; }
+.nov-intent-label { display: block; margin-bottom: .35rem; font-size: .85rem; color: var(--muted); }
+.nov-intent input {
+  font: inherit; font-size: 1rem; width: 100%; min-width: 0; box-sizing: border-box;
+  color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: .65rem .8rem; min-height: 2.9rem;
+}
+.nov-go { margin-bottom: 1rem; }
+.nov-days { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.nov-day {
+  font: inherit; color: var(--fg); cursor: pointer; text-align: left; background: none; border: 0;
+  border-bottom: 1px solid var(--line); border-radius: 0;
+  display: grid; grid-template-columns: 4.4rem 1fr auto; align-items: center; gap: .5rem;
+  min-height: 3rem; padding: .6rem .2rem;
+}
+.nov-day-n { font-size: .85rem; color: var(--gold); letter-spacing: .04em; white-space: nowrap; }
+.nov-day-theme { font-size: .95rem; overflow-wrap: anywhere; }
+.nov-day-date { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.nov-records { margin-top: 1.6rem; }
+.nov-records-title { margin: 0 0 .5rem; font-size: .8rem; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+.nov-record-list { margin: 0; padding-left: 1.1rem; }
+.nov-record-list li { font-size: .9rem; line-height: 1.8; margin-bottom: .35rem; overflow-wrap: anywhere; }
+.nov-record-for { display: block; font-size: .85rem; color: var(--muted); }
+
+/* 某一天：標題、主題、問題、回答、懇求、結尾的祈禱 */
+.nov-crumb { margin: 0 0 .2rem; font-size: .8rem; letter-spacing: .08em; color: var(--muted); overflow-wrap: anywhere; }
+.nov-day-title { margin: 0; font-size: 1.25rem; letter-spacing: .08em; color: var(--gold); }
+.nov-theme { margin: .25rem 0 0; font-size: .98rem; color: var(--fg); overflow-wrap: anywhere; }
+.nov-for { margin: .6rem 0 0; font-size: .85rem; color: var(--gold); overflow-wrap: anywhere; }
+.nov-q { margin: 1rem 0 0; font-size: calc(1.05rem * var(--fs)); line-height: 1.85; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
+.nov-answer { margin-top: .9rem; }
+.nov-answer p, .nov-appeal p, .nov-line { font-size: calc(1.02rem * var(--fs)); line-height: 1.9; margin: 0 0 .7rem; overflow-wrap: anywhere; }
+.nov-answer p:last-child, .nov-appeal p:last-child { margin-bottom: 0; }
+/* 煉靈對世人說的話：底色較淡，左邊一道灰線，與金線的祈禱區分開 */
+.nov-appeal {
+  margin-top: 1rem; padding: .7rem .9rem; background: var(--sunken);
+  border-left: 3px solid var(--line); border-radius: 0 .5rem .5rem 0;
+}
+.nov-appeal p { font-size: calc(.98rem * var(--fs)); color: var(--muted); }
+.nov-line { margin-top: .9rem; }
+/* 祈禱文：金框，與告明時懺悔者的話一樣 */
+.nov-prayer {
+  margin: 1rem 0 0; padding: .6rem .9rem .7rem; border-left: 3px solid var(--gold);
+  background: color-mix(in srgb, var(--gold) 11%, transparent); border-radius: 0 .5rem .5rem 0;
+}
+.nov-prayer-label { display: block; margin-bottom: .3rem; font-size: .8rem; letter-spacing: .1em; color: var(--gold); }
+.nov-prayer p { margin: 0; font-size: calc(1.02rem * var(--fs)); line-height: 1.9; overflow-wrap: anywhere; }
+.nov-pr { margin: .5rem 0 0; border-top: 1px solid var(--line); padding-top: .4rem; }
+.nov-pr > summary {
+  cursor: pointer; font-size: .92rem; color: var(--gold); min-height: 2.2rem;
+  display: flex; align-items: center; justify-content: space-between; list-style: none;
+}
+/* 和主題分類一樣，右邊一個 ›，打開時轉向下，看得出可以點開看經文 */
+.nov-pr > summary::-webkit-details-marker { display: none; }
+.nov-pr > summary::after { content: "›"; color: var(--muted); transition: transform .2s ease; }
+.nov-pr[open] > summary::after { transform: rotate(90deg); }
+.nov-pr-body { margin: .4rem 0 .3rem; font-size: calc(1rem * var(--fs)); line-height: 1.9; overflow-wrap: anywhere; }
+.nov-bottom { margin-top: 1.4rem; }
+.nov-done { margin: 0 0 .4rem; text-align: center; font-size: .9rem; color: var(--gold); }
+.nov-pn { display: flex; justify-content: space-between; gap: .5rem; margin-top: .6rem; }
+.nov-pn .btn { min-height: 2.75rem; }
+
 /* ── 提示與更新 ──────────────────────────────────────── */
 .toast {
   position: fixed; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); transform: translateX(-50%);

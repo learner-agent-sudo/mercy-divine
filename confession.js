@@ -1,6 +1,6 @@
 /* 修和聖事：辦告解前的準備（步驟、省察）、告解室裡照著念的次序（告明時），
-   以及上次告解的日期。內容在 data/confession.json；日期存在 mercy.confession.v1，
-   省察的勾選與自己寫的內容存在 mercy.examen.v1。兩者都只在本機，不放進備份。
+   以及上次告解的日期。內容在 data/confession.json；日期存在 mercy.confession.v1，放進備份；
+   省察的勾選與自己寫的內容存在 mercy.examen.v1，只在本機，不放進備份。
    與祈禱、讀經各自獨立。整份包在函式裡，只把 app.js 會呼叫的幾個名稱放到全域。 */
 (() => {
 'use strict';

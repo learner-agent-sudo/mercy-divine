@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { CHROME, BASE, fixture, launch, openSlotGroup, setFiles } from './helpers.mjs';
 
 const { browser, page, errors } = await launch({ acceptDownloads: true });
+const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 let failures = 0;
 const ok = (label, pass) => { console.log(`${pass ? 'PASS' : 'FAIL ***'}  ${label}`); if (!pass) failures++; };
 
@@ -46,11 +47,20 @@ await page.click('#confession-back');
 await page.waitForSelector('#view-home.active');
 await page.click('[data-go="settings"]');
 
+// 九日敬禮：一次念完的紀錄、進行中的第一天、為誰祈禱
+const NOVENA = {
+  runs: { souls: { start: TODAY, days: { 1: TODAY } } },
+  done: [{ id: 'souls', start: daysAgo(10), end: daysAgo(2), for: '為亡者' }],
+  intent: { souls: '亡父 若瑟' },
+};
+await page.evaluate((v) => localStorage.setItem('mercy.novena.v1', JSON.stringify(v)), NOVENA);
+
 const before = await page.evaluate(() => ({
   records: JSON.parse(localStorage.getItem('mercy.records.v1')),
   pictures: JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures,
   bible: JSON.parse(localStorage.getItem('mercy.bible.v1')),
   confession: JSON.parse(localStorage.getItem('mercy.confession.v1')),
+  novena: JSON.parse(localStorage.getItem('mercy.novena.v1')),
 }));
 ok('the confession day is in storage before the backup', JSON.stringify(before.confession.dates) === JSON.stringify([TODAY]));
 ok('the reading is in storage before the backup', before.bible.read.mat.length === 12 && before.bible.log.length === 1);
@@ -59,8 +69,9 @@ console.log(`before: ${before.records.length} records, ${Object.keys(before.pict
 const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export-btn')]);
 const path = await download.path();
 const backup = JSON.parse(readFileSync(path, 'utf8'));
-ok('backup names the app and a version', backup.app === 'mercy-divine' && backup.version === 6);
+ok('backup names the app and a version', backup.app === 'mercy-divine' && backup.version === 7);
 ok('backup carries the confession dates', JSON.stringify(backup.confession) === JSON.stringify({ dates: [TODAY] }));
+ok('backup carries the 九日敬禮 progress, finished runs and intention', JSON.stringify(backup.novena) === JSON.stringify(NOVENA));
 ok('backup carries the Bible reading', backup.bible && backup.bible.read.mat.length === 12
    && backup.bible.log.length === 1 && backup.bible.log[0].title === '真福八端' && backup.bible.last.c === 5);
 ok('backup carries every record', backup.records.length === before.records.length);
@@ -87,9 +98,11 @@ const after = await page.evaluate(() => ({
   pictures: JSON.parse(localStorage.getItem('mercy.settings.v1')).pictures,
   bible: JSON.parse(localStorage.getItem('mercy.bible.v1')),
   confession: JSON.parse(localStorage.getItem('mercy.confession.v1')),
+  novena: JSON.parse(localStorage.getItem('mercy.novena.v1')),
 }));
 ok('the Bible reading is restored: verses, log and place', JSON.stringify(after.bible) === JSON.stringify(before.bible));
 ok('the confession dates are restored', JSON.stringify(after.confession) === JSON.stringify(before.confession));
+ok('the 九日敬禮 progress is restored', JSON.stringify(after.novena) === JSON.stringify(before.novena));
 ok('records restored', after.records.length === before.records.length);
 ok('notes restored', JSON.stringify(after.records.map(r => r.note).sort()) ===
                      JSON.stringify(before.records.map(r => r.note).sort()));
@@ -117,6 +130,8 @@ const bibleTwice = await page.evaluate(() => JSON.parse(localStorage.getItem('me
 ok('nor does it duplicate the Bible reading', JSON.stringify(bibleTwice) === JSON.stringify(before.bible));
 const confTwice = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.confession.v1')));
 ok('nor does it duplicate a confession day', JSON.stringify(confTwice) === JSON.stringify(before.confession));
+const novTwice = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.novena.v1')));
+ok('nor does it duplicate a finished novena', JSON.stringify(novTwice) === JSON.stringify(before.novena));
 
 // 讀經進度合併：已經有別的進度時取聯集，不覆蓋
 await page.evaluate(() => {
@@ -126,6 +141,7 @@ await page.evaluate(() => {
   b.log = [{ at: '2020-01-01T00:00:00.000Z', book: 'jhn', from: '3:16', to: '3:16', title: '另一部手機讀的' }];
   localStorage.setItem('mercy.bible.v1', JSON.stringify(b));
   localStorage.setItem('mercy.confession.v1', JSON.stringify({ dates: ['2020-01-01'] }));
+  localStorage.setItem('mercy.novena.v1', JSON.stringify({ runs: {}, done: [{ id: 'souls', start: '2020-01-01', end: '2020-01-09', for: '另一部手機' }], intent: { souls: '本機的意向' } }));
 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.click('[data-go="settings"]');
@@ -138,6 +154,12 @@ ok('and the logs, oldest first', merged.log.length === 2 && merged.log[0].title 
 ok('while keeping the place already set', merged.last.c === 5);
 const confMerged = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.confession.v1')));
 ok('confession days merge too, oldest first', JSON.stringify(confMerged.dates) === JSON.stringify(['2020-01-01', TODAY]));
+const novMerged = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.novena.v1')));
+ok('novena: finished entries merge, the run comes across, the local intention is kept', JSON.stringify(novMerged) === JSON.stringify({
+  runs: NOVENA.runs,
+  done: [{ id: 'souls', start: '2020-01-01', end: '2020-01-09', for: '另一部手機' }, NOVENA.done[0]],
+  intent: { souls: '本機的意向' },
+}));
 
 // 告解日期：不是日期、不存在的日子、未來的日子、重複的，都不收；只收真的新日子
 const badDir = mkdtempSync(join(tmpdir(), 'mercy-conf-'));
@@ -156,6 +178,7 @@ await page.evaluate(async () => {
   localStorage.removeItem('mercy.records.v1');
   localStorage.removeItem('mercy.settings.v1');
   localStorage.removeItem('mercy.confession.v1');
+  localStorage.removeItem('mercy.novena.v1');
   for (const db of await indexedDB.databases()) indexedDB.deleteDatabase(db.name);
 });
 await page.reload({ waitUntil: 'networkidle' });
@@ -171,6 +194,27 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.click('[data-go="settings"]');
 await page.click('#export-btn');
 ok('with nothing at all, it says so', (await page.textContent('#toast')) === '尚無紀錄可匯出');
+
+// 九日敬禮的壞條目：未來的日子、壞掉的代號、第 10 天、起訖倒過來、意向不是文字，都不收
+await page.evaluate(() => localStorage.removeItem('mercy.novena.v1'));
+const novBadDir = mkdtempSync(join(tmpdir(), 'mercy-nov-'));
+const novBadPath = join(novBadDir, 'bad-novena.json');
+writeFileSync(novBadPath, JSON.stringify({ app: 'mercy-divine', version: 7, records: [], novena: {
+  done: [
+    { id: 'souls', start: '2999-01-01', end: '2999-01-02', for: '' },
+    { id: 'bad id!', start: daysAgo(5), end: daysAgo(4), for: '' },
+    { id: 'souls', start: daysAgo(3), end: daysAgo(4), for: '倒過來' },
+    { id: 'souls', start: daysAgo(6), end: daysAgo(5), for: 'ok' },
+  ],
+  runs: { souls: { start: TODAY, days: { 10: TODAY } }, '../evil': { start: TODAY, days: { 1: TODAY } } },
+  intent: { souls: 42 },
+} }));
+await page.setInputFiles('#import-file', novBadPath);
+await page.waitForSelector('#toast:has-text("九日敬禮")');
+const novBad = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.novena.v1')));
+ok('bad novena entries are rejected; only the valid finished entry comes in',
+   JSON.stringify(novBad) === JSON.stringify({ runs: {}, done: [{ id: 'souls', start: daysAgo(6), end: daysAgo(5), for: 'ok' }], intent: {} }));
+ok('and the toast counts only what was added', (await page.textContent('#toast')) === '已匯入 九日敬禮 1 筆');
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();

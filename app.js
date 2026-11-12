@@ -552,7 +552,7 @@ function renderSheet() {
 }
 
 /* ── 畫面切換 ──────────────────────────────────────── */
-const VIEWS = ['home', 'prayer', 'done', 'manual', 'history', 'settings', 'bible', 'confession'];
+const VIEWS = ['home', 'prayer', 'done', 'manual', 'history', 'settings', 'bible', 'confession', 'novena'];
 let current = 'home';
 
 function go(name) {
@@ -920,6 +920,8 @@ function renderHome() {
   if (typeof renderBibleHome === 'function') renderBibleHome();
   // 修和聖事的卡片在 confession.js，同上
   if (typeof renderConfessionHome === 'function') renderConfessionHome();
+  // 九日敬禮的卡片在 novena.js，同上
+  if (typeof renderNovenaHome === 'function') renderNovenaHome();
 }
 
 function renderStats(node, pairs) {
@@ -1850,10 +1852,12 @@ async function exportRecords() {
   const hasPictures = Object.keys(settings.pictures || {}).length || (settings.groups || []).length;
   const bible = typeof bibleExport === 'function' ? bibleExport() : null;   // 讀經進度，沒有就是 null
   const confession = typeof confessionExport === 'function' ? confessionExport() : null;   // 告解日期，沒有就是 null
-  if (!records.length && !hasPictures && !bible && !confession) { toast('尚無紀錄可匯出'); return; }
-  const payload = { app: 'mercy-divine', version: 6, exportedAt: new Date().toISOString(), records };
+  const novena = typeof novenaExport === 'function' ? novenaExport() : null;   // 九日敬禮，沒有就是 null
+  if (!records.length && !hasPictures && !bible && !confession && !novena) { toast('尚無紀錄可匯出'); return; }
+  const payload = { app: 'mercy-divine', version: 7, exportedAt: new Date().toISOString(), records };
   if (bible) payload.bible = bible;
   if (confession) payload.confession = confession;
+  if (novena) payload.novena = novena;
 
   // 自訂聖像一併帶走（每一組的都帶），換手機或清除資料後可完整還原
   const pictures = {};
@@ -1881,7 +1885,7 @@ async function exportRecords() {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   const shots = Object.keys(payload.pictures || {}).length;
-  toast(`已匯出 ${records.length} 筆紀錄${shots ? ` 與 ${shots} 張聖像` : ''}${bible ? '、讀經進度' : ''}${confession ? '、告解日期' : ''}`);
+  toast(`已匯出 ${records.length} 筆紀錄${shots ? ` 與 ${shots} 張聖像` : ''}${bible ? '、讀經進度' : ''}${confession ? '、告解日期' : ''}${novena ? '、九日敬禮' : ''}`);
 }
 
 // 只接受內嵌的 data: 圖片。備份檔可能來自他處，若其中放的是 http 網址，
@@ -1994,11 +1998,16 @@ function importRecords(file) {
     let conf = { dates: 0 };
     if (parsed && parsed.confession && typeof confessionImport === 'function') conf = confessionImport(parsed.confession);
 
+    // 九日敬禮的進度與完成紀錄（逐筆檢查在 novena.js 裡）
+    let nov = { done: 0, runs: 0 };
+    if (parsed && parsed.novena && typeof novenaImport === 'function') nov = novenaImport(parsed.novena);
+
     renderHome();
     renderHistory();
     const parts = [added ? `${added} 筆紀錄` : '', shots ? `${shots} 張聖像` : '',
                    read.verses ? `讀經 ${read.verses} 節` : read.logs ? '讀經紀錄' : '',
-                   conf.dates ? `告解 ${conf.dates} 筆` : ''].filter(Boolean);
+                   conf.dates ? `告解 ${conf.dates} 筆` : '',
+                   nov.done + nov.runs ? `九日敬禮 ${nov.done + nov.runs} 筆` : ''].filter(Boolean);
     toast(parts.length ? `已匯入 ${parts.join('、')}` : '沒有新的內容可匯入');
   };
   reader.onerror = () => toast('無法讀取檔案');
@@ -2165,6 +2174,7 @@ function bind() {
     // 讀經裡一層一層的畫面各有自己的歷史紀錄，退回到哪一層就畫哪一層
     if (history.state && history.state.bible && typeof bibleShow === 'function') { bibleShow(history.state.bible); return; }
     if (history.state && history.state.confession && typeof confessionShow === 'function') { confessionShow(history.state.confession); return; }
+    if (history.state && history.state.novena && typeof novenaShow === 'function') { novenaShow(history.state.novena); return; }
     if (sheetOpen) { hideSheet(); return; }
     if (current === 'prayer') {
       if (!mayLeavePrayer()) { history.pushState({ view: 'prayer' }, ''); return; }
@@ -2271,6 +2281,7 @@ async function init() {
   // 重新載入時，歷史紀錄裡還留著讀經的某一層：就回到那一層，返回鍵才接得起來
   if (history.state && history.state.bible && typeof bibleShow === 'function') bibleShow(history.state.bible);
   if (history.state && history.state.confession && typeof confessionShow === 'function') confessionShow(history.state.confession);
+  if (history.state && history.state.novena && typeof novenaShow === 'function') novenaShow(history.state.novena);
   $('#boot').hidden = true;
   $('#app').hidden = false;
   initServiceWorker();

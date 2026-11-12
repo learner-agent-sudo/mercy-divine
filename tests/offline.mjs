@@ -32,6 +32,7 @@ ok('the five books and the Bible code cached', ['matthew', 'mark', 'luke', 'john
 ok('the event table and the source notice cached', cached.some((p) => p.endsWith('/data/gospel-events.json')) && cached.some((p) => p.endsWith('/bible/README.md')));
 ok('the people table cached', cached.some((p) => p.endsWith('/data/people.json')));
 ok('the confession code and text cached', cached.some((p) => p.endsWith('/confession.js')) && cached.some((p) => p.endsWith('/data/confession.json')));
+ok('the novena code and text cached', cached.some((p) => p.endsWith('/novena.js')) && cached.some((p) => p.endsWith('/data/novenas.json')));
 console.log(`        ${cached.length} files cached`);
 
 await pray();
@@ -93,6 +94,21 @@ ok('a confession day is recorded offline', confOffline.length === 1);
 await page.click('#confession-back');
 await page.waitForSelector('#view-home.active');
 
+// 九日敬禮也要能離線：打開目錄、看一天的經文、念完第一天
+await page.click('#novena-open');
+await page.waitForSelector('.nov-card');
+ok('the novena list opens offline', (await page.locator('.nov-card').count()) === 1);
+await page.click('.nov-card');
+await page.click('#nov-go');
+await page.waitForSelector('.nov-answer p');
+ok('a day opens offline, with both prayers', (await page.locator('.nov-answer p').count()) > 0 && (await page.locator('details.nov-pr').count()) === 2);
+await page.click('#nov-mark');
+await page.waitForSelector('#nov-undo');
+const novOffline = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.novena.v1')).runs.souls.days);
+ok('a novena day is recorded offline', novOffline['1'] !== undefined);
+for (let i = 0; i < 3; i++) await page.click('#novena-back');
+await page.waitForSelector('#view-home.active');
+
 // 全新分頁、仍然無網路
 const fresh = await context.newPage();
 await fresh.goto(BASE, { waitUntil: 'load' });
@@ -108,6 +124,8 @@ ok('every offline record survives reconnecting', offlineStamps.every((t) => back
 ok('nothing lost or duplicated', back.length === offlineStamps.length);
 const confBack = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.confession.v1')).dates);
 ok('the confession day survives reconnecting too', JSON.stringify(confBack) === JSON.stringify(confOffline));
+const novBack = await page.evaluate(() => JSON.parse(localStorage.getItem('mercy.novena.v1')).runs.souls.days);
+ok('the novena day survives reconnecting too', JSON.stringify(novBack) === JSON.stringify(novOffline));
 
 await pray();
 ok('praying online still records', await count() === online + 4);

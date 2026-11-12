@@ -77,6 +77,16 @@
       </div>
     </div>
 
+    <!-- 九日敬禮：內容由 novena.js 填，與修和聖事各自獨立 -->
+    <div class="card bible-home" id="novena-home">
+      <h2 class="bible-home-title">九日敬禮</h2>
+      <p class="bible-home-line" id="novena-home-line">連續九天的祈禱</p>
+      <div class="bible-home-btns">
+        <button type="button" id="novena-continue" class="btn btn-primary btn-grow" hidden>念第一天</button>
+        <button type="button" id="novena-open" class="btn btn-primary btn-grow">打開</button>
+      </div>
+    </div>
+
     <div class="stats" id="home-stats"></div>
 
     <nav class="home-nav">
@@ -247,6 +257,16 @@
     <div id="confession-body"></div>
   </section>
 
+  <!-- ── 九日敬禮 ───────────────────────────────────── -->
+  <section id="view-novena" class="view" aria-label="九日敬禮">
+    <header class="bar">
+      <button type="button" id="novena-back" class="icon-btn" aria-label="返回">‹</button>
+      <div class="bar-title">九日敬禮</div>
+      <span class="bar-spacer"></span>
+    </header>
+    <div id="novena-body"></div>
+  </section>
+
   <!-- ── 設定 ───────────────────────────────────────── -->
   <section id="view-settings" class="view" aria-label="設定">
     <header class="bar">
@@ -368,5 +388,6 @@
 <script src="app.js"></script>
 <script src="bible.js"></script>
 <script src="confession.js"></script>
+<script src="novena.js"></script>
 </body>
 </html>

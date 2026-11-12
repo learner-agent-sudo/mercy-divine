@@ -1,5 +1,5 @@
 /* 離線快取。修改經文、圖片或程式後，請把 VERSION 加一，手機才會取得新版本。 */
-const VERSION = 'v34';
+const VERSION = 'v35';
 const CACHE = `mercy-divine-${VERSION}`;
 
 const CORE = [
@@ -10,6 +10,7 @@ const CORE = [
   './bible-parse.js',
   './bible.js',
   './confession.js',
+  './novena.js',
   './manifest.webmanifest',
   './data/sets.json',
   './data/prayers.json',
@@ -18,6 +19,7 @@ const CORE = [
   './data/gospel-events.json',
   './data/people.json',
   './data/confession.json',
+  './data/novenas.json',
   './bible/matthew.md',
   './bible/mark.md',
   './bible/luke.md',
