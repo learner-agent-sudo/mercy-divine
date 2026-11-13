@@ -78,10 +78,12 @@ const secOf = (text) => page.locator(`.bible-sec:has(.bible-sec-title:has-text("
 await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.waitForSelector('#view-home.active');
 ok('home has the 讀經 card', await page.isVisible('#bible-home') && (await page.textContent('#bible-home .bible-home-title')) === '讀經');
-ok('with 繼續讀 and 打開讀經', (await page.textContent('#bible-continue')) === '繼續讀' && (await page.textContent('#bible-open')) === '打開讀經');
-ok('the card sits between the 補記 button and the stats', await page.evaluate(() => {
+ok('with 繼續讀 and a header that opens 讀經', (await page.textContent('#bible-continue')) === '繼續讀' && (await page.getAttribute('#bible-open', 'aria-label')) === '打開讀經');
+ok('the prayer card, with its stats and 補記, comes before the 讀經 card', await page.evaluate(() => {
   const y = (s) => document.querySelector(s).getBoundingClientRect().top;
-  return y('#manual-btn') < y('#bible-home') && y('#bible-home') < y('#home-stats');
+  return document.querySelector('#prayer-home').contains(document.querySelector('#home-stats'))
+    && document.querySelector('#prayer-home').contains(document.querySelector('#manual-btn'))
+    && y('#prayer-home') < y('#bible-home');
 }));
 await page.waitForFunction(() => /節/.test(document.querySelector('#bible-home-line').textContent));
 ok('it shows the total number of verses once loaded', /4,780/.test(await page.textContent('#bible-home-line')));

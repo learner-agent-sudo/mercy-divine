@@ -20,6 +20,26 @@ ok('and "no picture" stays "no picture"', tidy['chaplet:creed'] === 'none');
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'networkidle' });
 
+// ── 首頁：只有一個實心按鈕、不橫向捲動、聖像在祈禱卡片裡、卡片順序、齒輪開設定 ──
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForSelector('#view-home.active');
+ok('home has exactly one visible primary button, 開始祈禱', await page.evaluate(() => {
+  const vis = [...document.querySelectorAll('#view-home .btn-primary')].filter((b) => b.getClientRects().length);
+  return vis.length === 1 && vis[0].id === 'start-btn';
+}));
+ok('home does not scroll sideways at 390px', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+ok('the home picture is inside the prayer card', await page.evaluate(() => !!document.querySelector('#prayer-home #home-image')));
+ok('the cards go prayer, 讀經, 九日敬禮, 修和聖事', await page.evaluate(() => {
+  const y = (s) => document.querySelector(s).getBoundingClientRect().top;
+  return y('#prayer-home') < y('#bible-home') && y('#bible-home') < y('#novena-home') && y('#novena-home') < y('#confession-home');
+}));
+await page.click('#view-home .home-gear');
+await page.waitForSelector('#view-settings.active');
+ok('the gear opens settings', await page.isVisible('#view-settings.active'));
+await page.click('#view-settings [data-go="home"]');
+await page.waitForSelector('#view-home.active');
+await page.setViewportSize({ width: 393, height: 852 });
+
 // ── 全螢幕 ──
 await page.click('#start-btn');
 await page.waitForSelector('#view-prayer.active');

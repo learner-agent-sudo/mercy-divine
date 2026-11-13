@@ -61,8 +61,8 @@ await page.goto(BASE, { waitUntil: 'networkidle' });
 await reset();
 ok('home has the 九日敬禮 card', (await text('#novena-home .bible-home-title')) === '九日敬禮');
 ok('with the first-visit line', (await homeLine()) === '連續九天的祈禱');
-ok('the continue button is hidden and 打開 is the primary button', !(await onView('#novena-continue'))
-   && (await text('#novena-open')) === '打開' && (await page.getAttribute('#novena-open', 'class')).includes('btn-primary'));
+ok('the continue button is hidden, and the header row opens the list and never changes class', !(await onView('#novena-continue'))
+   && (await page.getAttribute('#novena-open', 'aria-label')) === '打開九日敬禮' && (await page.getAttribute('#novena-open', 'class')) === 'hub-head');
 ok('the card fits the narrow screen', await noHScroll());
 
 // ───────────── 列表與目錄 ─────────────

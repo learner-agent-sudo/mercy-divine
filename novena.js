@@ -280,11 +280,9 @@ function renderNovenaHome() {
     line.textContent = `${act.nov.name}：已念 ${doneCount(act.run)} / 9 天`;
     cont.hidden = false;
     cont.textContent = `念第${CN[nextDay(act.run) - 1]}天`;
-    open.className = 'btn btn-grow';
     return;
   }
   cont.hidden = true;
-  open.className = 'btn btn-primary btn-grow';
   const s = readStore();
   const last = s.done[s.done.length - 1];
   if (last) {

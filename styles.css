@@ -118,9 +118,14 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 /* ── 首頁 ───────────────────────────────────────────── */
-.home-head { text-align: center; margin-bottom: 1.1rem; }
-.home-title { font-size: 1.55rem; letter-spacing: .12em; }
-.home-date { color: var(--muted); font-size: .85rem; margin: .35rem 0 0; letter-spacing: .05em; }
+.home-head {
+  display: flex; justify-content: space-between; align-items: center; margin: 0 0 1rem;
+}
+.home-date { margin: 0; font-size: 1.35rem; font-weight: 600; letter-spacing: .06em; color: var(--fg); }
+.home-gear {
+  color: var(--muted); width: 44px; height: 44px; min-width: 44px; padding: 0;
+  display: grid; place-items: center; flex: none;
+}
 
 /* 聖像一律完整顯示，不裁切。圖片本身就是一張卡片——圓角、淡淡的陰影、
    照原本的比例——不再放進一個比它寬的米色框裡，左右才不會多出兩條空白。
@@ -184,6 +189,21 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .plate figcaption:empty { display: none; }
 
+/* 首頁上的縮圖：只有祈禱卡片裡用，不輪播點點、不顯示說明 */
+/* 字放大時縮圖不跟著變寬，右邊的字才有位置 */
+.plate-thumb { --pic-max: min(9.5rem, 40vw); flex: 0 0 min(6.6rem, 27vw); width: min(6.6rem, 27vw); margin: 0; }
+.plate-thumb .car { margin: 0; }
+.plate-thumb .slide { padding: 0 0 .5rem; }
+.plate-thumb .slide img { border-radius: .55rem; }
+.plate-thumb .car-dots { display: none; }
+.plate-thumb figcaption { display: none; }
+.plate-thumb .pic-row { display: flex; justify-content: center; margin: 0; min-height: 0; }
+.plate-thumb .pic-pick { font-size: .7rem; padding: .35rem .7rem; }
+
+.hub.hub-prayer { padding-bottom: .45rem; }   /* 最下面一列是文字按鈕，本身已有留白 */
+.hub-prayer-top { display: flex; gap: .9rem; align-items: flex-start; margin-bottom: .9rem; }
+.hub-prayer-info { flex: 1; min-width: 0; }
+
 /* 兩套經文的切換 */
 .picker { display: flex; gap: .4rem; margin: 0 0 .8rem; }
 .picker button {
@@ -191,6 +211,7 @@ img { max-width: 100%; height: auto; display: block; }
   background: var(--sunken); border: 1px solid var(--line);
   border-radius: var(--radius); padding: .7rem .5rem; min-height: 3rem; cursor: pointer;
 }
+.hub-prayer .picker button { min-height: 2.6rem; }
 .picker button[aria-pressed="true"] {
   background: var(--surface); color: var(--fg); border-color: var(--gold);
   box-shadow: inset 0 0 0 1px var(--gold);
@@ -205,7 +226,6 @@ img { max-width: 100%; height: auto; display: block; }
 .step-name.mystery { color: var(--accent); }
 .full-ref { font-size: .8rem; color: var(--muted); text-align: right; margin: .3rem 0 0; }
 
-.today-state { text-align: center; color: var(--muted); font-size: .95rem; margin: 0 0 1rem; }
 .today-state.done { color: var(--gold); font-weight: 600; }
 
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .55rem; margin: 1.1rem 0; }
@@ -213,7 +233,14 @@ img { max-width: 100%; height: auto; display: block; }
 .stat b { display: block; font-size: 1.5rem; font-weight: 600; letter-spacing: .02em; }
 .stat span { font-size: .72rem; color: var(--muted); letter-spacing: .06em; }
 
-.home-nav { display: flex; gap: .5rem; justify-content: center; }
+/* 首頁的祈禱卡片：左邊是小圖與統計，下面是經文選擇與開始 */
+.hub-prayer .home-title { margin: .3rem 0 0; font-size: 1.12rem; font-weight: 600; letter-spacing: .06em; color: var(--fg); }
+.hub-prayer .today-state { text-align: left; margin: .35rem 0 0; font-size: .88rem; }
+.hub-prayer .stats { grid-template-columns: repeat(3, 1fr); gap: .3rem; margin: .7rem 0 0; padding-top: .6rem; border-top: 1px solid var(--line); }
+.hub-prayer .stat { background: none; border: 0; border-radius: 0; padding: 0; text-align: left; min-width: 0; }
+.hub-prayer .stat b { font-size: 1.05rem; }
+/* 字放大時「連續天數」可以折成兩行，不會伸出卡片外 */
+.hub-prayer .stat span { display: block; font-size: .68rem; letter-spacing: .02em; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
 
 /* ── 祈禱畫面 ────────────────────────────────────────── */
 .bar {
@@ -516,11 +543,26 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
 .bible-bar { display: block; height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; }
 .bible-bar > span { display: block; height: 100%; width: 0; background: var(--gold); border-radius: 99px; }
 
-/* 首頁的卡片 */
-.bible-home { margin: 1.1rem 0 0; }
-.bible-home-title { font-size: 1.05rem; letter-spacing: .3em; color: var(--gold); }
-.bible-home-line { margin: .35rem 0 .7rem; font-size: .92rem; color: var(--muted); }
-.bible-home-btns { display: flex; gap: .6rem; margin-top: .9rem; }
+/* 首頁的卡片：每一張都是「標題列 + 一行狀態 + 一個動作」，只有開始祈禱是實心按鈕 */
+.hub { margin: 0 0 .8rem; padding: 1rem 1.1rem; }
+.hub .bible-home-title { font-size: 1rem; letter-spacing: .3em; color: var(--gold); font-weight: 600; margin: 0; }
+.hub-links { display: flex; justify-content: space-between; margin: .3rem -.75rem 0; }  /* 文字對齊卡片內容的邊線 */
+.hub-links .btn-quiet { min-height: 2.75rem; font-size: .9rem; }
+.hub-head {
+  font: inherit; display: flex; align-items: center; justify-content: space-between;
+  width: 100%; background: none; border: 0; padding: .2rem 0; margin: 0; color: inherit;
+  cursor: pointer; min-height: 2.75rem; text-align: left;
+}
+.hub-chev { font-size: 1.5rem; line-height: 1; color: var(--muted); }
+.hub-body { display: flex; align-items: center; gap: .75rem; margin-top: .15rem; }
+.hub .bible-home-line { flex: 1; min-width: 0; margin: 0; font-size: .9rem; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
+.hub-act {
+  font: inherit; font-weight: 600; font-size: .9rem; letter-spacing: .05em; color: var(--gold);
+  background: transparent; border: 1px solid var(--gold); border-radius: 999px;
+  padding: 0 1.05rem; min-height: 2.6rem; white-space: nowrap; cursor: pointer; flex: none;
+}
+.hub-act:active { transform: scale(.97); }
+.hub .bible-bar { margin-top: .8rem; }
 
 /* 畫面本身。上方的列固定在頂端，長長的一章讀到哪裡都能退出去。 */
 #view-bible .bar {

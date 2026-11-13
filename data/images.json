@@ -21,6 +21,6 @@
     { "file": "images/passion.jpg",        "caption": "至悲慘的苦難",   "for": ["passion"] },
     { "file": "images/holy-god.jpg",       "caption": "慈悲耶穌",       "for": ["holy-god"] },
     { "file": "images/jesus-king.jpg",     "caption": "慈悲的君王",     "for": ["jesus-king"] },
-    { "file": "images/done.jpg",           "caption": "永援聖母",       "for": ["done"] }
+    { "file": "images/done.jpg",           "caption": "永援聖母",       "for": ["done", "rosary:home"] }
   ]
 }

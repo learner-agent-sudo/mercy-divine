@@ -28,6 +28,13 @@ anywhere.
 
 ## Using it
 
+The home screen is a card for each part: **祈禱** (the chaplet and the Rosary, with a small
+picture, today's state and the totals), **讀經**, **九日敬禮** and **修和聖事**. Each card's title
+row opens that part, and the small gold button beside its status line does the usual next step
+(繼續讀, 念第 N 天, 告明時). 設定 is the gear at the top right; 補記 and 祈禱紀錄 are at the
+foot of the prayer card. Each prayer shows its own picture: the chaplet's is 耶穌，我信賴祢,
+the Rosary's is 永援聖母 (`rosary:home` in `data/images.json`); 換圖 changes either.
+
 - **開始祈禱** starts a session. Two modes, switchable at any time with the button in
   the top-right corner:
   - **引導模式** — one prayer at a time, tap anywhere to advance. It counts the beads

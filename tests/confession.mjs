@@ -48,7 +48,7 @@ await page.goto(BASE, { waitUntil: 'networkidle' });
 await reset();
 ok('home has the 修和聖事 card', (await page.textContent('#confession-home .bible-home-title')) === '修和聖事');
 ok('with the first-visit line', (await homeLine()) === '辦告解前的準備與步驟');
-ok('with 準備辦告解 and 告明時', (await page.textContent('#confession-steps')) === '準備辦告解'
+ok('with a header that opens 準備辦告解 and 告明時', (await page.getAttribute('#confession-steps', 'aria-label')) === '準備辦告解'
    && (await page.textContent('#confession-rite')) === '告明時');
 ok('the card sits after 讀經', await page.evaluate(() =>
   document.querySelector('#bible-home').getBoundingClientRect().bottom <= document.querySelector('#confession-home').getBoundingClientRect().top + 1));

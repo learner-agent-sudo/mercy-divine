@@ -129,7 +129,8 @@ const pickFor = async (slot, file) => {
 const shared = await cover();
 await page.locator('#set-picker button', { hasText: '玫瑰經' }).click();
 await page.waitForTimeout(250);
-ok('both prayers start on the same cover', await cover() === shared);
+const rosaryBuiltin = await cover();
+ok('the rosary starts on its own built-in cover, not the chaplet\'s', shared === 'home.jpg' && rosaryBuiltin === 'done.jpg');
 
 await page.locator('#set-picker button', { hasText: '慈悲串經' }).click();
 await page.waitForTimeout(200);
@@ -139,11 +140,11 @@ ok('a cover set for the chaplet shows on the chaplet', chapletCover !== shared);
 
 await page.locator('#set-picker button', { hasText: '玫瑰經' }).click();
 await page.waitForTimeout(300);
-ok('and does not leak onto the rosary', await cover() === shared);
+ok('and does not leak onto the rosary', await cover() === rosaryBuiltin);
 
 await pickFor('rosary:home', 'pic-hail.png');
 const rosaryCover = await cover();
-ok('the rosary takes its own cover', rosaryCover !== shared && rosaryCover !== chapletCover);
+ok('the rosary takes its own cover', rosaryCover !== rosaryBuiltin && rosaryCover !== chapletCover);
 
 await page.locator('#set-picker button', { hasText: '慈悲串經' }).click();
 await page.waitForTimeout(300);

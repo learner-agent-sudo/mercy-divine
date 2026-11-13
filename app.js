@@ -895,7 +895,7 @@ function renderGroupPick() {
 
 function renderHome() {
   const today = new Date();
-  $('#home-date').textContent = fmtFullDate(today);
+  $('#home-date').textContent = `${today.getMonth() + 1}月${today.getDate()}日 星期${'日一二三四五六'[today.getDay()]}`;
   $('.home-title').textContent = SET.title;
   renderPicker();
   renderGroupPick();
