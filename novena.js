@@ -343,6 +343,8 @@ function paint(keepY) {
   else if (shown.screen === 'novena') paintNovena(host, findNovena(shown.id));
   else paintDay(host, findNovena(shown.id), shown.n);
   window.scrollTo(0, y);
+  // 念某一天時螢幕不熄（照設定裡「祈禱時保持螢幕不熄」）；回到目錄或列表就放掉
+  if (shown.screen === 'day') requestWake(); else releaseWake();
 }
 
 /* 列表：每個九日敬禮一張卡片 */
@@ -542,6 +544,10 @@ function start() {
   });
   document.getElementById('novena-open').addEventListener('click', () => nav({ screen: 'list' }, false));
   document.getElementById('novena-back').addEventListener('click', () => history.back());
+  // 切到別的程式再回來，系統會收回螢幕不熄：還在某一天的畫面就再要一次
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && current === 'novena' && shown && shown.screen === 'day') requestWake();
+  });
   renderNovenaHome();
   // 重新載入時歷史紀錄停在這裡：app.js 的 init 會接手；若 init 比這裡先跑完，就等 app 顯示後再接手
   if (history.state && history.state.novena) {

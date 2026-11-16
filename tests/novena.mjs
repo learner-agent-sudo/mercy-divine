@@ -251,6 +251,58 @@ ok('back again goes to the list', await onView('.nov-card'));
 await backTo('#view-home.active');
 ok('back a third time goes home', await onView('#view-home.active'));
 
+// ───────────── 念某一天時螢幕不熄 ─────────────
+// 換成假的 wakeLock，數一數要了幾次、現在握著幾個
+await page.addInitScript(() => {
+  window.__wake = { requested: 0, held: 0 };
+  Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async () => {
+    window.__wake.requested++;
+    window.__wake.held++;
+    const s = { released: false, release: async () => { if (!s.released) { s.released = true; window.__wake.held--; } } };
+    return s;
+  } } });
+});
+const wake = () => page.evaluate(() => window.__wake);
+const settle = () => page.waitForTimeout(150);
+await reset();
+await toNovena();
+await settle();
+ok('the novena screen does not keep the screen on', (await wake()).held === 0);
+await page.click('#nov-go');
+await page.waitForSelector('.nov-day-title:has-text("第一天")');
+await settle();
+ok('a day screen keeps the screen on', (await wake()).held === 1);
+await page.click('#nov-next');
+await page.waitForSelector('.nov-day-title:has-text("第二天")');
+await page.click('#nov-mark');
+await page.waitForSelector('#nov-undo');
+await settle();
+const w2 = await wake();
+ok('turning the page and marking a day keep one lock, not several', w2.held === 1 && w2.requested === 1);
+await page.goBack();
+await page.waitForSelector('.nov-day');
+await settle();
+ok('back on the novena screen the screen may sleep again', (await wake()).held === 0);
+await page.click('.nov-day[data-n="3"]');
+await page.waitForSelector('.nov-day-title:has-text("第三天")');
+await settle();
+ok('a day screen again keeps it on', (await wake()).held === 1);
+await backTo('#view-home.active');
+await settle();
+ok('going home lets it sleep', (await wake()).held === 0);
+// 設定裡關掉「祈禱時保持螢幕不熄」：念九日敬禮也不要
+await page.evaluate(() => {
+  const st = JSON.parse(localStorage.getItem('mercy.settings.v1') || '{}');
+  st.wake = false;
+  localStorage.setItem('mercy.settings.v1', JSON.stringify(st));
+});
+await home();
+await toNovena();
+await page.click('#nov-go');
+await page.waitForSelector('.nov-day-title');
+await settle();
+ok('with the setting off, a day screen does not ask', (await wake()).requested === 0);
+
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 ok('no console errors', errors.length === 0);
 ok('nothing left the device', outbound.length === 0);

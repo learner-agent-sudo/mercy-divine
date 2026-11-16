@@ -43,7 +43,8 @@ the Rosary's is 永援聖母 (`rosary:home` in `data/images.json`); 換圖 chang
 - **我已誦畢** at the end records the session — date, time, how long it took, and an
   optional intention.
 - **祈禱紀錄** shows a calendar of the days you prayed, your streak, and every session.
-- The screen stays awake while praying, and the text size is adjustable in 設定.
+- The screen stays awake while praying, and on each day of a 九日敬禮 (設定 → 祈禱時保持螢幕不熄
+  turns both off); the text size is adjustable in 設定.
 
 ## The two prayers
 

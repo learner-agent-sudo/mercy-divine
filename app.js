@@ -600,12 +600,22 @@ function exitFullscreen() {
 }
 
 /* ── 螢幕保持 ──────────────────────────────────────── */
+// 祈禱時，以及念九日敬禮的某一天時（novena.js 也會呼叫這兩個）
 let wakeSentinel = null;
+let wakeWanted = false;
 async function requestWake() {
   if (!settings.wake || !('wakeLock' in navigator)) return;
-  try { wakeSentinel = await navigator.wakeLock.request('screen'); } catch { /* 系統拒絕時忽略 */ }
+  wakeWanted = true;
+  if (wakeSentinel && !wakeSentinel.released) return;      // 已經亮著，不重複要
+  try {
+    const s = await navigator.wakeLock.request('screen');
+    // 等待系統回覆的期間已經離開了，或另一次要求先拿到了：這一個馬上放掉
+    if (!wakeWanted || (wakeSentinel && !wakeSentinel.released)) { s.release().catch(() => {}); return; }
+    wakeSentinel = s;
+  } catch { /* 系統拒絕時忽略 */ }
 }
 function releaseWake() {
+  wakeWanted = false;
   if (wakeSentinel) { wakeSentinel.release().catch(() => {}); wakeSentinel = null; }
 }
 document.addEventListener('visibilitychange', () => {
