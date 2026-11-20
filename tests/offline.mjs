@@ -97,7 +97,7 @@ await page.waitForSelector('#view-home.active');
 // 九日敬禮也要能離線：打開目錄、看一天的經文、念完第一天
 await page.click('#novena-open');
 await page.waitForSelector('.nov-card');
-ok('the novena list opens offline, with all three', (await page.locator('.nov-card').count()) === 3);
+ok('the novena list opens offline, with all four', (await page.locator('.nov-card').count()) === 4);
 await page.click('.nov-card[data-id="souls"]');
 await page.click('#nov-go');
 await page.waitForSelector('.nov-answer p');

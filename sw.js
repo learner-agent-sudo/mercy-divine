@@ -1,5 +1,5 @@
 /* 離線快取。修改經文、圖片或程式後，請把 VERSION 加一，手機才會取得新版本。 */
-const VERSION = 'v38';
+const VERSION = 'v39';
 const CACHE = `mercy-divine-${VERSION}`;
 
 const CORE = [
@@ -20,6 +20,10 @@ const CORE = [
   './data/people.json',
   './data/confession.json',
   './data/novenas.json',
+  './images/novena-souls.svg',
+  './images/novena-spirit.svg',
+  './images/novena-immaculate.svg',
+  './images/novena-auxilium.svg',
   './bible/matthew.md',
   './bible/mark.md',
   './bible/luke.md',

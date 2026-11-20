@@ -932,6 +932,8 @@ function renderHome() {
   if (typeof renderConfessionHome === 'function') renderConfessionHome();
   // 九日敬禮的卡片在 novena.js，同上
   if (typeof renderNovenaHome === 'function') renderNovenaHome();
+  // 備份提醒在最下面
+  renderBackupState();
 }
 
 function renderStats(node, pairs) {
@@ -1418,6 +1420,7 @@ function applySettings() {
 
 function renderSettings() {
   renderSlots();
+  renderBackupState();
   $('#set-mode').value = settings.mode;
   $('#set-font').value = settings.font;
   $('#set-font-out').textContent = `${settings.font}%`;
@@ -1440,7 +1443,7 @@ function renderSettings() {
     navigator.storage.persisted().then((ok) => {
       $('#storage-state').textContent = ok
         ? '此裝置已將紀錄設為常駐，系統不會自動清除。'
-        : '尚未取得常駐儲存權限，請定期匯出備份。';
+        : '尚未取得常駐儲存權限，請定期備份。';
     }).catch(() => {});
   }
 }
@@ -1858,12 +1861,14 @@ const blobToDataUrl = (blob) => new Promise((resolve) => {
   reader.readAsDataURL(blob);
 });
 
-async function exportRecords() {
+// 組出備份內容：回傳 { json, detail }，沒有東西可備份就是 null。
+// detail 是「N 筆紀錄 與 …」，給「已匯出」或「已備份」後面接。
+async function buildBackup() {
   const hasPictures = Object.keys(settings.pictures || {}).length || (settings.groups || []).length;
   const bible = typeof bibleExport === 'function' ? bibleExport() : null;   // 讀經進度，沒有就是 null
   const confession = typeof confessionExport === 'function' ? confessionExport() : null;   // 告解日期，沒有就是 null
   const novena = typeof novenaExport === 'function' ? novenaExport() : null;   // 九日敬禮，沒有就是 null
-  if (!records.length && !hasPictures && !bible && !confession && !novena) { toast('尚無紀錄可匯出'); return; }
+  if (!records.length && !hasPictures && !bible && !confession && !novena) return null;
   const payload = { app: 'mercy-divine', version: 7, exportedAt: new Date().toISOString(), records };
   if (bible) payload.bible = bible;
   if (confession) payload.confession = confession;
@@ -1885,7 +1890,16 @@ async function exportRecords() {
   }
   if (Object.keys(settings.pins || {}).length) payload.picturePins = settings.pins;
 
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const shots = Object.keys(payload.pictures || {}).length;
+  const detail = `${records.length} 筆紀錄${shots ? ` 與 ${shots} 張聖像` : ''}${bible ? '、讀經進度' : ''}${confession ? '、告解日期' : ''}${novena ? '、九日敬禮' : ''}`;
+  return { json: JSON.stringify(payload, null, 2), detail };
+}
+
+// 存到下載資料夾（電腦版，或手機不能分享檔案時）
+async function exportRecords() {
+  const b = await buildBackup();
+  if (!b) { toast('尚無紀錄可匯出'); return; }
+  const blob = new Blob([b.json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -1894,8 +1908,93 @@ async function exportRecords() {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  const shots = Object.keys(payload.pictures || {}).length;
-  toast(`已匯出 ${records.length} 筆紀錄${shots ? ` 與 ${shots} 張聖像` : ''}${bible ? '、讀經進度' : ''}${confession ? '、告解日期' : ''}${novena ? '、九日敬禮' : ''}`);
+  toast(`已匯出 ${b.detail}`);
+  markBackedUp();
+}
+
+/* ── 備份：分享與提醒 ─────────────────────────────── */
+// Chrome 的 Android 不肯分享 .json，所以分享出去的是 .txt；匯入兩種都收。
+const fileShareOK = (f) => {
+  try { return !!navigator.canShare && !!navigator.canShare({ files: [f] }); } catch { return false; }
+};
+const canShareFiles = () => fileShareOK(new File(['{}'], 'x.txt', { type: 'text/plain' }));
+
+// 打開手機的分享選單（雲端硬碟、電郵、WhatsApp 等），取消時什麼都不做
+async function shareBackup() {
+  const b = await buildBackup();
+  if (!b) { toast('尚無紀錄可匯出'); return; }
+  const file = new File([b.json], `mercy-backup-${dayKey(new Date())}.txt`, { type: 'text/plain' });
+  if (!fileShareOK(file)) { exportRecords(); return; }
+  try {
+    await navigator.share({ files: [file], title: '祈禱紀錄備份' });
+    markBackedUp();
+    toast(`已備份 ${b.detail}`);
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;   // 使用者自己取消
+    toast('無法分享，改為存到下載資料夾');
+    exportRecords();
+  }
+}
+
+// 上次備份的日子等小事存在本機，不進備份檔。欄位都是 YYYY-MM-DD。
+const K_BACKUP = 'mercy.backup.v1';
+const validDay = (s) => {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  return dayKey(new Date(y, m - 1, d)) === s && s <= dayKey(new Date());   // 不收未來的日子
+};
+const readBackupState = () => {
+  const raw = store.read(K_BACKUP, {});
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const out = {};
+  for (const f of ['last', 'seen', 'snooze']) if (validDay(src[f])) out[f] = src[f];
+  return out;
+};
+// 以本地日期算相差幾天
+const daysSince = (key) => {
+  const [y, m, d] = key.split('-').map(Number);
+  const now = new Date();
+  return Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(y, m - 1, d)) / 86400000);
+};
+
+function markBackedUp() {
+  const bs = readBackupState();
+  bs.last = dayKey(new Date());
+  delete bs.snooze;
+  store.write(K_BACKUP, bs);
+  renderBackupState();
+}
+
+function hasBackupData() {
+  if (records.length || Object.keys(settings.pictures || {}).length || (settings.groups || []).length) return true;
+  return !!((typeof bibleExport === 'function' && bibleExport())
+    || (typeof confessionExport === 'function' && confessionExport())
+    || (typeof novenaExport === 'function' && novenaExport()));
+}
+
+// 設定頁的「上次備份」與分享鈕，首頁的提醒，都在這裡更新
+function renderBackupState() {
+  if (INLINE) { $('#backup-nudge').hidden = true; return; }
+  const has = hasBackupData();
+  const bs = readBackupState();
+  if (has && !bs.seen) { bs.seen = dayKey(new Date()); store.write(K_BACKUP, bs); }
+
+  if (bs.last) {
+    const [, m, d] = bs.last.split('-').map(Number);
+    const n = daysSince(bs.last);
+    $('#backup-last').textContent = `上次備份：${m}月${d}日（${n === 0 ? '今天' : n === 1 ? '昨天' : `${n} 天前`}）`;
+  } else {
+    $('#backup-last').textContent = '還沒有備份過';
+  }
+  $('#share-btn').hidden = !canShareFiles();
+
+  // 很久沒備份才提醒：稍後會隔 7 天再說
+  let show = has && !(bs.snooze && daysSince(bs.snooze) < 7);
+  if (show) show = bs.last ? daysSince(bs.last) >= 14 : !!bs.seen && daysSince(bs.seen) >= 7;
+  $('#backup-nudge').hidden = !show;
+  $('#backup-nudge-text').textContent = bs.last
+    ? `上次備份是 ${daysSince(bs.last)} 天前。紀錄只存在這部手機，記得備份。`
+    : '還沒有備份過。紀錄只存在這部手機，記得備份。';
 }
 
 // 只接受內嵌的 data: 圖片。備份檔可能來自他處，若其中放的是 http 網址，
@@ -2014,6 +2113,7 @@ function importRecords(file) {
 
     renderHome();
     renderHistory();
+    renderBackupState();
     const parts = [added ? `${added} 筆紀錄` : '', shots ? `${shots} 張聖像` : '',
                    read.verses ? `讀經 ${read.verses} 節` : read.logs ? '讀經紀錄' : '',
                    conf.dates ? `告解 ${conf.dates} 筆` : '',
@@ -2155,11 +2255,21 @@ function bind() {
     e.target.value = '';
   });
 
+  $('#share-btn').addEventListener('click', shareBackup);
   $('#export-btn').addEventListener('click', exportRecords);
   $('#import-btn').addEventListener('click', () => $('#import-file').click());
   $('#import-file').addEventListener('change', (e) => {
     if (e.target.files[0]) importRecords(e.target.files[0]);
     e.target.value = '';
+  });
+
+  // 首頁的備份提醒：立即備份、稍後（隔 7 天再提醒）
+  $('#nudge-now').addEventListener('click', () => (canShareFiles() ? shareBackup() : exportRecords()));
+  $('#nudge-later').addEventListener('click', () => {
+    const bs = readBackupState();
+    bs.snooze = dayKey(new Date());
+    store.write(K_BACKUP, bs);
+    renderBackupState();
   });
 
   // 圖組：首頁選、設定頁也選，是同一件事
@@ -2202,6 +2312,9 @@ function applyPreviewLimits() {
   $('#export-btn').hidden = true;
   $('#import-btn').hidden = true;
   $('#import-file').hidden = true;
+  $('#share-btn').hidden = true;
+  $('#backup-last').hidden = true;
+  $('#backup-nudge').hidden = true;
   $('#backup-card').querySelector('.hint').textContent =
     '這是線上預覽版，匯出與匯入備份僅在安裝到手機後可用。此處的紀錄只存在這個瀏覽器分頁所屬的網站資料中。';
 }

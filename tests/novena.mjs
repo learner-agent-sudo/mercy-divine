@@ -1,6 +1,8 @@
-// 九日敬禮：首頁的卡片、列表（三個九日敬禮）、九天的目錄、某一天的內容與經文、念完與取消、為誰祈禱、
-// 完成的紀錄、返回鍵、重新載入、前後一天、壞掉的儲存；另有開始與結尾的區塊（小標題、經文段落、啟應、
-// 共同部分與每天部分的分界）、首頁同時有好幾個念誦進行中。
+// 九日敬禮：首頁的卡片、列表（四個九日敬禮，各有插圖）、九天的目錄、某一天的內容與經文、念完與取消、
+// 為誰祈禱、完成的紀錄、返回鍵、重新載入、前後一天、壞掉的儲存；另有開始與結尾的區塊（小標題、經文段落、
+// 啟應、共同部分與每天部分的分界）、首頁同時有好幾個念誦進行中、念某一天時螢幕不熄、
+// 插圖（列表、九日敬禮的頁面、每一天的小圖，圖檔要真的載入）、聖母進教（只有共同的部分、每天相同）、
+// 125% 字級時不橫向捲動。
 import { BASE, launch } from './helpers.mjs';
 
 const ok = (l, p) => { console.log(`${p ? 'PASS' : 'FAIL ***'}  ${l}`); if (!p) failures++; };
@@ -19,7 +21,8 @@ const SOULS_CARD = '.nov-card[data-id="souls"]';
 // 天主聖神與聖母進教：開始與結尾都有區塊的兩個九日敬禮
 const rosary = await (await fetch(`${BASE}data/rosary.json`)).json();
 const spirit = real.novenas.find((n) => n.id === 'spirit');
-const help = real.novenas.find((n) => n.id === 'help');
+const immaculate = real.novenas.find((n) => n.id === 'immaculate');
+const auxilium = real.novenas.find((n) => n.id === 'auxilium');
 const pad = (n) => String(n).padStart(2, '0');
 const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return dayKey(d); };
@@ -74,7 +77,7 @@ ok('the card fits the narrow screen', await noHScroll());
 // ───────────── 列表與目錄 ─────────────
 await page.click('#novena-open');
 await page.waitForSelector('.nov-card');
-ok('打開 shows one card per novena, in data order', (await count('.nov-card')) === 3
+ok('打開 shows one card per novena, in data order', (await count('.nov-card')) === 4
    && JSON.stringify(await page.locator('.nov-card-name').allTextContents()) === JSON.stringify(real.novenas.map((n) => n.name)));
 ok('the souls card has the name, the sub line and 還沒念過', (await text(`${SOULS_CARD} .nov-card-name`)) === nov.name
    && (await text(`${SOULS_CARD} .nov-card-sub`)) === nov.sub && (await text(`${SOULS_CARD} .nov-card-status`)) === '還沒念過');
@@ -273,32 +276,47 @@ ok('spirit day 1: the opening comes before the day heading, which comes before t
 ok('spirit day 1 has a mark button', (await count('#nov-mark')) === 1);
 ok('spirit day 1 fits the narrow screen', await noHScroll());
 
-// ───────────── 結尾的區塊：聖母進教（經文段落、請眾同禱、讚美之聖誦） ─────────────
+// ───────────── 結尾的區塊：無玷始胎（開始的一句與小標題、結尾的經文段落、請眾同禱、讚美之聖誦） ─────────────
 await reset();
 await page.click('#novena-open');
 await page.waitForSelector('.nov-card');
-await page.click('.nov-card[data-id="help"]');
+await page.click('.nov-card[data-id="immaculate"]');
 await page.waitForSelector('.nov-day');
 await page.click('.nov-day[data-n="9"]');
 await page.waitForSelector('.nov-part-day');
-const hOpenLine = help.open.find((c) => c.kind === 'line').text;
-const hCount = help.close.find((c) => c.kind === 'count');
-const hPrayer = help.close.find((c) => c.kind === 'prayer');
+const imOpenLine = immaculate.open.find((c) => c.kind === 'line').text;
+const imOpenTitle = immaculate.open.find((c) => c.kind === 'title').text;
+const imCloseTitle = immaculate.close.find((c) => c.kind === 'title').text;
+const imCount = immaculate.close.find((c) => c.kind === 'count');
+const imPrayer = immaculate.close.find((c) => c.kind === 'prayer');
 const hailText = prayers.prayers['hail-mary'].text;
 const gloryText = rosary.prayers.glory.text;
 const lines = await page.locator('p.nov-line').allTextContents();
-ok('help day 9: the first line is the opening line', lines[0] === hOpenLine);
-ok('help day 9: the count line is shown', lines.includes(hCount.text));
-ok('help day 9: the prayers are 聖母經 and 聖三光榮經', JSON.stringify(await page.locator('details.nov-pr > summary').allTextContents())
+ok('immaculate day 9: the first line is the opening line', lines[0] === imOpenLine);
+ok('immaculate day 9: the count line is shown', lines.includes(imCount.text));
+ok('immaculate day 9: the prayers are 聖母經 and 聖三光榮經', JSON.stringify(await page.locator('details.nov-pr > summary').allTextContents())
    === JSON.stringify(['聖母經', '聖三光榮經']));
 const bodies = await page.locator('details.nov-pr .nov-pr-body').allTextContents();
-ok('help day 9: 聖母經 text is the same as data/prayers.json (chaplet, which rosary.json points to)', bodies[0] === hailText);
-ok('help day 9: 聖三光榮經 text is the same as data/rosary.json', bodies[1] === gloryText);
-ok('help day 9: the closing prayer is labelled 請眾同禱 and is the file text', (await text('.nov-prayer-label')) === '請眾同禱'
-   && (await text('blockquote.nov-prayer p')) === hPrayer.text);
-ok('help day 9: the part headings are the opening title, this day, and the closing title', JSON.stringify(await page.locator('.nov-part').allTextContents())
-   === JSON.stringify(['每次敬禮開始前誦唸之經文', `第九天 · ${help.days[8].theme}`, '每次敬禮結束時唸讚美之聖誦']));
-ok('help day 9 fits the narrow screen', await noHScroll());
+ok('immaculate day 9: 聖母經 text is the same as data/prayers.json', bodies[0] === hailText);
+ok('immaculate day 9: 聖三光榮經 text is the same as data/rosary.json', bodies[1] === gloryText);
+ok('immaculate day 9: the closing prayer is the file text', (await text('blockquote.nov-prayer p')) === imPrayer.text);
+ok('immaculate day 9: the closing prayer label is the file label (if any)',
+   (await count('.nov-prayer-label')) === (imPrayer.label ? 1 : 0) && (!imPrayer.label || (await text('.nov-prayer-label')) === imPrayer.label));
+ok('immaculate day 9: the say lines are the file 啟應, in order', JSON.stringify(await page.locator('.nov-who').allTextContents())
+   === JSON.stringify(immaculate.close.filter((c) => c.kind === 'say').map((c) => c.who)));
+ok('immaculate day 9: the part headings are the opening title, this day, and the closing title', JSON.stringify(await page.locator('.nov-part').allTextContents())
+   === JSON.stringify([imOpenTitle, `第九天 · ${immaculate.days[8].theme}`, imCloseTitle]));
+ok('immaculate day 9 fits the narrow screen', await noHScroll());
+// 第七天的經文：檔案裡有「即堅定」（結尾的文字在它之後）
+await page.goBack();
+await page.waitForSelector('.nov-day');
+await page.click('.nov-day[data-n="7"]');
+await page.waitForSelector('.nov-day-title:has-text("第七天")');
+const d7 = immaculate.days[6].text;
+const shownText = await page.locator('.nov-text p').allTextContents();
+const at = shownText.indexOf(d7[0]);
+ok('immaculate day 7 shows the file text (which contains 即堅定), after the opening text',
+   at > 0 && JSON.stringify(shownText.slice(at, at + d7.length)) === JSON.stringify(d7) && d7.join('').includes('即堅定'));
 
 // ───────────── 首頁：兩個念誦同時進行 ─────────────
 await seed({ runs: { souls: { start: TODAY, days: { 1: TODAY } }, spirit: { start: TODAY, days: { 1: TODAY, 2: TODAY } } }, done: [], intent: {} });
@@ -308,7 +326,7 @@ ok('home with two runs lists each one on its own line', JSON.stringify(await pag
 ok('home with two runs shows 繼續念', (await text('#novena-continue')) === '繼續念' && (await onView('#novena-continue')));
 await page.click('#novena-continue');
 await page.waitForSelector('.nov-card');
-ok('繼續念 with two runs goes to the list', (await count('.nov-card')) === 3 && (await onView('#view-novena.active')));
+ok('繼續念 with two runs goes to the list', (await count('.nov-card')) === 4 && (await onView('#view-novena.active')));
 
 // 只剩一個念誦：回到原來的樣子，按鈕念第二天
 await seed({ runs: { spirit: { start: TODAY, days: { 1: TODAY } } }, done: [], intent: {} });
@@ -389,6 +407,86 @@ await page.click('#nov-go');
 await page.waitForSelector('.nov-day-title');
 await settle();
 ok('with the setting off, a day screen does not ask', (await wake()).requested === 0);
+
+// ───────────── 插圖：列表、九日敬禮的頁面、每一天的小圖（圖檔要真的載入） ─────────────
+await reset();
+await page.click('#novena-open');
+await page.waitForSelector('.nov-card');
+const picsLoaded = await page.waitForFunction(() => {
+  const pics = [...document.querySelectorAll('img.nov-card-pic')];
+  return pics.length === 4 && pics.every((i) => i.complete && i.naturalWidth > 0);
+}, null, { timeout: 5000 }).then(() => true, () => false);
+const cardPics = await page.$$eval('.nov-card', (cards) => cards.map((c) => {
+  const i = c.querySelector('img.nov-card-pic');
+  return { id: c.dataset.id, src: i ? i.getAttribute('src') : null, w: i ? i.naturalWidth : 0 };
+}));
+ok('every list card has its picture (src ends with the file), and it loads', picsLoaded && real.novenas.every((n) => {
+  const p = cardPics.find((x) => x.id === n.id);
+  return p && p.src && p.src.endsWith(n.picture.file) && p.w > 0;
+}));
+
+await page.click('.nov-card[data-id="spirit"]');
+await page.waitForSelector('.nov-hero');
+await page.waitForFunction(() => { const i = document.querySelector('.nov-hero img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 5000 }).catch(() => {});
+const hero = await page.evaluate(() => {
+  const i = document.querySelector('.nov-hero img');
+  const f = document.querySelector('.nov-hero figcaption');
+  return i ? { src: i.getAttribute('src'), alt: i.alt, cap: f ? f.textContent : null, w: i.naturalWidth } : null;
+});
+ok('spirit novena screen: the hero picture, its alt and figcaption are the caption, and it loads',
+   !!hero && hero.src.endsWith(spirit.picture.file) && hero.alt === spirit.picture.caption && hero.cap === spirit.picture.caption && hero.w > 0);
+
+await page.click('#novena-back');
+await page.waitForSelector('.nov-card');
+await page.click(SOULS_CARD);
+await page.waitForSelector('.nov-day');
+await page.click('.nov-day[data-n="1"]');
+await page.waitForSelector('.nov-day-head img.nov-day-pic');
+const dayPic = await page.evaluate(() => { const i = document.querySelector('.nov-day-head img.nov-day-pic'); return i ? i.naturalWidth : 0; });
+ok('souls day 1: the day head has its small picture', (await count('.nov-day-head img.nov-day-pic')) === 1 && dayPic > 0);
+ok('souls day 1: the crumb, the title and the theme are in the day head',
+   (await count('.nov-day-head .nov-crumb')) === 1 && (await count('.nov-day-head .nov-day-title')) === 1 && (await count('.nov-day-head .nov-theme')) === 1
+   && (await text('.nov-crumb')) === nov.name && (await text('.nov-day-title')) === '第一天' && (await text('.nov-theme')) === d1.theme);
+
+// ───────────── 聖母進教：開始與每一天的經文都相同，沒有每天的小標題與主題 ─────────────
+await home();
+await page.click('#novena-open');
+await page.waitForSelector('.nov-card');
+await page.click('.nov-card[data-id="auxilium"]');
+await page.waitForSelector('.nov-day');
+await page.click('.nov-day[data-n="1"]');
+await page.waitForSelector('#nov-mark');
+const auCounts = auxilium.open.filter((c) => c.kind === 'count');
+const auText = auxilium.open.find((c) => c.kind === 'text').text;
+ok('auxilium day 1: no theme and no 每天 heading', (await count('.nov-theme')) === 0 && (await count('.nov-part-day')) === 0);
+ok('auxilium day 1: the one part heading is 一連九天誦唸', JSON.stringify(await page.locator('.nov-part').allTextContents()) === JSON.stringify(['一連九天誦唸']));
+ok('auxilium day 1: the two count lines', JSON.stringify(await page.locator('p.nov-line').allTextContents()) === JSON.stringify(auCounts.map((c) => c.text)));
+ok('auxilium day 1: the four prayers are 天主經、聖母經、聖三光榮經、又聖母經', JSON.stringify(await page.locator('details.nov-pr > summary').allTextContents())
+   === JSON.stringify(['天主經', '聖母經', '聖三光榮經', '又聖母經']));
+ok('auxilium day 1: the three paragraphs are the open text block', JSON.stringify(await page.locator('.nov-text p').allTextContents()) === JSON.stringify(auText));
+ok('auxilium day 1: the mark button says 念完第一天', (await text('#nov-mark')) === '念完第一天');
+await page.click('#nov-mark');
+await page.waitForSelector('#nov-undo');
+ok('auxilium day 1: marking it works', (await text('.nov-done')) === `已於 ${shortOf(TODAY)}念完`);
+ok('auxilium day 1 fits the narrow screen', await noHScroll());
+
+// ───────────── 125% 字級：列表、九日敬禮、某一天都不橫向捲動 ─────────────
+await reset();
+await page.evaluate(() => {
+  const st = JSON.parse(localStorage.getItem('mercy.settings.v1') || '{}');
+  st.font = 125;
+  localStorage.setItem('mercy.settings.v1', JSON.stringify(st));
+});
+await home();
+await page.click('#novena-open');
+await page.waitForSelector('.nov-card');
+ok('at 125% the list fits without horizontal scroll', await noHScroll());
+await page.click('.nov-card[data-id="immaculate"]');
+await page.waitForSelector('.nov-day');
+ok('at 125% the immaculate novena screen fits without horizontal scroll', await noHScroll());
+await page.click('.nov-day[data-n="1"]');
+await page.waitForSelector('.nov-day-head');
+ok('at 125% a day fits without horizontal scroll', await noHScroll());
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 ok('no console errors', errors.length === 0);

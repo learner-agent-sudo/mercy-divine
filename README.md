@@ -21,8 +21,8 @@ anywhere.
 ### Two things worth knowing on HyperOS
 
 - **Don't let a cleaner wipe it.** Chrome's *Clear browsing data*, and HyperOS's deep
-  clean, can erase the prayer records along with site data. Export a backup now and
-  then (設定 → 匯出備份檔).
+  clean, can erase the prayer records along with site data. Back up now and then
+  (設定 → 備份到雲端或傳給自己); the home screen reminds you when it has been a while.
 - The app asks Android for persistent storage on first use, which helps but is not a
   guarantee. The export file is the real safety net.
 
@@ -138,14 +138,18 @@ they are for the examination at hand, and are cleared once the confession is rec
 
 Another card on the home screen: novenas, prayed every day for nine days in a row. **打開** lists
 them; **念第 N 天** (once one is under way) opens the next day, or, when more than one novena is
-under way, **繼續念** opens the list. There are three:
+under way, **繼續念** opens the list. Each novena has its own picture, on its card, at the top
+of its page and beside each day's title. There are four:
 
 - **煉靈九日敬禮** (for the souls in purgatory): each day has a theme, the souls' answer and their
   appeal, then the closing prayers (天主經 and 聖母經 open on the page).
 - **天主聖神九日敬禮**: every day opens with 伏求聖神降臨 and the 向聖母瑪利亞求獲聖神誦
   (啟 / 應, with a 聖母經 after each), then the day's own prayer.
-- **聖母進教之佑九日敬禮** (the text honours the 無玷始胎): every day opens with the same prayer,
-  then the day's prayer, 聖母經九遍 and 聖三光榮經, and the closing 讚美之聖誦 with 啟 / 應 and 請眾同禱.
+- **聖母無玷始胎九日敬禮** (before 8 December): every day opens with the same prayer, then the
+  day's prayer, 聖母經九遍 and 聖三光榮經, and the closing 讚美之聖誦 with 啟 / 應 and 請眾同禱.
+- **聖母進教之佑九日敬禮**: the same prayers every day — 天主經, 聖母經, 聖三光榮經 and
+  「願吾主至聖之體，常受讚美稱謝」 three times each, 又聖母經 and 「聖母進教之佑，為我等祈」
+  three times each, and the prayer 吁！至仁慈的童貞瑪利亞.
 
 How it works:
 
@@ -162,6 +166,12 @@ How it works:
 
 The text is [`data/novenas.json`](data/novenas.json), written in the same way as the prayers. Nothing in
 the code names a particular novena: a new one is another entry in `novenas`.
+
+The four pictures (`images/novena-*.svg`) are original vector drawings — a candle under the cross
+with the flames of purgatory, the descending dove with seven tongues of fire, the lily with the
+moon and twelve stars, and the crowned Marian monogram in a laurel wreath. They are drawn by
+`scripts/novena-art.py`; to use a painting instead, put the file in `images/` and point the
+novena's `picture.file` at it (and list it in `sw.js` so it works offline).
 
 The progress, the finished runs and the intentions are kept on the phone (`mercy.novena.v1`) and are
 part of the backup file; importing adds what is not already there, and never replaces what is on the
@@ -257,9 +267,21 @@ serving the old cached copy. The app shows a 已有新版本 banner when an upda
 
 ## Backups
 
-設定 → **匯出備份檔** writes a `.json` file to Downloads with every record, your custom pictures, your Bible reading progress, your confession dates and your novena progress. **匯入備份檔**
-reads one back, skipping anything already present — so it is safe to import the same
-file twice, and it works for moving to a new phone.
+A backup holds every record, your custom pictures, your Bible reading progress, your confession
+dates and your novena progress. 設定 → 備份:
+
+- **備份到雲端或傳給自己** opens the phone's share sheet, so the file can go straight to Google
+  Drive, or to yourself by email or WhatsApp. Chrome on Android will not share `.json` files, so
+  this copy is a `.txt` file with the same contents. (The button only appears where sharing files
+  works.)
+- **存到下載資料夾** writes the same backup as a `.json` file to Downloads.
+- **從備份檔還原** reads either kind back, skipping anything already present — so it is safe to
+  import the same file twice, and it works for moving to a new phone.
+
+The card shows when the last backup was made. If there is something to back up and the last
+backup is 14 days old (or there has never been one, 7 days after first use), a small reminder
+appears at the foot of the home screen with **立即備份** and **稍後** (which waits another 7 days).
+The date of the last backup stays on the phone (`mercy.backup.v1`) and is not part of the backup.
 
 ## Running it locally
 
@@ -395,6 +417,7 @@ bible/                  the Bible text (思高) and its source notice
 images/                 the pictures
 icons/                  app icon
 scripts/make-icons.mjs  regenerates the icons (node scripts/make-icons.mjs)
+scripts/novena-art.py   draws the four novena pictures (python3 scripts/novena-art.py images)
 ```
 
 No frameworks and no build step: what is in the repository is exactly what runs.

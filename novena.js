@@ -89,7 +89,7 @@ function readStore() {
 const writeStore = (s) => store.write(K_NOV, s);
 
 /* ── 內容（data/novenas.json） ────────────────────── */
-let data = null;              // 載入後的 { novenas: [ { id, name, sub, question, open, days, close } ]，days 每天另有 text }
+let data = null;              // 載入後的 { novenas: [ { id, name, sub, picture, question, open, days, close } ]；picture 是 { file, caption } 或 null，days 每天另有 text }
 let loadPromise = null;
 
 // 單檔預覽版把資料嵌在頁面裡；正式版用 fetch 讀 data/novenas.json
@@ -104,6 +104,11 @@ async function fetchData() {
 
 // 區塊（開始或結尾的每一項）：只留有 kind 字串的物件
 const blocks = (a) => (Array.isArray(a) ? a.filter((c) => c && typeof c === 'object' && typeof c.kind === 'string') : []);
+// 插圖：只收 images/ 底下的圖檔路徑（單檔預覽版改成內嵌的 data: 圖）；不合格就沒有插圖
+const PIC_RE = /^images\/[\w.-]+\.(svg|jpe?g|png|webp)$/;
+const PIC_DATA = /^data:image\/(svg\+xml|png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+const picture = (p) => (p && typeof p === 'object' && typeof p.file === 'string' && (PIC_RE.test(p.file) || PIC_DATA.test(p.file))
+  ? { file: p.file, caption: str(p.caption) } : null);
 
 function build(raw) {
   if (!raw || !Array.isArray(raw.novenas)) throw new Error('九日敬禮資料格式不符');
@@ -113,6 +118,7 @@ function build(raw) {
       id: n.id,
       name: n.name,
       sub: str(n.sub),
+      picture: picture(n.picture),
       question: str(n.question),
       open: blocks(n.open),
       days: n.days.map((d) => ({
@@ -275,6 +281,9 @@ function activeRuns() {
   return out;
 }
 
+// 「某某九日敬禮：已念 k / 9 天」；名字長時只在冒號後換行，「已念 k / 9 天」不拆開
+const runLine = (act) => [`${act.nov.name}：`, el('span', 'nov-home-n', `已念 ${doneCount(act.run)} / 9 天`)];
+
 function renderNovenaHome() {
   const line = document.getElementById('novena-home-line');
   const cont = document.getElementById('novena-continue');
@@ -285,7 +294,8 @@ function renderNovenaHome() {
   const acts = activeRuns();
   if (acts.length === 1) {
     const [act] = acts;
-    line.textContent = `${act.nov.name}：已念 ${doneCount(act.run)} / 9 天`;
+    line.textContent = '';
+    line.append(...runLine(act));
     cont.hidden = false;
     cont.textContent = `念第${CN[nextDay(act.run) - 1]}天`;
     return;
@@ -293,7 +303,11 @@ function renderNovenaHome() {
   // 兩個以上：每一個各一行，按鈕改成去目錄選
   if (acts.length > 1) {
     line.textContent = '';
-    for (const act of acts) line.append(el('span', 'nov-home-run', `${act.nov.name}：已念 ${doneCount(act.run)} / 9 天`));
+    for (const act of acts) {
+      const row = el('span', 'nov-home-run');
+      row.append(...runLine(act));
+      line.append(row);
+    }
     cont.hidden = false;
     cont.textContent = '繼續念';
     return;
@@ -363,6 +377,18 @@ function paint(keepY) {
   if (shown.screen === 'day') requestWake(); else releaseWake();
 }
 
+// 插圖：圖檔讀不到就整個拿掉（包住它的元素，或圖本身），不顯示破圖
+function picImg(nov, cls, alt) {
+  if (!nov.picture) return null;
+  const img = document.createElement('img');
+  img.className = cls;
+  img.src = nov.picture.file;
+  img.alt = alt;
+  img.decoding = 'async';
+  img.addEventListener('error', () => (img.closest('.nov-hero') || img).remove());
+  return img;
+}
+
 /* 列表：每個九日敬禮一張卡片 */
 function paintList(host) {
   if (!data.novenas.length) { host.append(el('p', 'empty', '目前沒有九日敬禮的內容。')); return; }
@@ -374,7 +400,11 @@ function paintList(host) {
     const status = run ? `已念 ${doneCount(run)} / 9 天` : c ? `念完 ${c} 次` : '還沒念過';
     const b = btn('', 'nov-card', () => nav({ screen: 'novena', id: nov.id }, false));
     b.dataset.id = nov.id;
-    b.append(el('span', 'nov-card-name', nov.name), el('span', 'nov-card-sub', nov.sub), el('span', 'nov-card-status', status));
+    const text = el('span', 'nov-card-text');
+    text.append(el('span', 'nov-card-name', nov.name), el('span', 'nov-card-sub', nov.sub), el('span', 'nov-card-status', status));
+    const pic = picImg(nov, 'nov-card-pic', '');
+    if (pic) b.append(pic);
+    b.append(text);
     list.append(b);
   }
   host.append(list);
@@ -384,6 +414,12 @@ function paintList(host) {
 function paintNovena(host, nov) {
   const s = readStore();
   const run = s.runs[nov.id] || null;
+  if (nov.picture) {
+    const hero = el('figure', 'nov-hero');
+    hero.append(picImg(nov, 'nov-hero-pic', nov.picture.caption));
+    if (nov.picture.caption) hero.append(el('figcaption', null, nov.picture.caption));
+    host.append(hero);
+  }
   host.append(el('h2', 'nov-title', nov.name), el('p', 'nov-sub', nov.sub));
 
   if (run) {
@@ -467,13 +503,21 @@ function paintDay(host, nov, n) {
   const doneOn = run ? run.days[String(n)] : null;
   const intent = s.intent[nov.id] || '';
 
-  host.append(el('p', 'nov-crumb', nov.name));
-  host.append(el('h2', 'nov-day-title', `第${CN[n - 1]}天`), el('p', 'nov-theme', day.theme));
+  const head = el('div', 'nov-day-head');
+  const pic = picImg(nov, 'nov-day-pic', '');
+  if (pic) head.append(pic);
+  const headText = el('div', 'nov-day-head-text');
+  headText.append(el('p', 'nov-crumb', nov.name), el('h2', 'nov-day-title', `第${CN[n - 1]}天`));
+  if (day.theme) headText.append(el('p', 'nov-theme', day.theme));
+  head.append(headText);
+  host.append(head);
   if (intent) host.append(el('p', 'nov-for', `為：${intent}`));
 
   for (const c of nov.open) for (const node of blockEl(c)) host.append(node);
   // 共同的開始部分之後，標出今天自己的部分從這裡開始
-  if (nov.open.length) host.append(el('h3', 'nov-part nov-part-day', `第${CN[n - 1]}天 · ${day.theme}`));
+  if (nov.open.length && (day.theme || day.text.length || day.answer.length)) {
+    host.append(el('h3', 'nov-part nov-part-day', day.theme ? `第${CN[n - 1]}天 · ${day.theme}` : `第${CN[n - 1]}天`));
+  }
 
   if (nov.question) host.append(el('p', 'nov-q', nov.question));
 

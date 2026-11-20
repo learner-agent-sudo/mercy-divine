@@ -102,6 +102,15 @@
         <button type="button" id="confession-rite" class="hub-act">告明時</button>
       </div>
     </div>
+
+    <!-- 備份提醒：很久沒備份時才出現 -->
+    <div class="card backup-nudge" id="backup-nudge" hidden>
+      <p class="backup-nudge-text" id="backup-nudge-text"></p>
+      <div class="backup-nudge-acts">
+        <button type="button" id="nudge-later" class="btn btn-quiet">稍後</button>
+        <button type="button" id="nudge-now" class="btn btn-primary">立即備份</button>
+      </div>
+    </div>
   </section>
 
   <!-- ── 祈禱 ───────────────────────────────────────── -->
@@ -355,10 +364,12 @@
 
     <div class="card" id="backup-card">
       <h2 class="section-title">備份</h2>
-      <p class="hint">紀錄與自訂聖像都只存在這部手機裡。請不時匯出備份，以免清除瀏覽器資料時遺失；換手機時匯入同一個檔案即可完整還原。</p>
-      <button type="button" id="export-btn" class="btn btn-block">匯出備份檔</button>
-      <button type="button" id="import-btn" class="btn btn-block">匯入備份檔</button>
-      <input type="file" id="import-file" accept="application/json,.json" hidden>
+      <p class="hint">紀錄、讀經進度、告解日期、九日敬禮與自訂聖像都只存在這部手機裡。按「備份到雲端或傳給自己」會打開手機的分享選單，可以存到 Google 雲端硬碟，或用電郵、WhatsApp 傳給自己。換手機或清除資料後，按「從備份檔還原」選回那個檔案即可。</p>
+      <p class="backup-last" id="backup-last"></p>
+      <button type="button" id="share-btn" class="btn btn-primary btn-block" hidden>備份到雲端或傳給自己</button>
+      <button type="button" id="export-btn" class="btn btn-block">存到下載資料夾</button>
+      <button type="button" id="import-btn" class="btn btn-block">從備份檔還原</button>
+      <input type="file" id="import-file" accept="application/json,.json,text/plain,.txt" hidden>
       <p class="hint" id="storage-state"></p>
     </div>
 

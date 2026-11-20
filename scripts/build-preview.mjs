@@ -33,6 +33,11 @@ const people = existsSync('data/people.json') ? JSON.parse(read('data/people.jso
 const confession = existsSync('data/confession.json') ? JSON.parse(read('data/confession.json')) : null;
 // 九日敬禮同樣嵌入（沒有檔案也無妨，那一頁會顯示無法載入）
 const novenas = existsSync('data/novenas.json') ? JSON.parse(read('data/novenas.json')) : null;
+// 九日敬禮的聖像也改為內嵌；檔案不在就拿掉，那一頁照樣顯示，只是沒有圖
+for (const n of (novenas && novenas.novenas) || []) {
+  if (!n.picture || !n.picture.file) continue;
+  try { n.picture.file = dataUri(n.picture.file); embedded++; } catch { delete n.picture; }
+}
 
 const html = read('index.html');
 const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1]

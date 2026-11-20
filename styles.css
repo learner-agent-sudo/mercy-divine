@@ -992,11 +992,17 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 
 /* 列表：每個九日敬禮一張卡片，整張都能按 */
 .nov-list { display: grid; gap: .6rem; }
+/* 卡片是一列：左邊插圖（有的話），右邊文字 */
 .nov-card {
   font: inherit; text-align: left; cursor: pointer; color: var(--fg);
-  display: flex; flex-direction: column; gap: .3rem; min-width: 0;
+  display: flex; align-items: center; gap: .85rem; min-width: 0;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 1rem 1.1rem; box-shadow: var(--shadow);
+}
+.nov-card-text { display: flex; flex-direction: column; gap: .15rem; min-width: 0; flex: 1; text-align: left; }
+.nov-card-pic {
+  flex: none; width: 3.9rem; aspect-ratio: 3 / 4; height: auto; border-radius: .45rem; object-fit: cover;
+  box-shadow: 0 1px 4px rgb(0 0 0 / .18);
 }
 .nov-card-name { font-size: 1.02rem; font-weight: 600; letter-spacing: .04em; overflow-wrap: anywhere; }
 .nov-card-sub { font-size: .88rem; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
@@ -1005,6 +1011,13 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 /* 一個九日敬禮：標題、進度、為誰祈禱、九天的目錄 */
 .nov-title { margin: .2rem 0 .3rem; font-size: 1.2rem; letter-spacing: .06em; color: var(--gold); overflow-wrap: anywhere; }
 .nov-sub { margin: 0 0 1rem; font-size: .92rem; line-height: 1.7; color: var(--muted); overflow-wrap: anywhere; }
+/* 九日敬禮的插圖：列表頁面的標題上方 */
+.nov-hero { margin: 0 0 1rem; text-align: center; }
+.nov-hero-pic {
+  display: block; margin: 0 auto; width: auto; max-width: min(15rem, 62vw); max-height: 38vh; aspect-ratio: 3 / 4;
+  border-radius: .8rem; box-shadow: 0 2px 10px rgb(0 0 0 / .22);
+}
+.nov-hero figcaption { margin-top: .5rem; font-size: .85rem; color: var(--muted); letter-spacing: .04em; overflow-wrap: anywhere; }
 .nov-status {
   margin: 0 0 1rem; padding: .8rem .9rem; background: var(--sunken);
   border-left: 3px solid var(--gold); border-radius: 0 .5rem .5rem 0;
@@ -1039,8 +1052,16 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 .nov-record-for { display: block; font-size: .85rem; color: var(--muted); }
 /* 首頁：好幾個念誦進行中，每一個各佔一行 */
 .nov-home-run { display: block; }
+.nov-home-n { white-space: nowrap; }
 
 /* 某一天：標題、主題、問題、回答、懇求、結尾的祈禱 */
+/* 每一天的標題列：左邊小插圖，右邊麵包屑與標題 */
+.nov-day-head { display: flex; align-items: center; gap: .8rem; }
+.nov-day-head-text { min-width: 0; }
+.nov-day-pic {
+  flex: none; width: 3.4rem; aspect-ratio: 3 / 4; height: auto; border-radius: .4rem; object-fit: cover;
+  box-shadow: 0 1px 4px rgb(0 0 0 / .18);
+}
 .nov-crumb { margin: 0 0 .2rem; font-size: .8rem; letter-spacing: .08em; color: var(--muted); overflow-wrap: anywhere; }
 .nov-day-title { margin: 0; font-size: 1.25rem; letter-spacing: .08em; color: var(--gold); }
 .nov-theme { margin: .25rem 0 0; font-size: .98rem; color: var(--fg); overflow-wrap: anywhere; }
@@ -1095,6 +1116,12 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
   font-size: .88rem; box-shadow: var(--shadow); z-index: 50; max-width: 90vw; text-align: center;
   pointer-events: none;   /* 提示不是按鈕，不該擋住底下的按鈕 */
 }
+
+/* 備份：設定頁的上次備份、首頁的提醒 */
+.backup-last { margin: .2rem 0 .8rem; font-size: .88rem; color: var(--muted); overflow-wrap: anywhere; }
+.backup-nudge { border-color: color-mix(in srgb, var(--gold) 40%, var(--line)); }
+.backup-nudge-text { margin: 0 0 .7rem; font-size: .92rem; line-height: 1.7; overflow-wrap: anywhere; }
+.backup-nudge-acts { display: flex; gap: .5rem; justify-content: flex-end; flex-wrap: wrap; }
 .update-bar {
   position: fixed; inset: auto 0 0 0; z-index: 40;
   display: flex; align-items: center; justify-content: center; gap: .8rem;
