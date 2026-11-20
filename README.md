@@ -137,13 +137,23 @@ they are for the examination at hand, and are cleared once the confession is rec
 ## 九日敬禮 (novenas)
 
 Another card on the home screen: novenas, prayed every day for nine days in a row. **打開** lists
-them; **念第 N 天** (once one is under way) opens the next day. The first novena is the 煉靈九日敬禮
-(for the souls in purgatory): nine days, each with a theme, the souls' answer, their appeal, and the
-closing prayers (天主經 and 聖母經 open on the page).
+them; **念第 N 天** (once one is under way) opens the next day, or, when more than one novena is
+under way, **繼續念** opens the list. There are three:
 
-- The day screen has the question, the answer and the appeal, then the closing prayer and the
-  two prayers, which open to show their text. **念完第 N 天** marks the day with today's date (after the ninth, every day reads 九天都念完了 until tomorrow);
-  **取消這天的紀錄** undoes it after a confirm. ‹ and › move between days.
+- **煉靈九日敬禮** (for the souls in purgatory): each day has a theme, the souls' answer and their
+  appeal, then the closing prayers (天主經 and 聖母經 open on the page).
+- **天主聖神九日敬禮**: every day opens with 伏求聖神降臨 and the 向聖母瑪利亞求獲聖神誦
+  (啟 / 應, with a 聖母經 after each), then the day's own prayer.
+- **聖母進教之佑九日敬禮** (the text honours the 無玷始胎): every day opens with the same prayer,
+  then the day's prayer, 聖母經九遍 and 聖三光榮經, and the closing 讚美之聖誦 with 啟 / 應 and 請眾同禱.
+
+How it works:
+
+- The day screen shows everything said that day, in order. Where a novena has a common opening,
+  a heading (第 N 天 · theme) marks where the day's own prayer starts. The prayers to be said
+  (天主經, 聖母經, 聖三光榮經) open to show their text.
+- **念完第 N 天** marks the day with today's date (after the ninth, every day reads 九天都念完了
+  until tomorrow); **取消這天的紀錄** undoes it after a confirm. ‹ and › move between days.
 - Each novena keeps one run at a time. The screen shows how many days are done and when it began.
   If a day was missed, it says how many days have passed and that you can carry on or start again;
   **重新開始** clears the run.
@@ -380,7 +390,7 @@ data/images.json        the picture list
 data/gospel-events.json the Gospel events in order, with where each is told
 data/people.json        who said what: people, their stages and sayings, with the passages
 data/confession.json    修和聖事: the steps, the rite, the prayers of contrition
-data/novenas.json       九日敬禮: the novenas, nine days each, with their closing prayers
+data/novenas.json       九日敬禮: the novenas, nine days each, with their opening and closing prayers
 bible/                  the Bible text (思高) and its source notice
 images/                 the pictures
 icons/                  app icon

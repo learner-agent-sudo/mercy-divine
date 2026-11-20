@@ -89,7 +89,7 @@ function readStore() {
 const writeStore = (s) => store.write(K_NOV, s);
 
 /* ── 內容（data/novenas.json） ────────────────────── */
-let data = null;              // 載入後的 { novenas: [ { id, name, sub, question, days, close } ] }
+let data = null;              // 載入後的 { novenas: [ { id, name, sub, question, open, days, close } ]，days 每天另有 text }
 let loadPromise = null;
 
 // 單檔預覽版把資料嵌在頁面裡；正式版用 fetch 讀 data/novenas.json
@@ -102,6 +102,9 @@ async function fetchData() {
   return r.json();
 }
 
+// 區塊（開始或結尾的每一項）：只留有 kind 字串的物件
+const blocks = (a) => (Array.isArray(a) ? a.filter((c) => c && typeof c === 'object' && typeof c.kind === 'string') : []);
+
 function build(raw) {
   if (!raw || !Array.isArray(raw.novenas)) throw new Error('九日敬禮資料格式不符');
   const novenas = raw.novenas
@@ -111,8 +114,11 @@ function build(raw) {
       name: n.name,
       sub: str(n.sub),
       question: str(n.question),
-      days: n.days.map((d) => ({ theme: str(d && d.theme), answer: strs(d && d.answer), appeal: strs(d && d.appeal) })),
-      close: Array.isArray(n.close) ? n.close.filter((c) => c && typeof c === 'object' && typeof c.kind === 'string') : [],
+      open: blocks(n.open),
+      days: n.days.map((d) => ({
+        theme: str(d && d.theme), answer: strs(d && d.answer), appeal: strs(d && d.appeal), text: strs(d && d.text),
+      })),
+      close: blocks(n.close),
     }));
   data = { novenas };
   return data;
@@ -257,15 +263,16 @@ function novenaImport(raw) {
 }
 
 /* ── 首頁的卡片 ───────────────────────────────────── */
-// 第一個有進行中念誦的（依資料的次序）
-function activeRun() {
-  if (!data) return null;
+// 所有進行中的念誦，依資料的次序：{ nov, run }
+function activeRuns() {
+  if (!data) return [];
   const s = readStore();
+  const out = [];
   for (const nov of data.novenas) {
     const run = s.runs[nov.id];
-    if (run) return { nov, run };
+    if (run) out.push({ nov, run });
   }
-  return null;
+  return out;
 }
 
 function renderNovenaHome() {
@@ -275,11 +282,20 @@ function renderNovenaHome() {
   if (!line || !cont || !open) return;
   // 資料可能還沒載入：載入後再畫一次
   if (!data) { load().then(() => renderNovenaHome(), () => {}); return; }
-  const act = activeRun();
-  if (act) {
+  const acts = activeRuns();
+  if (acts.length === 1) {
+    const [act] = acts;
     line.textContent = `${act.nov.name}：已念 ${doneCount(act.run)} / 9 天`;
     cont.hidden = false;
     cont.textContent = `念第${CN[nextDay(act.run) - 1]}天`;
+    return;
+  }
+  // 兩個以上：每一個各一行，按鈕改成去目錄選
+  if (acts.length > 1) {
+    line.textContent = '';
+    for (const act of acts) line.append(el('span', 'nov-home-run', `${act.nov.name}：已念 ${doneCount(act.run)} / 9 天`));
+    cont.hidden = false;
+    cont.textContent = '繼續念';
     return;
   }
   cont.hidden = true;
@@ -443,7 +459,7 @@ function paintNovena(host, nov) {
   }
 }
 
-/* 某一天：主題、問題、煉靈的回答與懇求、結尾的祈禱，以及念完的按鈕 */
+/* 某一天：主題、每天開始的共同部分、今天的標題、問題、煉靈的回答與懇求、今天的經文、結尾的祈禱，以及念完的按鈕 */
 function paintDay(host, nov, n) {
   const s = readStore();
   const run = s.runs[nov.id] || null;
@@ -454,6 +470,11 @@ function paintDay(host, nov, n) {
   host.append(el('p', 'nov-crumb', nov.name));
   host.append(el('h2', 'nov-day-title', `第${CN[n - 1]}天`), el('p', 'nov-theme', day.theme));
   if (intent) host.append(el('p', 'nov-for', `為：${intent}`));
+
+  for (const c of nov.open) for (const node of blockEl(c)) host.append(node);
+  // 共同的開始部分之後，標出今天自己的部分從這裡開始
+  if (nov.open.length) host.append(el('h3', 'nov-part nov-part-day', `第${CN[n - 1]}天 · ${day.theme}`));
+
   if (nov.question) host.append(el('p', 'nov-q', nov.question));
 
   const ans = el('div', 'nov-answer');
@@ -466,7 +487,13 @@ function paintDay(host, nov, n) {
     host.append(ap);
   }
 
-  for (const c of nov.close) for (const node of closeEl(c)) host.append(node);
+  if (day.text.length) {
+    const tx = el('div', 'nov-text');
+    for (const t of day.text) tx.append(el('p', null, t));
+    host.append(tx);
+  }
+
+  for (const c of nov.close) for (const node of blockEl(c)) host.append(node);
 
   const bottom = el('div', 'nov-bottom');
   // 今天剛念完九天：每一天都顯示「九天都念完了」，不再出現念完的按鈕（明天起才可再開始）
@@ -508,13 +535,27 @@ function paintDay(host, nov, n) {
   if (pn.childElementCount) host.append(pn);
 }
 
-// 結尾的每一項：祈禱（金框）、一句短句、或要念的經（可展開看經文）
-function closeEl(c) {
+// 文字可以是一段字串，也可以是多段的陣列
+const paras = (v) => (typeof v === 'string' ? [v] : Array.isArray(v) ? strs(v) : []);
+
+// 開始與結尾的每一項：小標題、經文段落、祈禱（金框）、啟應的一句、一句短句、或要念的經（可展開看經文）
+function blockEl(c) {
+  if (c.kind === 'title') return [el('h3', 'nov-part', str(c.text))];
+  if (c.kind === 'text') {
+    const d = el('div', 'nov-text');
+    for (const t of paras(c.text)) d.append(el('p', null, t));
+    return [d];
+  }
   if (c.kind === 'prayer') {
     const q = el('blockquote', 'nov-prayer');
     if (c.label) q.append(el('span', 'nov-prayer-label', c.label));
-    q.append(el('p', null, str(c.text)));
+    for (const t of paras(c.text)) q.append(el('p', null, t));
     return [q];
+  }
+  if (c.kind === 'say') {
+    const p = el('p', 'nov-say');
+    p.append(el('span', 'nov-who', str(c.who)), el('span', 'nov-say-text', str(c.text)));
+    return [p];
   }
   if (c.kind === 'line') return [el('p', 'nov-line', str(c.text))];
   if (c.kind === 'count') {
@@ -538,8 +579,10 @@ function closeEl(c) {
 function start() {
   document.getElementById('novena-continue').addEventListener('click', () => {
     load().then(() => {
-      const act = activeRun();
-      if (act) nav({ screen: 'day', id: act.nov.id, n: nextDay(act.run) }, false);
+      const acts = activeRuns();
+      // 只有一個就直接到那一天；有好幾個就到目錄去選
+      if (acts.length === 1) nav({ screen: 'day', id: acts[0].nov.id, n: nextDay(acts[0].run) }, false);
+      else if (acts.length > 1) nav({ screen: 'list' }, false);
     }).catch(() => toast('無法載入九日敬禮的資料'));
   });
   document.getElementById('novena-open').addEventListener('click', () => nav({ screen: 'list' }, false));
