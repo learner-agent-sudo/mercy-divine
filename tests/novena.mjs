@@ -426,11 +426,11 @@ ok('every list card has its picture (src ends with the file), and it loads', pic
 }));
 
 await page.click('.nov-card[data-id="spirit"]');
-await page.waitForSelector('.nov-hero');
-await page.waitForFunction(() => { const i = document.querySelector('.nov-hero img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 5000 }).catch(() => {});
+await page.waitForSelector('.nov-plate');
+await page.waitForFunction(() => { const i = document.querySelector('.nov-plate img'); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 5000 }).catch(() => {});
 const hero = await page.evaluate(() => {
-  const i = document.querySelector('.nov-hero img');
-  const f = document.querySelector('.nov-hero figcaption');
+  const i = document.querySelector('.nov-plate img');
+  const f = document.querySelector('.nov-plate figcaption');
   return i ? { src: i.getAttribute('src'), alt: i.alt, cap: f ? f.textContent : null, w: i.naturalWidth } : null;
 });
 ok('spirit novena screen: the hero picture, its alt and figcaption are the caption, and it loads',

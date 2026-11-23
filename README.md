@@ -173,6 +173,16 @@ moon and twelve stars, and the crowned Marian monogram in a laurel wreath. They 
 `scripts/novena-art.py`; to use a painting instead, put the file in `images/` and point the
 novena's `picture.file` at it (and list it in `sw.js` so it works offline).
 
+On the phone, each novena's picture works like the prayer pictures: **設定 → 聖像 → 九日敬禮**
+has one slot per novena with 加圖, 不用 and 還原, and the picture at the top of a novena's page
+has a 換圖 button that opens the same panel as during prayer — show every picture in turn, keep
+one, or add more from the gallery. Added pictures join the drawing rather than replace it (tap
+× in 設定 to take the drawing away). With several pictures the page shows them as a carousel,
+the list card shows the first (or the one kept), and the days take turns: day 1 the first,
+day 2 the second, and so on. Picture groups (圖組) apply here too, and the pictures, choices and
+kept picture are in the backup file. The slots are named `novena:<id>`; the built-in drawing
+is `builtin:novena:<id>`.
+
 The progress, the finished runs and the intentions are kept on the phone (`mercy.novena.v1`) and are
 part of the backup file; importing adds what is not already there, and never replaces what is on the
 phone.
@@ -204,7 +214,7 @@ way for that decade number across all four sets. Anything with no match falls ba
 to the `home` picture, so no screen is ever left blank.
 
 設定 → 聖像 lists every place an image can go, in collapsible groups — one per prayer and
-one per set of mysteries, each named — and picks one from the phone for any of them. There
+one per set of mysteries, plus one for each 九日敬禮, each named — and picks one from the phone for any of them. There
 are nearly forty places in all, so the groups start closed with a count beside each. Each slot has three states: **預設** falls back through the chain
 below, **自訂圖片** is one you chose, and **不用** leaves that screen with no picture at
 all — the frame closes and the words get the room. 不用 is a real choice, not an absence:

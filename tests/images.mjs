@@ -46,8 +46,9 @@ ok('every place an image can go is listed, grouped by prayer',
 ok('every one of the twenty mysteries gets its own slot',
    ['joyful', 'luminous', 'sorrowful', 'glorious'].every((set) =>
      [1, 2, 3, 4, 5].every((n) => slotKeys.includes(`rosary:${set}-${n}`))));
-ok('the two prayers and the four mystery sets are separate groups',
-   await page.locator('.slot-group').count() === 6);
+ok('the two prayers, the four mystery sets and the novenas are separate groups',
+   await page.locator('.slot-group').count() === 7
+   && (await page.locator('.slot-group-name').last().textContent()) === '九日敬禮');
 ok('all start on the built-in image', (await page.locator('.slot-state').allTextContents()).every((t) => t === '預設'));
 ok('the rosary borrows the chaplet picture where it has none of its own',
    await page.locator('.slot[data-slot="rosary:hail-mary"] .slot-thumb').evaluate(

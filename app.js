@@ -68,6 +68,9 @@ function imageSlots() {
     }
   }
 
+  // 其他部分（九日敬禮）載入資料後登記進來的位置
+  for (const [title, g] of EXTRA_PICTURES) groups.push({ title, slots: g.slots });
+
   // 舊版把封面存成共用的，若還留著就讓它看得見也還原得掉
   const legacy = [['home', '封面（兩種經文共用）'], ['done', '誦畢（共用）']]
     .filter(([key]) => customsFor(key).length);
@@ -120,8 +123,27 @@ function streak() {
 let SETS = [];            // 所有經文
 let SET = null;           // 目前選用的經文
 let MYSTERY = null;       // 玫瑰經的奧蹟（串經為 null）
-let IMAGES = [];
+let IMAGES = [];           // 內建聖像：data/images.json 的，加上其他部分登記的
+let BASE_IMAGES = [];      // 只有 data/images.json 的
 let STEPS = [];
+
+/* 其他部分（九日敬禮）的圖也用同一套聖像設定：加圖、不用、還原、換圖、圖組、備份都一樣。
+   那些部分自己載入資料後，呼叫 registerPictureSlots 登記位置和內建的圖。
+   這些內建圖只屬於自己的位置，不會被拿去別處遞補（aside）。 */
+const EXTRA_PICTURES = new Map();   // 分組標題 → { slots: [[位置, 名稱]], images: [...] }
+function composeImages() {
+  IMAGES = [...BASE_IMAGES, ...[...EXTRA_PICTURES.values()].flatMap((g) => g.images)];
+  buildImageRoles();
+}
+function registerPictureSlots(title, slots, images) {
+  EXTRA_PICTURES.set(title, {
+    slots: slots.map(([key, label]) => [key, label]),
+    images: images.map((im) => ({ ...im, key: BUILTIN + im.id, for: [...(im.for || [])], aside: true })),
+  });
+  composeImages();
+  if (current === 'settings') renderSlots();
+}
+const isExtraSlot = (key) => [...EXTRA_PICTURES.values()].some((g) => g.slots.some(([k]) => k === key));
 
 const setById = (id) => SETS.find((x) => x.id === id) || SETS[0];
 
@@ -210,7 +232,10 @@ function buildSteps(set, mystery) {
 const rebuildSteps = () => { STEPS = buildSteps(SET, MYSTERY); };
 
 /* ── 聖像 ─────────────────────────────────────────── */
-const imageAt = (i) => (IMAGES.length ? IMAGES[((i % IMAGES.length) + IMAGES.length) % IMAGES.length] : null);
+const imageAt = (i) => {
+  const list = IMAGES.filter((im) => !im.aside);
+  return list.length ? list[((i % list.length) + list.length) % list.length] : null;
+};
 
 // data/images.json 的 for 欄位把聖像指給某段經文。
 // 名稱可寫成 "hail-mary"（兩套經文通用）或 "rosary:hail-mary"（只用於玫瑰經）。
@@ -241,7 +266,7 @@ function slotCandidates(key) {
   if (custom.length) return custom;
   const listed = ownBuiltins(key);
   if (listed.length) return listed;
-  if (key === 'home') return [];
+  if (key === 'home' || isExtraSlot(key)) return [];
   const home = customsFor('home');
   return home.length ? home : imageRoles.get('home') || [];
 }
@@ -362,6 +387,7 @@ function showPictures(imgNode, capNode, candidates, next = false) {
   // 看不見的時候不換（在別的畫面、或螢幕關著），免得白白耗電
   const tick = () => {
     if (plateRender.get(plate) !== token) return;
+    if (!plate.isConnected) { clearInterval(plateTimer.get(plate)); return; }   // 整塊圖已從畫面拿掉（九日敬禮換頁）
     if (document.hidden || !plate.offsetParent || sheetOpen) return;
     slideTo((at() + 1) % list.length);
   };
@@ -401,7 +427,8 @@ function pickFrom(roles, fallbackIndex) {
     const found = rolesFor(role);
     if (found.length) return result(found, role);
   }
-  return result(IMAGES.length ? [imageAt(fallbackIndex || 0)] : [], null);
+  const fallback = imageAt(fallbackIndex || 0);
+  return result(fallback ? [fallback] : [], null);
 }
 
 function imageForStep(step) {
@@ -419,6 +446,17 @@ function imageForStep(step) {
 const imageForRole = (role, fallbackIndex) =>
   pickFrom(role === 'home' ? ['home'] : [role, 'home'], fallbackIndex);
 
+// 其他部分（九日敬禮）的位置現在要顯示的圖，形狀和 pickFrom 的一樣，「換圖」面板也認得。
+// 只看這個位置自己的：自訂的、沒有就內建的；不向封面或別處借圖。
+function slotPick(key) {
+  const custom = customsFor(key);
+  const all = pictureSetting(key) === NO_PICTURE ? [] : custom.length ? custom : ownBuiltins(key);
+  const pin = pinFor(key);
+  const pinned = pin ? all.find((p) => p.key === pin) : null;
+  return { list: pinned ? [pinned] : all, all, own: key, from: key.split(':').slice(1).join(':'),
+           pinned: pinned ? pin : null };
+}
+
 // 圖片或圖組一換，眼前這個畫面的聖像跟著重畫（其他畫面切過去時自然會重畫）
 function refreshPictures() {
   if (current === 'home') renderHome();
@@ -427,6 +465,8 @@ function refreshPictures() {
     else showPictures($('#full-image'), null, imageForRole('home', 0));
   } else if (current === 'done') {
     showPictures($('#done-image'), $('#done-caption'), imageForRole('done', records.length));
+  } else if (current === 'novena' && typeof novenaPictures === 'function') {
+    novenaPictures();
   }
 }
 
@@ -2010,6 +2050,8 @@ const dataUrlToBlob = (url) => {
 // 不認得的就丟掉，不會照單全收。
 const GROUP_ID = /^[\w-]{1,40}$/;
 async function importPictures(parsed) {
+  // 九日敬禮的位置要等它的資料載入、登記好，才認得
+  if (typeof novenaReady === 'function') await novenaReady();
   let shots = 0;
   const stored = new Set();
   const incoming = parsed.pictures && typeof parsed.pictures === 'object' ? parsed.pictures : {};
@@ -2291,11 +2333,12 @@ function bind() {
 
   // 手機返回鍵：先關掉換圖面板，再退回首頁，在首頁時才真正離開程式。
   window.addEventListener('popstate', () => {
+    // 換圖面板開著：返回只是關掉它，底下的畫面（祈禱、九日敬禮）原樣留著
+    if (sheetOpen) { hideSheet(); return; }
     // 讀經裡一層一層的畫面各有自己的歷史紀錄，退回到哪一層就畫哪一層
     if (history.state && history.state.bible && typeof bibleShow === 'function') { bibleShow(history.state.bible); return; }
     if (history.state && history.state.confession && typeof confessionShow === 'function') { confessionShow(history.state.confession); return; }
     if (history.state && history.state.novena && typeof novenaShow === 'function') { novenaShow(history.state.novena); return; }
-    if (sheetOpen) { hideSheet(); return; }
     if (current === 'prayer') {
       if (!mayLeavePrayer()) { history.pushState({ view: 'prayer' }, ''); return; }
       leavePrayer();
@@ -2383,8 +2426,8 @@ async function init() {
     SET = setById(settings.set);
     MYSTERY = activeMystery(SET);
     // 每張內建聖像一個固定代號，自訂清單與「固定顯示這張」靠它指認
-    IMAGES = (images.images || []).map((im) => ({ ...im, key: BUILTIN + (im.id || im.file) }));
-    buildImageRoles();
+    BASE_IMAGES = (images.images || []).map((im) => ({ ...im, key: BUILTIN + (im.id || im.file) }));
+    composeImages();
     rebuildSteps();
   } catch {
     $('.boot-msg').textContent = '無法載入經文檔案，請確認 data/ 內的檔案齊全。';

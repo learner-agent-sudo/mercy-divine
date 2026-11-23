@@ -105,6 +105,7 @@ async function fetchData() {
 // 區塊（開始或結尾的每一項）：只留有 kind 字串的物件
 const blocks = (a) => (Array.isArray(a) ? a.filter((c) => c && typeof c === 'object' && typeof c.kind === 'string') : []);
 // 插圖：只收 images/ 底下的圖檔路徑（單檔預覽版改成內嵌的 data: 圖）；不合格就沒有插圖
+const picKey = (nov) => `novena:${nov.id}`;
 const PIC_RE = /^images\/[\w.-]+\.(svg|jpe?g|png|webp)$/;
 const PIC_DATA = /^data:image\/(svg\+xml|png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 const picture = (p) => (p && typeof p === 'object' && typeof p.file === 'string' && (PIC_RE.test(p.file) || PIC_DATA.test(p.file))
@@ -127,6 +128,13 @@ function build(raw) {
       close: blocks(n.close),
     }));
   data = { novenas };
+  // 每個九日敬禮一個聖像位置，和念經時的聖像同一套設定（設定 → 聖像，或圖下面的「換圖」）
+  if (typeof registerPictureSlots === 'function') {
+    registerPictureSlots('九日敬禮', novenas.map((n) => [picKey(n), n.name]),
+      novenas.filter((n) => n.picture).map((n) => ({
+        id: picKey(n), file: n.picture.file, caption: n.picture.caption, for: [picKey(n)],
+      })));
+  }
   return data;
 }
 
@@ -136,6 +144,8 @@ function load() {
   }
   return loadPromise;
 }
+// 匯入備份前等資料載入（聖像位置登記好才認得）；載入失敗也照樣往下
+const novenaReady = () => load().then(() => {}, () => {});
 
 const findNovena = (id) => (data ? data.novenas.find((n) => n.id === id) || null : null);
 
@@ -377,16 +387,59 @@ function paint(keepY) {
   if (shown.screen === 'day') requestWake(); else releaseWake();
 }
 
-// 插圖：圖檔讀不到就整個拿掉（包住它的元素，或圖本身），不顯示破圖
-function picImg(nov, cls, alt) {
-  if (!nov.picture) return null;
+/* 插圖：和念經時的聖像同一套。自訂的優先（可以好幾張），選了「不用」就沒有圖，
+   沒設定就是內建的那張。app.js 不在時（不會發生，以防萬一）只用內建的。 */
+function picsFor(nov) {
+  if (typeof slotPick === 'function') return slotPick(picKey(nov));
+  const list = nov.picture ? [{ file: nov.picture.file, caption: nov.picture.caption }] : [];
+  return { list, all: list };
+}
+
+// 小圖（列表的卡片、每一天的標題旁）：好幾張時第 i 張，九天就輪流用；圖檔讀不到就拿掉
+function picImg(nov, cls, i = 0) {
+  const { list } = picsFor(nov);
+  if (!list.length) return null;
+  const p = list[i % list.length];
   const img = document.createElement('img');
   img.className = cls;
-  img.src = nov.picture.file;
-  img.alt = alt;
+  img.src = p.file;
+  img.alt = '';
   img.decoding = 'async';
-  img.addEventListener('error', () => (img.closest('.nov-hero') || img).remove());
+  img.addEventListener('error', () => img.remove());
   return img;
+}
+
+// 大圖（九日敬禮的頁面頂端）：好幾張就輪播，下面有「換圖」，和念經時一樣
+let hero = null;              // { img, cap }：換了圖時就地更新，不整頁重畫
+function paintHero(host, nov) {
+  const plate = el('figure', 'plate nov-plate');
+  const car = el('div', 'car');
+  const slide = el('div', 'slide');
+  const img = document.createElement('img');
+  img.alt = '';
+  slide.append(img);
+  car.append(slide);
+  const cap = el('figcaption');
+  plate.append(car, cap);
+  host.append(plate);
+  hero = { img, cap };
+  if (typeof showPictures === 'function') { showPictures(img, cap, picsFor(nov)); return; }
+  const { list } = picsFor(nov);
+  if (!list.length) { plate.hidden = true; return; }
+  img.src = list[0].file;
+  img.addEventListener('error', () => plate.remove());
+  cap.textContent = list[0].caption || '';
+}
+
+// 圖換了（加圖、不用、還原、換組、固定一張）：看得見的那幾張跟著換
+function novenaPictures() {
+  if (!shown || !data) return;
+  const nov = shown.screen === 'list' ? null : findNovena(shown.id);
+  if (nov && shown.screen === 'novena' && hero && hero.img.isConnected && typeof showPictures === 'function') {
+    showPictures(hero.img, hero.cap, picsFor(nov));
+  } else {
+    paint(true);
+  }
 }
 
 /* 列表：每個九日敬禮一張卡片 */
@@ -402,7 +455,7 @@ function paintList(host) {
     b.dataset.id = nov.id;
     const text = el('span', 'nov-card-text');
     text.append(el('span', 'nov-card-name', nov.name), el('span', 'nov-card-sub', nov.sub), el('span', 'nov-card-status', status));
-    const pic = picImg(nov, 'nov-card-pic', '');
+    const pic = picImg(nov, 'nov-card-pic');
     if (pic) b.append(pic);
     b.append(text);
     list.append(b);
@@ -414,12 +467,7 @@ function paintList(host) {
 function paintNovena(host, nov) {
   const s = readStore();
   const run = s.runs[nov.id] || null;
-  if (nov.picture) {
-    const hero = el('figure', 'nov-hero');
-    hero.append(picImg(nov, 'nov-hero-pic', nov.picture.caption));
-    if (nov.picture.caption) hero.append(el('figcaption', null, nov.picture.caption));
-    host.append(hero);
-  }
+  paintHero(host, nov);
   host.append(el('h2', 'nov-title', nov.name), el('p', 'nov-sub', nov.sub));
 
   if (run) {
@@ -504,7 +552,7 @@ function paintDay(host, nov, n) {
   const intent = s.intent[nov.id] || '';
 
   const head = el('div', 'nov-day-head');
-  const pic = picImg(nov, 'nov-day-pic', '');
+  const pic = picImg(nov, 'nov-day-pic', n - 1);
   if (pic) head.append(pic);
   const headText = el('div', 'nov-day-head-text');
   headText.append(el('p', 'nov-crumb', nov.name), el('h2', 'nov-day-title', `第${CN[n - 1]}天`));
@@ -646,6 +694,6 @@ function start() {
   }
 }
 
-Object.assign(window, { novenaShow, renderNovenaHome, novenaExport, novenaImport });
+Object.assign(window, { novenaShow, renderNovenaHome, novenaExport, novenaImport, novenaReady, novenaPictures });
 start();
 })();
