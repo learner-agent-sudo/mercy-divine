@@ -1,5 +1,5 @@
 /* 離線快取。修改經文、圖片或程式後，請把 VERSION 加一，手機才會取得新版本。 */
-const VERSION = 'v40';
+const VERSION = 'v41';
 const CACHE = `mercy-divine-${VERSION}`;
 
 const CORE = [
@@ -8,6 +8,7 @@ const CORE = [
   './styles.css',
   './app.js',
   './bible-parse.js',
+  './lectionary.js',
   './bible.js',
   './confession.js',
   './novena.js',

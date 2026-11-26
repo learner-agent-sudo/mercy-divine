@@ -89,7 +89,7 @@ function readStore() {
 const writeStore = (s) => store.write(K_NOV, s);
 
 /* ── 內容（data/novenas.json） ────────────────────── */
-let data = null;              // 載入後的 { novenas: [ { id, name, sub, picture, question, open, days, close } ]；picture 是 { file, caption } 或 null，days 每天另有 text }
+let data = null;              // 載入後的 { novenas: [ { id, name, sub, track, picture, question, open, days, close } ]；track 是 'candles'（蠟燭）或 'dots'（點點）；picture 是 { file, caption } 或 null，days 每天另有 text }
 let loadPromise = null;
 
 // 單檔預覽版把資料嵌在頁面裡；正式版用 fetch 讀 data/novenas.json
@@ -119,6 +119,7 @@ function build(raw) {
       id: n.id,
       name: n.name,
       sub: str(n.sub),
+      track: n.track === 'candles' ? 'candles' : 'dots',
       picture: picture(n.picture),
       question: str(n.question),
       open: blocks(n.open),
@@ -170,6 +171,73 @@ const lastMarked = (run) => Object.values(run.days).reduce((a, b) => (b > a ? b 
 // 距今幾天（今天是 0，昨天是 1）
 const gapDays = (last) => Math.round((utcOf(todayKey()) - utcOf(last)) / DAY_MS);
 
+/* ── 蠟燭（煉靈九日敬禮：進度是九支蠟燭，念完一天點亮一支） ───── */
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const svgEl = (tag, attrs) => {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, String(v));
+  return e;
+};
+let candleSeq = 0;            // 每支蠟燭的漸層 id 都不同，同一頁好幾排也不會撞
+// 一支蠟燭：蠟身、燭芯、一滴蠟；點亮的才有火焰與光暈。火焰的搖晃由 CSS 負責，這裡只錯開相位
+function candleSvg(n, lit) {
+  const id = ++candleSeq;
+  const svg = svgEl('svg', { viewBox: '0 0 24 56', 'aria-hidden': 'true', focusable: 'false' });
+  const defs = svgEl('defs');
+  const grad = (tag, gid, attrs, stops) => {
+    const g = svgEl(tag, { id: `${gid}-${id}`, ...attrs });
+    for (const [off, color, op] of stops) g.append(svgEl('stop', { offset: off, 'stop-color': color, 'stop-opacity': op ?? 1 }));
+    defs.append(g);
+    return `url(#${gid}-${id})`;
+  };
+  // 蠟身：左邊亮、右邊暗；沒點亮的蠟身稍微灰一點
+  const waxFill = lit
+    ? grad('linearGradient', 'cw', { x1: 0, y1: 0, x2: 1, y2: 0 }, [[0, '#fffbf1'], [0.35, '#f4e8cb'], [1, '#d8c59c']])
+    : grad('linearGradient', 'cw', { x1: 0, y1: 0, x2: 1, y2: 0 }, [[0, '#e7e2d8'], [0.35, '#d3cbba'], [1, '#b2a78f']]);
+  svg.append(defs);
+  if (lit) {
+    const glow = svgEl('circle', { class: 'nov-candle-glow', cx: 12, cy: 11, r: 10, fill: grad('radialGradient', 'cg',
+      { cx: 0.5, cy: 0.5, r: 0.5 }, [[0, '#ffd98a', 0.75], [0.5, '#ffc857', 0.3], [1, '#ffc857', 0]]) });
+    svg.append(glow);
+  }
+  svg.append(svgEl('rect', { x: 7.5, y: 20, width: 9, height: 31, rx: 1.6, fill: waxFill, stroke: '#b9a57c', 'stroke-width': 0.5 }));
+  // 點亮的蠟燭，燭芯下的蠟融成一小圈亮光
+  if (lit) svg.append(svgEl('ellipse', { cx: 12, cy: 20.8, rx: 4, ry: 1.3, fill: '#fff3cf', opacity: 0.9 }));
+  // 銅燭台：一個小碟子
+  const brass = grad('linearGradient', 'cb', { x1: 0, y1: 0, x2: 1, y2: 0 }, [[0, '#e6c778'], [0.5, '#b88d36'], [1, '#7d5c1f']]);
+  svg.append(svgEl('path', { d: 'M2.5 50.6H21.5L19.2 54.6H4.8Z', fill: brass, stroke: '#6b4e19', 'stroke-width': 0.4, 'stroke-linejoin': 'round' }));
+  svg.append(svgEl('ellipse', { cx: 12, cy: 50.6, rx: 9.5, ry: 1.4, fill: '#ecd38d', stroke: '#8a6a26', 'stroke-width': 0.35 }));
+  svg.append(svgEl('path', { d: 'M15.2 21C15.2 21 16.3 22.6 16.3 23.6C16.3 24.5 15.8 25 15.2 25C14.6 25 14.1 24.5 14.1 23.6C14.1 22.6 15.2 21 15.2 21Z',
+    fill: '#efe4c8', stroke: '#b9a57c', 'stroke-width': 0.4 }));
+  svg.append(svgEl('rect', { x: 11.3, y: 15.5, width: 1.4, height: 4.6, rx: 0.5, fill: '#5b4a3a' }));
+  if (lit) {
+    const flame = svgEl('g', { class: 'nov-candle-flame' });
+    flame.style.animationDelay = `${-(n * 0.37).toFixed(2)}s`;
+    const outer = grad('linearGradient', 'cf', { x1: 0, y1: 0, x2: 0, y2: 1 }, [[0, '#ffe08a'], [0.55, '#f8a52a'], [1, '#e8701a']]);
+    flame.append(svgEl('path', { d: 'M12 2C14.6 6.2 17 9.4 17 12.6C17 15.2 14.8 17 12 17C9.2 17 7 15.2 7 12.6C7 9.4 9.4 6.2 12 2Z', fill: outer }));
+    flame.append(svgEl('path', { d: 'M12 8.5C13.4 10.6 14.4 12.2 14.4 13.9C14.4 15.3 13.3 16.3 12 16.3C10.7 16.3 9.6 15.3 9.6 13.9C9.6 12.2 10.6 10.6 12 8.5Z',
+      fill: '#fff6c4', opacity: 0.95 }));
+    svg.append(flame);
+  }
+  return svg;
+}
+
+// 九支蠟燭的一排：run 為 null 就是九支都沒點亮。aria-label 說明點亮了幾支
+function candleRow(run) {
+  const k = run ? doneCount(run) : 0;
+  const row = el('div', 'nov-candles');
+  row.setAttribute('role', 'img');
+  row.setAttribute('aria-label', `已點亮 ${k} / 9 支蠟燭`);
+  for (let n = 1; n <= 9; n++) {
+    const lit = !!(run && run.days[String(n)]);
+    const c = el('span', lit ? 'nov-candle lit' : 'nov-candle');
+    c.dataset.n = String(n);
+    c.append(candleSvg(n, lit));
+    row.append(c);
+  }
+  return row;
+}
+
 /* ── 寫入動作 ─────────────────────────────────────── */
 // 念完某一天：沒有念誦就開始一個，start 是今天；九天都念完就記入完成，念誦清除
 function markDay(id, n) {
@@ -190,7 +258,9 @@ function markDay(id, n) {
   }
   if (!writeStore(s)) return;
   // 念完了也留在這一天的畫面（改成「九天都念完了」），不另換畫面，返回鍵才不會多出一層
-  toast(finished ? `${nov.name}念完了` : `第${CN[n - 1]}天念完了`);
+  const candles = nov.track === 'candles';
+  toast(finished ? `${nov.name}念完了`
+    : candles ? `第${CN[n - 1]}天念完了，點亮了第${CN[n - 1]}支蠟燭` : `第${CN[n - 1]}天念完了`);
   paint(true);
 }
 
@@ -473,10 +543,14 @@ function paintNovena(host, nov) {
   if (run) {
     const status = el('div', 'nov-status');
     status.append(el('p', 'nov-progress', `已念 ${doneCount(run)} / 9 天 · ${shortDate(run.start)}開始`));
-    const dots = el('div', 'nov-dots');
-    dots.setAttribute('aria-hidden', 'true');
-    for (let n = 1; n <= 9; n++) dots.append(el('span', run.days[String(n)] ? 'nov-dot on' : 'nov-dot'));
-    status.append(dots);
+    if (nov.track === 'candles') {
+      status.append(candleRow(run));
+    } else {
+      const dots = el('div', 'nov-dots');
+      dots.setAttribute('aria-hidden', 'true');
+      for (let n = 1; n <= 9; n++) dots.append(el('span', run.days[String(n)] ? 'nov-dot on' : 'nov-dot'));
+      status.append(dots);
+    }
     const today = todayKey();
     const last = lastMarked(run);
     const next = nextDay(run);
@@ -504,8 +578,13 @@ function paintNovena(host, nov) {
   label.append(input);
   host.append(label);
 
+  // 還沒開始的蠟燭：九支都沒點亮，就在「開始」的上面
+  if (!run && nov.track === 'candles') {
+    host.append(candleRow(null), el('p', 'nov-candle-hint', '每念完一天，點亮一支蠟燭'));
+  }
+
   const next = nextDay(run);
-  const goBtn = btn(run ? `念第${CN[next - 1]}天` : '開始：念第一天', 'btn btn-primary btn-block nov-go',
+  const goBtn = btn(run ?`念第${CN[next - 1]}天` : '開始：念第一天', 'btn btn-primary btn-block nov-go',
     () => nav({ screen: 'day', id: nov.id, n: next }, false));
   goBtn.id = 'nov-go';
   host.append(goBtn);

@@ -78,6 +78,12 @@
         <p class="bible-home-line" id="bible-home-line">瑪竇、馬爾谷、路加、若望福音與宗徒大事錄</p>
         <button type="button" id="bible-continue" class="hub-act">繼續讀</button>
       </div>
+      <button type="button" class="bible-today-row" id="bible-today" hidden>
+        <span class="lit-dot" id="bible-today-dot" aria-hidden="true"></span>
+        <span class="bible-today-k">今日福音</span>
+        <span class="bible-today-ref" id="bible-today-ref"></span>
+        <span class="hub-chev" aria-hidden="true">›</span>
+      </button>
       <div class="bible-bar" aria-hidden="true"><span id="bible-home-fill"></span></div>
     </div>
 
@@ -406,6 +412,7 @@
 
 <script src="bible-parse.js"></script>
 <script src="app.js"></script>
+<script src="lectionary.js"></script>
 <script src="bible.js"></script>
 <script src="confession.js"></script>
 <script src="novena.js"></script>

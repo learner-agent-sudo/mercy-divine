@@ -172,6 +172,55 @@ await page.click('#cal-toggle');
 await page.waitForTimeout(200);
 ok('and back again', await page.isVisible('#rose') && !(await page.isVisible('#cal')));
 
+// ── 之前幾個月的花束襯在後面 ──
+const seedMonths = (spec) => page.evaluate((spec) => {
+  const now = new Date();
+  const recs = [];
+  for (const [back, day, n, set] of spec) {
+    for (let i = 0; i < n; i++) {
+      recs.push({ id: `past-${back}-${day}-${i}-${set}`,
+                  ts: new Date(now.getFullYear(), now.getMonth() - back, day, 8 + i, 15).toISOString(),
+                  mode: 'guided', secs: 400, note: '', set, mystery: null });
+    }
+  }
+  localStorage.setItem('mercy.records.v1', JSON.stringify(recs));
+}, spec);
+
+// 這個月沒有紀錄，前兩個月有
+await seedMonths([[1, 10, 3, 'chaplet'], [1, 20, 2, 'rosary'], [2, 5, 4, 'chaplet']]);
+await page.reload({ waitUntil: 'networkidle' });
+await page.click('[data-go="history"]');
+await page.waitForTimeout(400);
+ok('earlier months with records sit behind an empty month', await page.locator('#rose .bq-past').count() === 2);
+ok('the empty month still has no flowers of its own', await page.locator(FLOWERS).count() === 0);
+ok('and says the earlier bouquets are behind it',
+   (await page.textContent('#rose-read')).includes('還沒有紀錄') && (await page.textContent('#rose-read')).includes('之前'));
+ok('the earlier bouquets carry their month names', await page.locator('#rose .bq-past-label').count() === 2);
+ok('no earlier flower can be read', await page.locator('#rose .bq-past .flower').count() === 0);
+
+const pastBox = await page.locator('#rose .bq-past').first().boundingBox();
+const pastM = Number(await page.locator('#rose .bq-past').first().getAttribute('data-m'));
+await page.mouse.click(pastBox.x + pastBox.width / 2, pastBox.y + pastBox.height / 2);
+await page.waitForTimeout(300);
+ok('tapping an earlier bouquet switches to its month',
+   (await page.textContent('#cal-label')).endsWith(`${pastM} 月`));
+ok('and that month\'s own flowers are shown', await page.locator(FLOWERS).count() === 4);
+
+// 這個月有紀錄時，後面不再襯舊的花
+await seedMonths([[0, 3, 3, 'chaplet'], [1, 10, 2, 'rosary']]);
+await page.reload({ waitUntil: 'networkidle' });
+await page.click('[data-go="history"]');
+await page.waitForTimeout(400);
+ok('a month with its own flowers shows the earlier bouquet behind it', await page.locator('#rose .bq-past').count() === 1);
+ok('while its own flowers stay in front', await page.locator(FLOWERS).count() === 3);
+ok('the invitation is unchanged', (await page.textContent('#rose-read')).includes('輕觸一朵花'));
+
+await seedMonths([[0, 3, 3, 'chaplet']]);
+await page.reload({ waitUntil: 'networkidle' });
+await page.click('[data-go="history"]');
+await page.waitForTimeout(400);
+ok('with records only this month, nothing sits behind', await page.locator('#rose .bq-past').count() === 0);
+
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 await browser.close();
 process.exit(failures || errors.length ? 1 : 0);

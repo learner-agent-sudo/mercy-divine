@@ -41,7 +41,7 @@ for (const n of (novenas && novenas.novenas) || []) {
 
 const html = read('index.html');
 const body = html.match(/<body[^>]*>([\s\S]*?)<\/body>/)[1]
-  .replace(/<script src="(?:bible-parse|app|bible|confession|novena)\.js"><\/script>\s*/g, '')
+  .replace(/<script src="(?:bible-parse|app|lectionary|bible|confession|novena)\.js"><\/script>\s*/g, '')
   .replace(/<link rel="stylesheet"[^>]*>/, '')
   .trim();
 const title = html.match(/<title>([^<]*)<\/title>/)[1];
@@ -64,6 +64,9 @@ ${read('app.js')}
 </script>
 <script>
 ${read('bible-parse.js')}
+</script>
+<script>
+${read('lectionary.js')}
 </script>
 <script>
 ${read('bible.js')}

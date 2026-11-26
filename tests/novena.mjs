@@ -88,6 +88,11 @@ ok('the nine themes come from the file, in order',
    JSON.stringify(await page.locator('.nov-day-theme').allTextContents()) === JSON.stringify(nov.days.map((d) => d.theme)));
 ok('the start button says 開始：念第一天', (await text('#nov-go')) === '開始：念第一天');
 ok('no progress line before starting', (await count('.nov-progress')) === 0);
+ok('souls shows a row of nine candles and no dots', (await count('.nov-candles')) === 1 && (await count('.nov-candle')) === 9
+   && (await count('.nov-dots')) === 0);
+ok('before starting all nine candles are unlit, and the row is labelled', (await count('.nov-candle.lit')) === 0
+   && (await page.getAttribute('.nov-candles', 'aria-label')) === '已點亮 0 / 9 支蠟燭');
+ok('the hint under the candles says 每念完一天，點亮一支蠟燭', (await text('.nov-candle-hint')) === '每念完一天，點亮一支蠟燭');
 ok('the novena screen fits the narrow screen', await noHScroll());
 
 // ───────────── 某一天的內容 ─────────────
@@ -115,7 +120,7 @@ await page.click('#nov-mark');
 await page.waitForSelector('#nov-undo');
 const r1 = await store();
 ok('marking day 1 stores a run that starts today', JSON.stringify(r1.runs.souls) === JSON.stringify({ start: TODAY, days: { 1: TODAY } }));
-ok('a toast says 第一天念完了', (await text('#toast')) === '第一天念完了');
+ok('a toast says 第一天念完了，點亮了第一支蠟燭 (souls is a candle novena)', (await text('#toast')) === '第一天念完了，點亮了第一支蠟燭');
 ok('the day now says when it was finished', (await text('.nov-done')) === `已於 ${shortOf(TODAY)}念完`);
 ok('and offers the next undone day', (await text('#nov-see')) === '看第二天');
 
@@ -123,7 +128,9 @@ ok('and offers the next undone day', (await text('#nov-see')) === '看第二天'
 await page.click('#novena-back');
 await page.waitForSelector('.nov-progress');
 ok('the progress line counts and gives the start', (await text('.nov-progress')) === `已念 1 / 9 天 · ${shortOf(TODAY)}開始`);
-ok('the first dot is on', (await count('.nov-dot.on')) === 1);
+ok('exactly one candle is lit, the first', (await count('.nov-candle.lit')) === 1 && (await page.getAttribute('.nov-candle.lit', 'data-n')) === '1');
+ok('the candle row says 已點亮 1 / 9 支蠟燭', (await page.getAttribute('.nov-candles', 'aria-label')) === '已點亮 1 / 9 支蠟燭');
+ok('and still no dots on souls', (await count('.nov-dots')) === 0);
 ok('the hint says today and tomorrow', (await text('.nov-hint')) === '今天已念第一天，明天念第二天');
 ok('the start button now says 念第二天', (await text('#nov-go')) === '念第二天');
 ok('day 1 in the list shows its date', (await text('.nov-day[data-n="1"] .nov-day-date')) === shortOf(TODAY));
@@ -470,6 +477,17 @@ await page.waitForSelector('#nov-undo');
 ok('auxilium day 1: marking it works', (await text('.nov-done')) === `已於 ${shortOf(TODAY)}念完`);
 ok('auxilium day 1 fits the narrow screen', await noHScroll());
 
+// ───────────── 點點的九日敬禮不變：精神（spirit）還是九個點 ─────────────
+await reset();
+await seed({ runs: { spirit: { start: TODAY, days: { 1: TODAY } } }, done: [], intent: {} });
+await home();
+await page.click('#novena-open');
+await page.waitForSelector('.nov-card');
+await page.click('.nov-card[data-id="spirit"]');
+await page.waitForSelector('.nov-progress');
+ok('spirit still shows nine dots, one on, and no candles', (await count('.nov-dots .nov-dot')) === 9
+   && (await count('.nov-dot.on')) === 1 && (await count('.nov-candles')) === 0);
+
 // ───────────── 125% 字級：列表、九日敬禮、某一天都不橫向捲動 ─────────────
 await reset();
 await page.evaluate(() => {
@@ -487,6 +505,15 @@ ok('at 125% the immaculate novena screen fits without horizontal scroll', await 
 await page.click('.nov-day[data-n="1"]');
 await page.waitForSelector('.nov-day-head');
 ok('at 125% a day fits without horizontal scroll', await noHScroll());
+// 煉靈的九支蠟燭在 125% 字級也放得下，不橫向捲動
+await seed({ runs: { souls: { start: daysAgo(2), days: { 1: daysAgo(2), 2: daysAgo(1), 3: TODAY } } }, done: [], intent: {} });
+await home();
+await page.click('#novena-open');
+await page.waitForSelector('.nov-card');
+await page.click(SOULS_CARD);
+await page.waitForSelector('.nov-candles');
+ok('at 125% the nine candles fit without horizontal scroll, three lit', await noHScroll()
+   && (await count('.nov-candle')) === 9 && (await count('.nov-candle.lit')) === 3);
 
 console.log(errors.length ? 'ERRORS: ' + errors.join('; ') : 'no console errors');
 ok('no console errors', errors.length === 0);

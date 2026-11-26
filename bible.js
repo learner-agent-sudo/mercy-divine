@@ -417,11 +417,12 @@ function toggleUnit(u) {
   refresh();
 }
 
-function doneButton(u) {
-  const b = btn('', 'btn btn-block bible-done', () => toggleUnit(u));
+// labels：[還沒讀完時, 都讀過時] 的字；cls：按鈕的 class（預設是每一段結尾的「讀完了」）
+function doneButton(u, labels = ['讀完了', '✓ 已讀'], cls = 'btn btn-block bible-done') {
+  const b = btn('', cls, () => toggleUnit(u));
   const paint = () => {
     const all = stateOf(u.book, u.keys) === 'all';
-    b.textContent = all ? '✓ 已讀' : '讀完了';
+    b.textContent = all ? labels[1] : labels[0];
     b.classList.toggle('is-done', all);
     b.setAttribute('aria-pressed', String(all));
   };
@@ -438,6 +439,81 @@ const accountUnit = (book, ev) => ({
   book: book.id, keys: ev.acc[book.id].keys, title: ev.title, ref: `${book.abbr} ${ev.acc[book.id].label}`,
   ranges: ev.acc[book.id].ranges.map((r) => ({ from: r.from, to: r.to })),
 });
+
+// 一串經文（同一卷、照順序）裡的每一節
+function keysOfEntries(list) {
+  const out = [];
+  for (const e of list) for (let n = e.v; n <= (e.to || e.v); n++) { const k = `${e.c}:${n}`; if (!out.includes(k)) out.push(k); }
+  return out;
+}
+// 幾筆經文 → 一個可以標記的單位；不連續的地方分成幾段，紀錄才寫得對
+function entriesUnit(book, ents, title) {
+  const keys = keysOfEntries(ents);
+  const ranges = [];
+  for (const k of keys) {
+    const r = ranges[ranges.length - 1];
+    if (r && book.keyIdx.get(k) === book.keyIdx.get(r.to) + 1) r.to = k; else ranges.push({ from: k, to: k });
+  }
+  return { book: book.id, keys, title, ranges, ref: `${book.abbr} ${ranges.map((r) => labelRange(r.from, r.to)).join('、')}` };
+}
+const chapterUnit = (book, c) => entriesUnit(book, book.chapters[c] || [], `第${cnNum(c)}章`);
+
+/* 點經節來選一段：點一節，再點另一節，中間這一段就選起來，下面出現「標為已讀」。
+   只算畫面上看得到的經節（每日福音有時跳過幾節）。 */
+function selectable(host, book) {
+  let anchor = null, lo = null, hi = null;     // 經文的序號（book.entries 裡的位置）
+  const bar = el('div', 'bible-selbar');
+  bar.hidden = true;
+  bar.setAttribute('role', 'region');
+  bar.setAttribute('aria-label', '選取的經文');
+  const label = el('span', 'bible-sel-label');
+  const spans = () => host.querySelectorAll('.v[data-i]');
+  const picked = () => [...new Set([...spans()].map((v) => +v.dataset.i).filter((i) => i >= lo && i <= hi))]
+    .sort((a, b) => a - b).map((i) => book.entries[i]);
+  const unit = () => { const ents = picked(); return entriesUnit(book, ents, book.secs[ents[0].sec].title || ''); };
+  const paintSel = () => {
+    for (const v of spans()) { const i = +v.dataset.i; v.classList.toggle('sel', lo !== null && i >= lo && i <= hi); }
+    bar.hidden = lo === null;
+    if (lo === null) return;
+    const u = unit();
+    label.textContent = `${u.ref}（${u.keys.length} 節）`;
+    mark.textContent = stateOf(book.id, u.keys) === 'all' ? '取消已讀' : '標為已讀';
+  };
+  const clear = () => { anchor = lo = hi = null; paintSel(); };
+  const mark = btn('標為已讀', 'btn btn-primary bible-sel-mark', () => { toggleUnit(unit()); clear(); });
+  const close = btn('✕', 'icon-btn bible-sel-x', clear);
+  close.setAttribute('aria-label', '取消選取');
+  bar.append(label, mark, close);
+  host.append(bar);
+  host.addEventListener('click', (e) => {
+    const v = e.target.closest('.v[data-i]');
+    if (!v || !host.contains(v) || e.target.closest('button, a')) return;
+    const i = +v.dataset.i;
+    if (anchor === null || lo !== hi) anchor = lo = hi = i;          // 開始選
+    else if (i === anchor) { clear(); return; }                       // 再點同一節：取消
+    else { lo = Math.min(anchor, i); hi = Math.max(anchor, i); }      // 點另一節：選到那裡
+    if (!settings.bibleSelSeen) { settings.bibleSelSeen = true; saveSettings(); }
+    paintSel();
+  });
+  live.push(() => { if (lo !== null) paintSel(); });
+}
+
+// 讀過的經節，節號變成一個小金點底，看得出哪幾節標過
+function readMarks(host, book) {
+  const paintMarks = () => {
+    for (const v of host.querySelectorAll('.v[data-i]')) {
+      const e = book.entries[+v.dataset.i];
+      let all = true;
+      for (let n = e.v; n <= (e.to || e.v); n++) if (!prog.read[book.id].has(`${e.c}:${n}`)) { all = false; break; }
+      v.classList.toggle('is-read', all);
+    }
+  };
+  paintMarks();
+  live.push(paintMarks);
+}
+
+const selHint = () => (settings.bibleSelSeen ? null
+  : el('p', 'hint bible-sel-hint', '讀了其中幾節？點第一節，再點最後一節，就能把這一段標為已讀。'));
 
 /* ── 往下讀 ───────────────────────────────────────── */
 // 從上次讀到的那一章起，依書卷順序找第一段還沒讀完的小標題（讀到底就從頭繞回來）
@@ -517,13 +593,28 @@ function paint(st) {
   host.textContent = '';
   live = [];
   window.scrollTo(0, 0);
-  const screens = { book: paintBook, chapter: paintChapter, event: paintEvent, person: paintPerson };
+  const screens = { book: paintBook, chapter: paintChapter, event: paintEvent, person: paintPerson, today: paintToday };
   (screens[st.screen] || paintHub)(host, st);
   if (typeof st.y === 'number') window.scrollTo(0, st.y);
 }
 
 /* ── 首頁的卡片 ───────────────────────────────────── */
+// 首頁卡片上的「今日福音」一列：出處不必等經文載入；讀過沒有要等
+function renderTodayRow() {
+  const row = document.getElementById('bible-today');
+  if (!row || typeof lectionaryDay !== 'function') return;
+  let day;
+  try { day = lectionaryDay(todayKey()); } catch { return; }
+  const x = data ? dailyOf(todayKey()) : null;
+  const done = !!(x && x.acc && stateOf(x.book.id, x.acc.keys) === 'all');
+  document.getElementById('bible-today-dot').dataset.color = day.color;
+  document.getElementById('bible-today-ref').textContent = `${day.gospel.label}${done ? ' ✓' : ''}`;
+  row.setAttribute('aria-label', `今日福音：${day.name}，${day.gospel.label}${done ? '，已讀' : ''}`);
+  row.hidden = false;
+}
+
 function renderBibleHome() {
+  renderTodayRow();
   const line = document.getElementById('bible-home-line');
   const fill = document.getElementById('bible-home-fill');
   if (!line || !fill || !data) return;           // 載入前維持 HTML 裡原本的說明
@@ -545,6 +636,8 @@ async function homeContinue() {
 function paintHub(host) {
   setTitle('讀經');
   const tab = tabsOf().some(([id]) => id === settings.bibleTab) ? settings.bibleTab : 'books';
+  const today = todayCard();
+  if (today) host.append(today);
   host.append(summary(tab), tabsRow(tab));
   const panel = el('div', 'bible-panel');
   panel.id = 'bible-panel';
@@ -553,9 +646,95 @@ function paintHub(host) {
   host.append(footer());
 }
 
+/* ── 進度窗：五卷書是五扇彩色玻璃窗，每一章一塊玻璃 ─────────
+   讀了一章裡的幾節，那一塊就亮一點；整章讀完，那一塊就全亮。
+   一卷讀完，窗頂的圓窗也亮起來。點一扇窗就到那一卷。 */
+const GLASS = {
+  mat: ['#c63b2e', '#a52b22'], mrk: ['#3070b8', '#24579a'], luk: ['#2f925c', '#237447'],
+  jhn: ['#e4a72a', '#c88a16'], act: ['#9049b3', '#753996'],
+};
+const SVGNS = 'http://www.w3.org/2000/svg';
+function sv(tag, attrs) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, typeof v === 'number' ? +v.toFixed(2) : v);
+  return n;
+}
+
+function glassWindow() {
+  const W = 300, H = 214, pad = 8, gap = 7, n = data.books.length;
+  const lw = (W - 2 * pad - (n - 1) * gap) / n;
+  const arch = lw * 0.866;                    // 等邊尖拱的高度
+  const top = pad + arch;                     // 窗身的頂端
+  const bottom = H - pad - 6;                 // 窗台的上緣
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'glass', role: 'img' });
+  const title = sv('title');
+  title.textContent = `讀經進度：${data.books.map((b) => `${b.title} ${pct(countRead(b.id, b.keys), b.keys.length)}%`).join('，')}`;
+  svg.append(title);
+  const defs = sv('defs');
+  const sheen = sv('linearGradient', { id: 'glass-sheen', x1: 0, y1: 0, x2: 1, y2: 1 });
+  for (const [o, a] of [[0, 0.26], [0.45, 0.04], [1, 0.1]]) sheen.append(sv('stop', { offset: o, 'stop-color': '#ffffff', 'stop-opacity': a }));
+  const halo = sv('radialGradient', { id: 'glass-halo' });
+  for (const [o, a] of [[0, 0.95], [0.6, 0.5], [1, 0]]) halo.append(sv('stop', { offset: o, 'stop-color': '#ffe7a3', 'stop-opacity': a }));
+  defs.append(sheen, halo);
+  svg.append(defs);
+
+  data.books.forEach((b, i) => {
+    const x = pad + i * (lw + gap);
+    const outline = `M${x} ${bottom}L${x} ${top}A${lw} ${lw} 0 0 1 ${x + lw / 2} ${top - arch}`
+      + `A${lw} ${lw} 0 0 1 ${x + lw} ${top}L${x + lw} ${bottom}Z`;
+    const g = sv('g', { class: 'glass-lancet', 'data-book': b.id });
+    const label = sv('title');
+    label.textContent = `${b.title}：讀了 ${pct(countRead(b.id, b.keys), b.keys.length)}%`;
+    g.append(label);
+    g.append(sv('path', { d: outline, class: 'glass-dark' }));
+    g.append(sv('path', { d: outline, fill: GLASS[b.id][0], opacity: 0.2 }));    // 沒亮的玻璃也帶一點顏色
+
+    // 窗身：每一章一塊，兩塊一排；章數是單數時最後一塊佔滿一排
+    const ix = x + 2, iy = top + 2, iw = lw - 4, ih = bottom - top - 4;
+    const rows = Math.ceil(b.nch / 2);
+    const ph = ih / rows;
+    const leads = [];
+    for (let c = 1; c <= b.nch; c++) {
+      const r = Math.floor((c - 1) / 2), col = (c - 1) % 2;
+      const wide = c === b.nch && b.nch % 2 === 1;
+      const px = ix + (wide ? 0 : col * (iw / 2)), pw = wide ? iw : iw / 2, py = iy + r * ph;
+      const keys = b.chKeys[c];
+      const f = keys.length ? countRead(b.id, keys) / keys.length : 0;
+      if (f > 0) {
+        g.append(sv('rect', { x: px, y: py, width: pw, height: ph, fill: GLASS[b.id][(r + col) % 2],
+                              opacity: f >= 1 ? 1 : 0.3 + 0.5 * f, class: f >= 1 ? 'glass-lit' : 'glass-part', 'data-c': c }));
+      }
+      leads.push(sv('rect', { x: px, y: py, width: pw, height: ph, class: 'glass-lead' }));
+    }
+    for (const l of leads) g.append(l);
+
+    // 窗頂的圓窗：寫著書卷的簡稱，一卷讀完就亮
+    const full = b.keys.length && countRead(b.id, b.keys) === b.keys.length;
+    const cx = x + lw / 2, cy = top - arch * 0.4, rr = lw * 0.27;
+    if (full) g.append(sv('circle', { cx, cy, r: rr * 1.7, fill: 'url(#glass-halo)' }));
+    g.append(sv('circle', { cx, cy, r: rr, class: full ? 'glass-seal is-full' : 'glass-seal' }));
+    const t = sv('text', { x: cx, y: cy, class: full ? 'glass-abbr is-full' : 'glass-abbr', 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+    t.textContent = b.abbr;
+    g.append(t);
+    g.append(sv('path', { d: outline, fill: 'url(#glass-sheen)', 'pointer-events': 'none' }));
+    g.append(sv('path', { d: outline, class: 'glass-frame' }));
+    g.append(sv('line', { x1: x, y1: top, x2: x + lw, y2: top, class: 'glass-frame' }));
+    svg.append(g);
+  });
+  svg.append(sv('rect', { x: pad - 4, y: bottom, width: W - 2 * pad + 8, height: 6, rx: 1.5, class: 'glass-sill' }));
+  svg.addEventListener('click', (e) => {
+    const g = e.target.closest('.glass-lancet');
+    if (g) nav({ screen: 'book', book: g.dataset.book });
+  });
+  return svg;
+}
+
 function summary(tab) {
   const card = el('div', 'card bible-sum');
   const t = totals();
+  const win = el('figure', 'glass-wrap');
+  win.append(glassWindow(), el('figcaption', 'glass-cap', '每讀完一章，窗上就亮起一塊玻璃；一卷讀完，窗頂的圓窗也亮起來。'));
+  card.append(win);
   card.append(el('p', 'bible-sum-line', `已讀 ${fmtNum(t.read)}／${fmtNum(t.total)} 節（${pct(t.read, t.total)}%）`));
   const bar = el('div', 'bible-bar');
   const fill = el('span');
@@ -859,7 +1038,72 @@ const DOW = '日一二三四五六';
 const dayTitle = (d) => `${d.getFullYear() === new Date().getFullYear() ? '' : `${d.getFullYear()}年`}${d.getMonth() + 1}月${d.getDate()}日（星期${DOW[d.getDay()]}）`;
 let logShown = 120;
 
+// 在彌撒、紙本聖經讀過的，也可以記下：選書卷、章、從第幾節到第幾節
+function addLogForm() {
+  const box = el('details', 'bible-addlog');
+  box.append(el('summary', null, '記下在別處讀的經文'));
+  const form = el('div', 'bible-addlog-form');
+  const select = (label, cls) => {
+    const sel = document.createElement('select');
+    sel.className = cls;
+    sel.setAttribute('aria-label', label);
+    const wrap = el('label', 'bal-field');
+    wrap.append(el('span', 'bal-k', label), sel);
+    return [wrap, sel];
+  };
+  const fill = (sel, list, value) => {
+    sel.textContent = '';
+    for (const [v, text] of list) {
+      const o = document.createElement('option');
+      o.value = String(v);
+      o.textContent = text;
+      sel.append(o);
+    }
+    sel.value = String(value);
+  };
+  const [bookW, bookSel] = select('書卷', 'bal-book');
+  const [chW, chSel] = select('章', 'bal-ch');
+  const [fromW, fromSel] = select('從第幾節', 'bal-from');
+  const [toW, toSel] = select('到第幾節', 'bal-to');
+  fill(bookSel, data.books.map((b) => [b.id, b.title]), data.books[0].id);
+  const verses = () => data.byId[bookSel.value].chKeys[+chSel.value].map((k) => +k.split(':')[1]);
+  const syncVerses = () => {
+    const vs = verses();
+    fill(fromSel, vs.map((v) => [v, String(v)]), vs[0]);
+    fill(toSel, vs.map((v) => [v, String(v)]), vs[vs.length - 1]);
+  };
+  const syncChapters = () => {
+    const b = data.byId[bookSel.value];
+    fill(chSel, Array.from({ length: b.nch }, (_, i) => [i + 1, `第${cnNum(i + 1)}章`]), 1);
+    syncVerses();
+  };
+  syncChapters();
+  bookSel.addEventListener('change', syncChapters);
+  chSel.addEventListener('change', syncVerses);
+  fromSel.addEventListener('change', () => { if (+toSel.value < +fromSel.value) toSel.value = fromSel.value; });
+  toSel.addEventListener('change', () => { if (+toSel.value < +fromSel.value) fromSel.value = toSel.value; });
+  const row = el('div', 'bal-row');
+  row.append(fromW, toW);
+  const save = btn('記下這一段', 'btn btn-primary btn-block bal-save', () => {
+    const b = data.byId[bookSel.value];
+    const c = +chSel.value;
+    const lo = +fromSel.value, hi = +toSel.value;
+    const keys = b.chKeys[c].filter((k) => { const v = +k.split(':')[1]; return v >= lo && v <= hi; });
+    if (!keys.length) return;
+    const sec = b.secs.find((x) => x.keys.includes(keys[0]));
+    const u = { book: b.id, keys, title: sec && sec.title ? sec.title : '', ref: `${b.abbr} ${labelRange(keys[0], keys[keys.length - 1])}`,
+                ranges: [{ from: keys[0], to: keys[keys.length - 1] }] };
+    if (stateOf(b.id, keys) === 'all') { toast(`${u.ref} 已經標為已讀`); return; }
+    toggleUnit(u);
+    paint({ screen: 'hub', y: Math.round(window.scrollY) });
+  });
+  form.append(bookW, chW, row, save);
+  box.append(form);
+  return box;
+}
+
 function paintLogTab(panel) {
+  panel.append(addLogForm());
   const now = new Date();
   const days = new Set(prog.log.map((r) => new Date(r.at)).filter((d) => d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()).map(dayKey));
   panel.append(el('p', 'bible-log-sum', `本月讀經 ${days.size} 天 · 累計讀完 ${fmtNum(prog.log.length)} 段`));
@@ -975,6 +1219,7 @@ function paintBook(host, st) {
 function verseEl(e) {
   const s = el('span', 'v');
   s.dataset.key = `${e.c}:${e.v}`;
+  s.dataset.i = e.i;
   s.append(el('sup', e.cont ? 'vn vn-cont' : 'vn', e.cont ? '下' : e.to ? `${e.v}-${e.to}` : String(e.v)), e.t);
   return s;
 }
@@ -1028,6 +1273,8 @@ function paintChapter(host, st) {
   }
   const verses = new Map();
   const secNodes = new Map();
+  const hint = selHint();
+  if (hint) host.append(hint);
   for (const blk of blocks) {
     const sec = book.secs[blk.sec];
     const isStart = blk.ents[0].i === sec.a;
@@ -1050,6 +1297,9 @@ function paintChapter(host, st) {
     if (!isEnd) {
       const next = book.entries[blk.ents[blk.ents.length - 1].i + 1];
       node.append(el('p', 'bible-more', `（下接第${cnNum(next.c)}章）`));
+      // 這一段到下一章才完；只讀到這一章結尾的，也有地方標
+      node.append(doneButton(entriesUnit(book, blk.ents, sec.title), ['這一章的部分讀完了', '✓ 這一章的部分已讀'],
+        'btn btn-block bible-part-done'));
     }
     const lo = blk.ents[0].ord0, hi = blk.ents[blk.ents.length - 1].ord1;
     const par = parallelsEl(book, lo, hi);
@@ -1068,6 +1318,12 @@ function paintChapter(host, st) {
     host.append(node);
   }
   if (!data.events) host.append(noEvents());
+
+  // 整章一起標
+  host.append(doneButton(chapterUnit(book, c), [`第${cnNum(c)}章整章讀完了`, `✓ 第${cnNum(c)}章都讀過了`],
+    'btn btn-block bible-ch-done'));
+  readMarks(host, book);
+  selectable(host, book);
 
   const pager = el('div', 'bible-pager');
   const prev = btn('‹ 上一章', 'btn', () => nav({ screen: 'chapter', book: book.id, c: c - 1 }, true));
@@ -1172,6 +1428,161 @@ function paintEvent(host, st) {
   next.disabled = ev.n >= data.events.length - 1;
   pager.append(prev, next);
   host.append(pager);
+}
+
+/* ── 每日福音 ─────────────────────────────────────── */
+// 某一天（'YYYY-MM-DD'）彌撒的福音：禮儀日、出處，以及這一卷裡對應的經文
+const LIT_COLOR = { green: '綠色', purple: '紫色', white: '白色', red: '紅色', rose: '玫瑰色' };
+const todayKey = () => dayKey(new Date());
+const keyDate = (key) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d); };
+const shiftKey = (key, n) => { const t = keyDate(key); t.setDate(t.getDate() + n); return dayKey(t); };
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function dailyOf(key) {
+  if (typeof lectionaryDay !== 'function') return null;
+  let day;
+  try { day = lectionaryDay(key); } catch { return null; }
+  const book = data && data.byId[day.gospel.book];
+  const acc = book ? accOf(rangesOf(book, day.gospel.refs)) : null;
+  return { day, book, acc: acc && acc.keys.length ? acc : null };
+}
+const dailyUnit = (x) => ({
+  book: x.book.id, keys: x.acc.keys, title: x.day.name, ref: x.day.gospel.label,
+  ranges: x.acc.ranges.map((r) => ({ from: r.from, to: r.to })),
+});
+const litDot = (color) => {
+  const d = el('span', 'lit-dot');
+  d.dataset.color = color;
+  d.setAttribute('aria-hidden', 'true');
+  return d;
+};
+
+// 讀經大廳最上面：今天的福音
+function todayCard() {
+  const key = todayKey();
+  const x = dailyOf(key);
+  if (!x) return null;
+  const card = btn('', 'card bible-today-card', () => nav({ screen: 'today', d: key }));
+  card.id = 'bible-today-card';
+  card.dataset.color = x.day.color;
+  const top = el('span', 'btc-top');
+  top.append(litDot(x.day.color), el('span', 'btc-kicker', '今日福音'), el('span', 'btc-date', dayTitle(keyDate(key))));
+  const ref = el('span', 'btc-ref', x.day.gospel.label);
+  const state = el('span', 'btc-state');
+  const paintState = () => {
+    const done = x.acc && stateOf(x.book.id, x.acc.keys) === 'all';
+    state.textContent = done ? '✓ 已讀' : '讀 ›';
+    card.classList.toggle('is-read', !!done);
+  };
+  paintState();
+  live.push(paintState);
+  const row = el('span', 'btc-row');
+  row.append(ref, state);
+  card.append(top, el('span', 'btc-name', x.day.name), row);
+  return card;
+}
+
+// 跟這段福音同一件事、別卷福音的記載：每件事一列，事件名稱可以點，後面是各卷的出處
+function relatedEl(book, acc) {
+  const evs = [];
+  for (const r of acc.ranges) {
+    for (const x of book.ranges) if (x.hi >= r.lo && x.lo <= r.hi && !evs.includes(x.ev)) evs.push(x.ev);
+  }
+  if (!evs.length) return null;
+  evs.sort((a, b) => a.n - b.n);
+  const wrap = el('div', 'bible-related');
+  for (const ev of evs) {
+    const row = el('div', 'bible-rel-row');
+    const title = btn(ev.title, 'bible-rel-title', () => nav({ screen: 'event', id: ev.id, book: book.id }));
+    row.append(title);
+    const chips = el('div', 'bible-par-row');
+    const others = IDS.filter((id) => id !== book.id && ev.acc[id]);
+    if (!others.length) chips.append(el('span', 'bible-par-label', `只有${SHORT[book.id]}記載`));
+    for (const id of others) {
+      const chip = btn('', 'chip bible-chip', () => nav({ screen: 'event', id: ev.id, book: id }));
+      chip.dataset.book = id;
+      const text = `${ABBR[id]} ${ev.acc[id].label}`;
+      const paintChip = () => { chip.textContent = stateOf(id, ev.acc[id].keys) === 'all' ? `✓ ${text}` : text; };
+      paintChip();
+      live.push(paintChip);
+      chips.append(chip);
+    }
+    row.append(chips);
+    if (ev.note) row.append(el('p', 'hint bible-note', ev.note));
+    wrap.append(row);
+  }
+  return wrap;
+}
+
+function paintToday(host, st) {
+  const key = st.d && DAY_RE.test(st.d) ? st.d : todayKey();
+  const isToday = key === todayKey();
+  setTitle(isToday ? '今日福音' : '每日福音');
+  const x = dailyOf(key);
+  if (!x) { host.append(el('p', 'empty', '無法算出這一天的福音。')); return; }
+  const { day, book, acc } = x;
+
+  const head = el('div', 'bible-day-head');
+  head.dataset.color = day.color;
+  const when = el('p', 'bible-day-date');
+  when.append(litDot(day.color), document.createTextNode(`${dayTitle(keyDate(key))}${isToday ? ' · 今天' : ''}`));
+  head.append(when, el('h2', 'bible-day-name', day.name), el('p', 'bible-day-ref', day.gospel.label));
+  head.append(el('p', 'hint bible-day-meta',
+    `${day.sunday ? `主日${day.cycle}年` : `${day.cycle}年 · 平日第${day.ferial === 'I' ? '一' : '二'}年`} · 祭衣${LIT_COLOR[day.color] || ''}`));
+  host.append(head);
+
+  if (!book || !acc) { host.append(el('p', 'empty', '這一段經文不在本程式的經文裡。')); return; }
+  const hint = selHint();
+  if (hint) host.append(hint);
+
+  // 經文：照出處一段一段排，小標題、換章都標出來
+  const text = el('div', 'bible-day-text');
+  for (const r of acc.ranges) {
+    let flow = null, lastC = null, lastSec = null;
+    if (acc.ranges.length > 1) text.append(el('p', 'bible-range', `${book.title} ${r.label}`));
+    for (const e of entriesIn(book, r.lo, r.hi)) {
+      if (lastC !== null && e.c !== lastC) { flow = null; text.append(el('p', 'bible-sub', `第${cnNum(e.c)}章`)); }
+      lastC = e.c;
+      if (e.sec !== lastSec) {                       // 每一個小標題只出現一次
+        lastSec = e.sec;
+        const t = book.secs[e.sec].title;
+        if (t) { flow = null; text.append(el('p', 'bible-sub', t)); }
+      }
+      if (!flow) { flow = el('div', 'bible-text'); text.append(flow); }
+      flow.append(verseEl(e));
+    }
+  }
+  host.append(text);
+  host.append(doneButton(dailyUnit(x), ['讀完了', '✓ 已讀']));
+
+  // 相關：同一件事在別卷福音、這裡說話的人、到整章去讀
+  const rel = el('section', 'bible-day-rel');
+  rel.append(el('h3', 'bible-rel-h', '相關的經文'));
+  const evs = relatedEl(book, acc);
+  if (evs) {
+    rel.append(el('p', 'bible-rel-k', '同一件事，其他福音怎麼記'));
+    rel.append(evs);
+  } else if (!data.events) rel.append(noEvents());
+  const who = speakersEl(sayingsOverlapping(book, acc));
+  if (who) rel.append(who);
+  const [c0, v0] = acc.ranges[0].from.split(':');
+  rel.append(btn(`在${book.title}第${cnNum(+c0)}章裡讀前後文 ›`, 'btn btn-block bible-day-ctx',
+    () => nav({ screen: 'chapter', book: book.id, c: +c0, v: +v0 })));
+  host.append(rel);
+  readMarks(text, book);
+  selectable(host, book);
+
+  // 前一天、今天、後一天：換天用取代，返回鍵直接退出
+  const pager = el('div', 'bible-pager');
+  pager.append(
+    btn('‹ 前一天', 'btn', () => nav({ screen: 'today', d: shiftKey(key, -1) }, true)),
+    btn('今天', 'btn', () => nav({ screen: 'today', d: todayKey() }, true)),
+    btn('後一天 ›', 'btn', () => nav({ screen: 'today', d: shiftKey(key, 1) }, true)),
+  );
+  pager.children[1].disabled = isToday;
+  host.append(pager);
+  host.append(el('p', 'hint bible-day-note',
+    '依羅馬禮的讀經表推算，跟香港教區：主顯節、耶穌升天節移至主日。地方的節日（例如農曆新年）未計算在內。'));
 }
 
 /* ── 人物：他說過的話 ─────────────────────────────── */
@@ -1413,6 +1824,8 @@ function paintPerson(host, st) {
 function start() {
   document.getElementById('bible-open').addEventListener('click', () => nav({ screen: 'hub' }));
   document.getElementById('bible-continue').addEventListener('click', homeContinue);
+  const todayRow = document.getElementById('bible-today');
+  if (todayRow) todayRow.addEventListener('click', () => nav({ screen: 'today', d: todayKey() }));
   document.getElementById('bible-back').addEventListener('click', () => history.back());
   for (const link of document.querySelectorAll('.bible-notice-link')) {
     const box = link.closest('.card') && link.closest('.card').querySelector('.bible-credit');

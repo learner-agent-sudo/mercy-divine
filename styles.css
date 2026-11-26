@@ -373,6 +373,10 @@ img { max-width: 100%; height: auto; display: block; }
 .flower .halo { fill: none; stroke: var(--gold); stroke-width: 2.4; opacity: 0; }
 /* 看某一天時，整束蓋一層薄紗，那天的幾朵浮在上面 */
 .bq-veil { fill: var(--surface); opacity: .62; pointer-events: none; }
+/* 之前幾個月的花束襯在後面：罩一層薄霧，看起來比較遠；名字寫在綁帶下面 */
+.bq-mist { fill: var(--surface); opacity: .42; pointer-events: none; }
+.bq-past-tag { fill: var(--surface); stroke: var(--line); stroke-width: 1; opacity: .92; pointer-events: none; }
+.bq-past-label { fill: var(--muted); font-size: 15px; pointer-events: none; }
 .bq-lifted { pointer-events: none; }
 .bq-lifted .halo { opacity: 1; }
 
@@ -693,6 +697,114 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 .bible-etabs + .bible-seen, .bible-etabs + .bible-range { margin-top: 0; }
 .bible-range ~ .bible-range { margin-top: 1.6rem; }
 #view-bible .bible-done { margin-top: 1.4rem; }
+
+/* 祭衣顏色的小圓點（每日福音） */
+.lit-dot {
+  display: inline-block; flex: none; width: .62rem; height: .62rem; border-radius: 50%;
+  background: var(--lit, #3f7d4a); box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 18%, transparent);
+  vertical-align: .05em;
+}
+[data-color="green"] { --lit: #3f8050; }
+[data-color="purple"] { --lit: #6d3f93; }
+[data-color="white"] { --lit: #f6f1e4; }
+[data-color="red"] { --lit: #bd3328; }
+[data-color="rose"] { --lit: #dc8ea4; }
+.lit-dot[data-color] { background: var(--lit); }
+
+/* 首頁讀經卡片上的「今日福音」一列 */
+.bible-today-row {
+  font: inherit; color: var(--fg); cursor: pointer; width: 100%; text-align: left;
+  display: flex; align-items: center; gap: .5rem; min-height: 2.75rem;
+  margin: .7rem 0 0; padding: .45rem .1rem 0; background: none; border: 0; border-top: 1px solid var(--line);
+}
+.bible-today-k { font-size: .85rem; letter-spacing: .08em; color: var(--muted); flex: none; }
+.bible-today-ref { flex: 1; min-width: 0; font-size: .95rem; color: var(--gold); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bible-today-row .hub-chev { font-size: 1.25rem; }
+
+/* 讀經大廳最上面的今日福音 */
+.bible-today-card {
+  font: inherit; color: var(--fg); text-align: left; cursor: pointer; width: 100%;
+  display: flex; flex-direction: column; gap: .25rem; padding: .9rem 1.1rem 1rem;
+  border-left: 4px solid var(--lit, var(--gold));
+}
+.bible-today-card[data-color="white"] { border-left-color: color-mix(in srgb, var(--gold) 55%, #f6f1e4); }
+.btc-top { display: flex; align-items: center; gap: .45rem; font-size: .8rem; color: var(--muted); letter-spacing: .06em; }
+.btc-kicker { font-weight: 600; color: var(--fg); letter-spacing: .12em; }
+.btc-date { margin-left: auto; }
+.btc-name { font-size: 1.02rem; font-weight: 600; letter-spacing: .04em; overflow-wrap: anywhere; }
+.btc-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; }
+.btc-ref { font-size: 1.05rem; color: var(--gold); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.btc-state { flex: none; font-size: .85rem; color: var(--muted); }
+.bible-today-card.is-read .btc-state { color: var(--gold); }
+
+/* 每日福音的畫面 */
+.bible-day-head { margin: 0 0 .6rem; padding: 0 0 .8rem; border-bottom: 1px solid var(--line); }
+.bible-day-date { display: flex; align-items: center; gap: .45rem; margin: 0; font-size: .85rem; color: var(--muted); letter-spacing: .04em; }
+.bible-day-name { margin: .35rem 0 .1rem; font-size: 1.2rem; line-height: 1.5; letter-spacing: .05em; overflow-wrap: anywhere; }
+.bible-day-ref { margin: 0; font-size: 1.05rem; color: var(--gold); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bible-day-meta { margin: .3rem 0 0; }
+.bible-day-text .bible-sub:first-child { margin-top: .6rem; }
+.bible-day-rel { margin-top: 2rem; padding-top: .9rem; border-top: 1px solid var(--line); }
+.bible-rel-h { margin: 0 0 .5rem; font-size: .8rem; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
+.bible-rel-k { margin: .2rem 0 .4rem; font-size: .85rem; color: var(--muted); }
+.bible-related { display: flex; flex-direction: column; gap: .8rem; margin-bottom: .6rem; }
+.bible-rel-row { display: flex; flex-direction: column; gap: .35rem; }
+.bible-rel-title {
+  font: inherit; font-size: .98rem; font-weight: 600; color: var(--fg); text-align: left; cursor: pointer;
+  background: none; border: 0; padding: .2rem 0; min-height: 2.2rem; overflow-wrap: anywhere;
+}
+.bible-rel-title::after { content: " ›"; color: var(--muted); font-weight: 400; }
+.bible-day-ctx { margin-top: .9rem; }
+.bible-day-note { margin-top: 1.2rem; }
+.bible-pager .btn:disabled { opacity: .45; }
+
+/* 選幾節來標記 */
+.bible-sel-hint { margin: 0 0 .8rem; }
+.v[data-i] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.v.sel { background: color-mix(in srgb, var(--gold) 26%, transparent); }
+.v.is-read > .vn {
+  color: var(--surface); background: color-mix(in srgb, var(--gold) 85%, transparent);
+  border-radius: .55em; padding: .12em .34em;
+}
+.bible-selbar {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  bottom: calc(.8rem + env(safe-area-inset-bottom));
+  width: min(calc(100% - 2 * var(--gutter)), 32rem); box-sizing: border-box;
+  display: flex; align-items: center; gap: .5rem; padding: .5rem .5rem .5rem .9rem;
+  background: var(--surface); border: 1px solid var(--gold); border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgb(0 0 0 / .22);
+}
+.bible-selbar[hidden] { display: none; }
+.bible-sel-label { flex: 1; min-width: 0; font-size: .9rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bible-sel-mark { flex: none; min-height: 2.6rem; padding: 0 1rem; }
+.bible-part-done { margin-top: .7rem; font-size: .9rem; }
+.bible-ch-done { margin-top: .4rem; }
+
+/* 紀錄：記下在別處讀的經文 */
+.bible-addlog { margin: 0 0 1rem; background: var(--sunken); border-radius: var(--radius); padding: 0 .9rem; }
+.bible-addlog > summary { cursor: pointer; min-height: 2.9rem; display: flex; align-items: center; font-size: .92rem; color: var(--fg); }
+.bible-addlog-form { display: flex; flex-direction: column; gap: .6rem; padding: .2rem 0 1rem; }
+.bal-field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; flex: 1; }
+.bal-k { font-size: .8rem; color: var(--muted); }
+.bal-field select {
+  font: inherit; font-size: 1rem; color: var(--fg); background: var(--surface); width: 100%; min-width: 0;
+  border: 1px solid var(--line); border-radius: .6rem; padding: .55rem .6rem; min-height: 2.75rem;
+}
+.bal-row { display: flex; gap: .6rem; }
+
+/* 進度窗 */
+.glass-wrap { margin: 0 auto .7rem; max-width: 22rem; text-align: center; }
+.glass { display: block; width: 100%; height: auto; }
+.glass-lancet { cursor: pointer; }
+.glass-dark { fill: #34313c; }
+.glass-lead { fill: none; stroke: #17151b; stroke-width: 1.3; }
+.glass-frame { fill: none; stroke: #9b917f; stroke-width: 2.2; stroke-linejoin: round; }
+.glass-sill { fill: #9b917f; }
+.glass-seal { fill: #2d2a33; stroke: #17151b; stroke-width: 1.2; }
+.glass-seal.is-full { fill: #f3cf6a; }
+.glass-abbr { font-size: 11px; font-weight: 700; fill: #8e8576; font-family: inherit; }
+.glass-abbr.is-full { fill: #5a3e0c; }
+.glass-cap { margin: .45rem 0 0; font-size: .8rem; line-height: 1.6; color: var(--muted); }
 
 /* 時間軸 */
 .tl-phase {
@@ -1022,6 +1134,22 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 .nov-dots { display: flex; gap: .45rem; margin-top: .6rem; }
 .nov-dot { width: .7rem; height: .7rem; border-radius: 50%; border: 1px solid var(--gold); background: transparent; }
 .nov-dot.on { background: var(--gold); }
+/* 煉靈九日敬禮的九支蠟燭（track: candles）：一排置中，窄的螢幕上會自己縮小，不橫向捲動 */
+.nov-candles { display: flex; justify-content: center; align-items: flex-end; gap: .2rem; margin: .6rem auto 0; max-width: 100%; }
+.nov-candle { flex: 0 1 1.7rem; min-width: 0; width: 1.7rem; height: 3.9rem; display: block; }
+.nov-candle svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.nov-candle-glow { opacity: .9; }
+.nov-candle-flame { transform-box: fill-box; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .nov-candle.lit .nov-candle-flame { animation: candleFlicker 2.6s ease-in-out infinite; }
+  @keyframes candleFlicker {
+    0%, 100% { transform: scale(1, 1) skewX(0deg); }
+    25% { transform: scale(.95, 1.06) skewX(-2deg); }
+    50% { transform: scale(1.03, .97) skewX(1.2deg); }
+    75% { transform: scale(.97, 1.03) skewX(-.8deg); }
+  }
+}
+.nov-candle-hint { margin: .5rem 0 1rem; font-size: .85rem; line-height: 1.75; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
 .nov-hint { margin: .6rem 0 0; font-size: .85rem; line-height: 1.75; color: var(--muted); overflow-wrap: anywhere; }
 .nov-intent { display: block; margin: 0 0 1rem; }
 .nov-intent-label { display: block; margin-bottom: .35rem; font-size: .85rem; color: var(--muted); }

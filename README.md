@@ -93,6 +93,44 @@ the other Gospels tell the same story, chips that open that event. Each Gospel's
 an event is counted separately, but if you already read it in another Gospel the page says
 so. The same verses show as read everywhere they appear.
 
+There are four other ways to mark what you read:
+
+- **Pick the verses.** Tap the first verse you read, then the last: the passage is
+  highlighted and a bar at the bottom offers **標為已讀** (or **取消已讀** if it is all read
+  already). Tap the same verse again to let go. Read verses have their verse number on a
+  small gold badge, so a half-read section shows how far you got.
+- **The whole chapter.** The end of every chapter has **第N章整章讀完了**.
+- **A section that runs on into the next chapter** has a **這一章的部分讀完了** button where
+  the chapter ends, as well as the usual one at its real end.
+- **Read somewhere else** (at Mass, in a printed Bible): 紀錄 → **記下在別處讀的經文** —
+  choose the book, chapter and verses.
+
+### 今日福音 (the Gospel of the day)
+
+The home card has a **今日福音** row with today's reference, and the top of 讀經 has a card
+with the day's name in the liturgical year (常年期第三十四週星期四, 救主慈悲主日, 聖安德肋宗徒…)
+and the colour of the vestments. It opens the passage itself, with the 思高 headings, a
+**讀完了** button, and what goes with it: the same event in the other Gospels (each a chip
+that opens that account, ✓ when read), the people who speak in it, and a link to read it in
+its chapter. ‹ 前一天 / 後一天 › step through the days.
+
+The day is worked out on the phone by [`lectionary.js`](lectionary.js), with no network: the
+Roman calendar (Easter, the seasons, the Sunday cycle A/B/C and the weekday year I/II, the
+solemnities and feasts of the General Calendar and when they move), and the Gospel reading
+for every Sunday, weekday and feast. It follows Hong Kong in keeping Epiphany and the
+Ascension on Sundays. Only the Gospel is shown, since the app's text is the four Gospels and
+Acts; where a reading has a long and a short form the long one is used, and Christmas uses
+the Mass during the Day. Local days such as 農曆新年 and optional memorials are not included —
+on those the weekday Gospel is shown. `node tests/daily-gospel.mjs` checks every citation
+against the text and a list of known dates.
+
+### The progress window
+
+Above the percentage, the five books are drawn as a five-light stained-glass window, one pane
+per chapter (瑪竇 28, 馬爾谷 16, 路加 24, 若望 21, 宗徒大事錄 28). A pane brightens as you read
+its verses and is fully lit when the chapter is done; when a whole book is read, the roundel at
+the top of its window lights up. Tap a window to open that book.
+
 Progress is kept on the phone (`mercy.bible.v1`) and is part of the backup file. The text is
 in [`bible/`](bible/) (see its README for the source and licence), parsed in the browser by
 [`bible-parse.js`](bible-parse.js); the event table is
@@ -142,7 +180,8 @@ under way, **繼續念** opens the list. Each novena has its own picture, on its
 of its page and beside each day's title. There are four:
 
 - **煉靈九日敬禮** (for the souls in purgatory): each day has a theme, the souls' answer and their
-  appeal, then the closing prayers (天主經 and 聖母經 open on the page).
+  appeal, then the closing prayers (天主經 and 聖母經 open on the page). Its progress is nine candles, all unlit at first, and each day read lights one
+  more.
 - **天主聖神九日敬禮**: every day opens with 伏求聖神降臨 and the 向聖母瑪利亞求獲聖神誦
   (啟 / 應, with a 聖母經 after each), then the day's own prayer.
 - **聖母無玷始胎九日敬禮** (before 8 December): every day opens with the same prayer, then the
@@ -361,6 +400,10 @@ without prayer sits between the two: present, but unlit.
 
 The grid calendar is still there behind **看月曆** for when an exact date matters.
 
+Behind each month's bouquet sit the bouquets of up to three earlier months that have
+records (looking back a year at most), misted and labelled with their month; tap one to
+switch to that month. In a month with no prayers yet, those earlier bouquets are what you see.
+
 
 
 ## Recording a prayer said away from the phone
@@ -410,7 +453,8 @@ The suites drive a real browser at phone size and fail on any console error.
 ```
 index.html              app shell — every screen
 app.js                  logic: prayer flow, records, calendar, settings
-bible.js                Bible reading: books, chapters, events, progress
+bible.js                Bible reading: books, chapters, events, progress, 今日福音, the window
+lectionary.js           the liturgical calendar and the Gospel of every day
 confession.js           修和聖事: the steps, the rite, the date of the last confession
 novena.js              九日敬禮: the novenas, day by day, the finished runs
 bible-parse.js          splits the Bible text files into chapters, verses and sections

@@ -1187,33 +1187,57 @@ function bouquetLayout(n) {
 }
 
 let bouquetFlowers = [];     // 目前畫出來的每一朵：位置與對應的那一次祈禱
+let bouquetPastCount = 0;    // 這個月的花束後面襯著幾束之前的花束
 
-function renderBouquet() {
-  const y = calMonth.getFullYear();
-  const m = calMonth.getMonth();
-  const pre = 'bq';
+const PAST_MAX = 2;          // 最多襯幾束之前的花束：左後、右後各一束（第三束會被擋住，標籤也容易看錯）
+const PAST_LOOK = 12;        // 往前最多看幾個月
+const PAST_FLOWERS = 60;     // 之前的花束每束最多畫幾朵，免得 SVG 太重
+// 之前的花束擺的位置（綁帶點）與大小：最近的在左後方、次近的在右後方
+const PAST_SLOTS = [
+  { tx: TIE.x - 105, ty: TIE.y - 40, s: 0.6 },
+  { tx: TIE.x + 105, ty: TIE.y - 40, s: 0.56 },
+];
 
-  // 兩套經文的每一次，照時間混在一起排——花束裡兩種花就這樣交錯著長出來
+const hasRecordsIn = (y, m) => records.some((r) => {
+  const at = new Date(r.ts);
+  return at.getFullYear() === y && at.getMonth() === m;
+});
+
+// 往前找最近、有紀錄的幾個月（最多看 12 個月）
+function pastMonthsBefore(y, m) {
+  const out = [];
+  for (let k = 1; k <= PAST_LOOK && out.length < PAST_MAX; k++) {
+    const d = new Date(y, m - k, 1);
+    if (hasRecordsIn(d.getFullYear(), d.getMonth())) out.push(d);
+  }
+  return out;
+}
+
+const monthName = (d, y) => (d.getFullYear() === y ? `${d.getMonth() + 1}月` : `${d.getFullYear()}年${d.getMonth() + 1}月`);
+
+// 一個月的整束花（包裝紙、莖、葉、綁帶、花）。
+// past 為 true 是襯在後面的之前幾個月：花不開、不能點，只畫前 PAST_FLOWERS 朵。
+function bouquetGroup(y, m, pre, { past = false } = {}) {
   const bySet = new Map(SETS.map((set) => [set.id, monthSessions(set.id, y, m)]));
   const all = SETS.flatMap((set) => bySet.get(set.id).map((x, i) => ({ ...x, set, nth: i + 1 })))
     .sort((a, b) => a.at - b.at);
   const days = new Set(all.map((x) => dayKey(x.at)));
-  const N = all.length;
+  const shown = past ? all.slice(0, PAST_FLOWERS) : all;
+  const N = shown.length;
   const L = bouquetLayout(N);
+  const reach = N ? 1 : 0.6;
 
-  const svg = svgEl('svg', { viewBox: '0 0 400 440', class: 'bouquet', role: 'img' });
-  svg.appendChild(svgEl('title')).textContent = `${y} 年 ${m + 1} 月的祈禱花束，共 ${N} 朵`;
-  flowerDefs(svg, pre);
+  const g = svgEl('g', past ? { class: 'bq-past', 'data-y': y, 'data-m': m + 1 } : {});
 
   // 襯在後面的包裝紙，像扇子一樣張開
   const top = L.cy - L.ry - (N ? L.fr * 0.6 : 20);
-  svg.appendChild(svgEl('path', {
+  g.appendChild(svgEl('path', {
     class: 'bq-back',
     d: `M${TIE.x - 18} ${TIE.y + 8} L${L.cx - L.rx - 26} ${L.cy - L.ry * 0.15}`
      + ` Q${L.cx} ${top - 40} ${L.cx + L.rx + 26} ${L.cy - L.ry * 0.15} L${TIE.x + 18} ${TIE.y + 8} Z`,
   }));
 
-  bouquetFlowers = all.map((x, i) => {
+  const list = shown.map((x, i) => {
     const rho = Math.sqrt((i + (N === 1 ? 0 : 0.5)) / N);
     const th = i * 2.39996;                              // 黃金角
     const j = wobble(i, 9.1) - 0.5;
@@ -1229,7 +1253,7 @@ function renderBouquet() {
 
   // 莖：每一朵都收到綁帶那一點
   const stems = svgEl('g', { class: 'bq-stems' });
-  for (const f of bouquetFlowers) {
+  for (const f of list) {
     const mx = f.x * 0.35 + TIE.x * 0.65;
     stems.appendChild(svgEl('path', {
       d: `M${f.x.toFixed(1)} ${f.y.toFixed(1)} Q${mx.toFixed(1)} ${(f.y + (TIE.y - f.y) * 0.55).toFixed(1)}`
@@ -1237,12 +1261,11 @@ function renderBouquet() {
       'stroke-width': Math.max(1.2, L.fr * 0.07),
     }));
   }
-  svg.appendChild(stems);
+  g.appendChild(stems);
 
   // 葉子從花束邊緣探出來
   const leaves = svgEl('g');
   const nLeaves = N ? Math.min(8, 3 + Math.round(N / 6)) : 4;
-  const reach = N ? 1 : 0.6;
   for (let i = 0; i < nLeaves; i++) {
     const a = ((150 + (i / Math.max(1, nLeaves - 1)) * 240) * Math.PI) / 180;
     const lx = L.cx + (L.rx + L.fr * 0.1) * reach * Math.cos(a);
@@ -1251,15 +1274,15 @@ function renderBouquet() {
     drawLeaf(leaves, pre, lx, ly, deg - 10 + (wobble(i, 2.2) - 0.5) * 30,
              N ? Math.max(0.42, Math.min(0.85, L.fr / 44)) : 0.7);
   }
-  svg.appendChild(leaves);
+  g.appendChild(leaves);
 
   // 前面的包裝紙與綁帶
   const fw = 76;
-  svg.appendChild(svgEl('path', {
+  g.appendChild(svgEl('path', {
     class: 'bq-front',
     d: `M${TIE.x - fw} ${TIE.y - 30} L${TIE.x + fw} ${TIE.y - 30} L${TIE.x + 24} 436 L${TIE.x - 24} 436 Z`,
   }));
-  svg.appendChild(svgEl('path', { class: 'bq-fold', d: `M${TIE.x - fw + 8} ${TIE.y - 26} L${TIE.x - 4} 436` }));
+  g.appendChild(svgEl('path', { class: 'bq-fold', d: `M${TIE.x - fw + 8} ${TIE.y - 26} L${TIE.x - 4} 436` }));
   const bow = svgEl('g', { class: 'bq-bow', transform: `translate(${TIE.x} ${TIE.y + 6})` });
   for (const d of [
     'M0 0 C-10 14 -16 30 -22 44 L-12 40 L-8 50 C-4 34 -2 16 0 0 Z',
@@ -1270,37 +1293,102 @@ function renderBouquet() {
     'M0 0 C14 -16 40 -16 38 -2 C36 10 14 8 0 0 Z',
   ]) bow.appendChild(svgEl('path', { d, class: 'loop' }));
   bow.appendChild(svgEl('ellipse', { rx: 7, ry: 6, class: 'knot' }));
-  svg.appendChild(bow);
+  g.appendChild(bow);
 
   // 花：上面的在後、下面的在前，才疊得像一束
   const flowers = svgEl('g');
-  for (const f of [...bouquetFlowers].sort((a, b) => a.y - b.y)) {
-    const outer = svgEl('g', {
-      class: `flower ${f.set.id}`, transform: `translate(${f.x.toFixed(1)} ${f.y.toFixed(1)})`,
-      'data-set': f.set.id, 'data-nth': f.nth, 'data-day': f.at.getDate(), 'data-key': f.key,
-      style: `--i:${f.i}`,
-    });
-    const grow = svgEl('g', { class: 'grow' });           // 開花的動畫只動這一層
-    // 花是照原始大小畫的，畫完才知道要縮多少，再把整朵縮到定位
+  for (const f of [...list].sort((a, b) => a.y - b.y)) {
+    const outer = past
+      ? svgEl('g', { class: `bq-past-flower ${f.set.id}`, transform: `translate(${f.x.toFixed(1)} ${f.y.toFixed(1)})` })
+      : svgEl('g', {
+        class: `flower ${f.set.id}`, transform: `translate(${f.x.toFixed(1)} ${f.y.toFixed(1)})`,
+        'data-set': f.set.id, 'data-nth': f.nth, 'data-day': f.at.getDate(), 'data-key': f.key,
+        style: `--i:${f.i}`,
+      });
     const shape = svgEl('g');
+    // 花是照原始大小畫的，畫完才知道要縮多少，再把整朵縮到定位
     const k = drawFlower(f.set.id)(shape, pre, f.r, f.i + 1);
     shape.setAttribute('transform', `rotate(${f.rot.toFixed(1)}) scale(${k.toFixed(4)})`);
-    grow.appendChild(shape);
-    outer.appendChild(grow);
-    outer.appendChild(svgEl('circle', { class: 'halo', r: (f.r * 1.1).toFixed(1) }));
+    if (past) {
+      outer.appendChild(shape);                          // 之前的花不開花、沒有光圈，也不接受輕觸
+    } else {
+      const grow = svgEl('g', { class: 'grow' });        // 開花的動畫只動這一層
+      grow.appendChild(shape);
+      outer.appendChild(grow);
+      outer.appendChild(svgEl('circle', { class: 'halo', r: (f.r * 1.1).toFixed(1) }));
+    }
     flowers.appendChild(outer);
   }
-  svg.appendChild(flowers);
+  g.appendChild(flowers);
 
   // 畫布是照一整束滿月的花留的位置。花還少的時候，上面會空出一大片——
   // 把畫布裁到實際有東西的地方，花束才不會孤零零地縮在卡片底部。
   const paperTop = 0.5 * (L.cy - L.ry * 0.15) + 0.5 * (top - 40);
-  const flowerTop = Math.min(Infinity, ...bouquetFlowers.map((f) => f.y - f.r * 1.15));
+  const flowerTop = Math.min(Infinity, ...list.map((f) => f.y - f.r * 1.15));
   const leafTop = L.cy - (L.ry + L.fr * 0.1) * reach - 56;
-  const vbTop = Math.max(0, Math.floor(Math.min(paperTop, flowerTop, leafTop) - 12));
+  return {
+    g, flowers: list, top: Math.min(paperTop, flowerTop, leafTop),
+    total: all.length, bySet, days,
+  };
+}
+
+function renderBouquet() {
+  const y = calMonth.getFullYear();
+  const m = calMonth.getMonth();
+  const pre = 'bq';
+
+  const svg = svgEl('svg', { viewBox: '0 0 400 440', class: 'bouquet', role: 'img' });
+  flowerDefs(svg, pre);
+
+  // 這個月的花束：花、圖例與標題都用它
+  const cur = bouquetGroup(y, m, pre);
+  bouquetFlowers = cur.flowers;
+  const N = bouquetFlowers.length;
+
+  // 之前幾個月的花束襯在後面：最遠的先畫，近的疊在前面
+  const pasts = pastMonthsBefore(y, m).map((d, i) => ({ d, slot: PAST_SLOTS[i] }));
+  bouquetPastCount = pasts.length;
+
+  svg.appendChild(svgEl('title')).textContent = `${y} 年 ${m + 1} 月的祈禱花束，共 ${N} 朵`
+    + (pasts.length ? `；後面是 ${pasts.map((p) => monthName(p.d, y)).join('、')}的花束` : '');
+
+  const pastTops = [];
+  for (const p of [...pasts].reverse()) {
+    const pg = bouquetGroup(p.d.getFullYear(), p.d.getMonth(), pre, { past: true });
+    const { tx, ty, s } = p.slot;
+    pg.g.setAttribute('transform', `translate(${tx} ${ty}) scale(${s}) translate(${-TIE.x} ${-TIE.y})`);
+    svg.appendChild(pg.g);
+    pastTops.push(ty + s * (pg.top - TIE.y));
+  }
+  // 薄霧罩在之前的花束上，讓它們看起來比較遠；這個月的花束畫在霧的上面
+  if (pasts.length) svg.appendChild(svgEl('rect', { class: 'bq-mist', x: 0, y: 0, width: 400, height: 440 }));
+  svg.appendChild(cur.g);
+
+  // 之前幾個月的月份標籤：寫在綁帶下面，蓋在這個月的紙上也看得清楚
+  if (pasts.length) {
+    const tags = svgEl('g', { class: 'bq-past-tags' });
+    for (const p of pasts) {
+      const text = monthName(p.d, y);
+      const w = [...text].reduce((a, c) => a + (/[一-鿿]/.test(c) ? 16 : 9), 0) + 14;
+      const cy = p.slot.ty + 50;
+      tags.appendChild(svgEl('rect', {
+        class: 'bq-past-tag', x: p.slot.tx - w / 2, y: cy - 11, width: w, height: 22, rx: 11,
+      }));
+      const label = svgEl('text', {
+        class: 'bq-past-label', x: p.slot.tx, y: cy, 'text-anchor': 'middle', 'dominant-baseline': 'central',
+      });
+      label.textContent = text;
+      tags.appendChild(label);
+    }
+    svg.appendChild(tags);
+  }
+
+  // 畫布是照一整束滿月的花留的位置，裁到實際有東西的地方（之前的花束也算進去）
+  const vbTop = Math.max(0, Math.floor(Math.min(cur.top, ...pastTops) - 12));
   svg.setAttribute('viewBox', `0 ${vbTop} 400 ${440 - vbTop}`);
 
   // 花很小，點不準是常態。輕觸時找離手指最近的那一朵，而不是非得點在花瓣上。
+  // 這個月沒有花在手指附近時，若點到後面的某一束，就換成那個月。
   svg.addEventListener('click', (e) => {
     const ctm = svg.getScreenCTM();
     if (!ctm) return;
@@ -1311,15 +1399,27 @@ function renderBouquet() {
       const d = Math.hypot(f.x - pt.x, f.y - pt.y);
       if (d < bestD) { bestD = d; best = f; }
     }
-    if (best && bestD <= Math.max(best.r * 1.35, 26)) readFlower(best, m);
-    else clearFlower();
+    if (best && bestD <= Math.max(best.r * 1.35, 26)) { readFlower(best, m); return; }
+
+    // 前面這個月的紙包著的地方不算後面的花束
+    const onPaper = pt.y >= TIE.y - 30 && Math.abs(pt.x - TIE.x) <= 76;
+    const back = onPaper ? null : [...svg.querySelectorAll('.bq-past')].reverse().find((g) => {
+      const b = g.getBoundingClientRect();
+      return e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom;
+    });
+    if (back) {
+      calMonth = new Date(Number(back.dataset.y), Number(back.dataset.m) - 1, 1);
+      renderMonth();
+      return;
+    }
+    clearFlower();
   });
 
   const rose = $('#rose');
   rose.textContent = '';
   rose.appendChild(svg);
 
-  // 花束下面的一行：兩種花各幾朵、共幾天
+  // 花束下面的一行：兩種花各幾朵、共幾天（只算這個月）
   const legend = $('#bq-legend');
   legend.textContent = '';
   for (const set of SETS) {
@@ -1327,19 +1427,25 @@ function renderBouquet() {
     key.dataset.set = set.id;
     key.appendChild(flowerIcon(set.id));
     key.appendChild(document.createTextNode(`${set.short || set.title} `));
-    key.appendChild(el('b', null, String(bySet.get(set.id).length)));
+    key.appendChild(el('b', null, String(cur.bySet.get(set.id).length)));
     legend.appendChild(key);
   }
-  legend.appendChild(el('span', 'bq-days', `${days.size} 天`));
+  legend.appendChild(el('span', 'bq-days', `${cur.days.size} 天`));
 
-  $('#rose-read').textContent = N ? '輕觸一朵花，看是哪一天唸的。' : '這個月還沒有紀錄。';
+  $('#rose-read').textContent = bouquetHint();
+}
+
+// 輕觸的提示；這個月沒有紀錄時，若後面有之前的花束，順便說一聲
+function bouquetHint() {
+  if (bouquetFlowers.length) return '輕觸一朵花，看是哪一天唸的。';
+  return '這個月還沒有紀錄。' + (bouquetPastCount ? '後面是之前幾個月的花束。' : '');
 }
 
 function clearFlower() {
   const svg = $('#rose .bouquet');
   if (!svg) return;
   for (const n of svg.querySelectorAll('.bq-veil, .bq-lifted')) n.remove();
-  $('#rose-read').textContent = bouquetFlowers.length ? '輕觸一朵花，看是哪一天唸的。' : '這個月還沒有紀錄。';
+  $('#rose-read').textContent = bouquetHint();
 }
 
 // 點到一朵：說出是哪一天、幾點、第幾次，並把同一天的花都標出來。

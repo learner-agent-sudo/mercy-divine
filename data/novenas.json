@@ -1,11 +1,12 @@
 {
   "title": "九日敬禮",
-  "note": "每一種九日敬禮連續念九天。open 是每天開始時都念的部分，close 是每天最後都念的部分；picture 是這個九日敬禮的聖像（file 是 images/ 裡的檔案，caption 是圖下的小字）。days 依序是第一天到第九天：theme 是目錄上的短標題，text 是這一天的經文段落（每天都一樣的九日敬禮，theme 與 text 留空，經文全放在 open）（煉靈九日敬禮的 days 另有 answer 煉靈的回答、appeal 煉靈對世人說的話，以及共同的 question）。open 與 close 的每一項：title 是小標題；text 是經文段落；prayer 是祈禱文（金框，label 是框上的小字）；line 是一句短句；say 是啟應的一句（who 是「啟」、「應」或「眾」）；count 是要念的經（prayers 指向 data/prayers.json 或 data/rosary.json 的條目，可展開看經文）。",
+  "note": "每一種九日敬禮連續念九天。open 是每天開始時都念的部分，close 是每天最後都念的部分；picture 是這個九日敬禮的聖像（file 是 images/ 裡的檔案，caption 是圖下的小字）。days 依序是第一天到第九天：theme 是目錄上的短標題，text 是這一天的經文段落（每天都一樣的九日敬禮，theme 與 text 留空，經文全放在 open）（track 是 candles 的，進度畫成九支蠟燭，每念完一天點亮一支；預設是點點。煉靈九日敬禮的 days 另有 answer 煉靈的回答、appeal 煉靈對世人說的話，以及共同的 question）。open 與 close 的每一項：title 是小標題；text 是經文段落；prayer 是祈禱文（金框，label 是框上的小字）；line 是一句短句；say 是啟應的一句（who 是「啟」、「應」或「眾」）；count 是要念的經（prayers 指向 data/prayers.json 或 data/rosary.json 的條目，可展開看經文）。",
   "novenas": [
     {
       "id": "souls",
       "name": "煉靈九日敬禮",
       "sub": "為煉獄內的靈魂祈禱",
+      "track": "candles",
       "picture": {
         "file": "images/novena-souls.svg",
         "caption": "主，求祢賜他們永遠的安息"
