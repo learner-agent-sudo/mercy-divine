@@ -16,6 +16,8 @@ const LONG_PASSAGE = 5;       // 一段話超過這麼多節，先只放金句�
 const KEY_RE = /^\d{1,3}:\d{1,3}$/;
 const ID_RE = /^[\w-]{1,60}$/;
 const RANGE_RE = /^(\d+):(\d+)(?:-(?:(\d+):)?(\d+))?$/;
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DAYS_MAX = 4000;        // 每日福音的勾：約十年
 const MIRACLES = [['治病', '治病'], ['驅魔', '驅魔'], ['自然', '自然'], ['復活', '復活死人']];
 const NO_EVENTS = '對照資料尚未載入。';
 
@@ -76,15 +78,28 @@ function cleanLast(raw) {
   return Object.keys(last).length ? last : null;
 }
 
+// 每日福音的勾：日期 → 那次按「讀完了」才新加的節（取消時只拿掉這些，之前讀過的不動）
+function cleanDays(raw, keepAdded) {
+  const out = [];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [d, v] of Object.entries(raw).slice(-DAYS_MAX)) {
+    if (!DAY_RE.test(d)) continue;
+    const added = keepAdded && Array.isArray(v) ? v.filter((k) => typeof k === 'string' && KEY_RE.test(k)).slice(0, 400) : [];
+    out.push([d, added]);
+  }
+  return out;
+}
+
 function readProgress() {
   const raw = store.read(K_BIBLE, null);
-  const p = { read: {}, log: [], last: null };
+  const p = { read: {}, log: [], last: null, days: new Map() };
   for (const id of IDS) {
     const arr = raw && raw.read && Array.isArray(raw.read[id]) ? raw.read[id] : [];
     p.read[id] = new Set(arr.filter((k) => typeof k === 'string' && KEY_RE.test(k)));
   }
   if (raw && Array.isArray(raw.log)) p.log = raw.log.map(cleanLog).filter(Boolean).slice(-LOG_MAX);
   if (raw) p.last = cleanLast(raw.last);
+  if (raw) p.days = new Map(cleanDays(raw.days, true));
   return p;
 }
 
@@ -93,11 +108,13 @@ const prog = readProgress();
 function snapshot() {
   const read = {};
   for (const id of IDS) read[id] = [...prog.read[id]].sort(keyCmp);
-  return { read, log: prog.log, last: prog.last };
+  const days = {};
+  for (const d of [...prog.days.keys()].sort().slice(-DAYS_MAX)) days[d] = prog.days.get(d);
+  return { read, log: prog.log, last: prog.last, days };
 }
 const persist = () => store.write(K_BIBLE, snapshot());
 
-const hasProgress = () => IDS.some((id) => prog.read[id].size) || prog.log.length > 0;
+const hasProgress = () => IDS.some((id) => prog.read[id].size) || prog.log.length > 0 || prog.days.size > 0;
 
 // 備份：有進度才交出去
 function bibleExport() {
@@ -106,7 +123,7 @@ function bibleExport() {
 
 // 備份檔裡的讀經進度：已讀的節取聯集，紀錄去掉重複，一律逐項檢查
 function bibleImport(raw) {
-  const added = { verses: 0, logs: 0 };
+  const added = { verses: 0, logs: 0, days: 0 };
   if (!raw || typeof raw !== 'object') return added;
   const src = raw.read && typeof raw.read === 'object' ? raw.read : {};
   for (const id of IDS) {
@@ -131,9 +148,15 @@ function bibleImport(raw) {
     prog.log.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
     if (prog.log.length > LOG_MAX) prog.log.splice(0, prog.log.length - LOG_MAX);
   }
+  // 每日福音的勾取聯集；別台裝置「新加了哪幾節」不帶過來，這裡的節已經照上面合併了
+  for (const [d] of cleanDays(raw.days, false)) {
+    if (prog.days.has(d)) continue;
+    prog.days.set(d, []);
+    added.days++;
+  }
   const last = cleanLast(raw.last);
   if (last && !prog.last) prog.last = last;
-  if (added.verses || added.logs || (last && prog.last === last)) { persist(); refresh(); }
+  if (added.verses || added.logs || added.days || (last && prog.last === last)) { persist(); refresh(); }
   return added;
 }
 
@@ -605,8 +628,14 @@ function renderTodayRow() {
   if (!row || typeof lectionaryDay !== 'function') return;
   let day;
   try { day = lectionaryDay(todayKey()); } catch { return; }
-  const x = data ? dailyOf(todayKey()) : null;
-  const done = !!(x && x.acc && stateOf(x.book.id, x.acc.keys) === 'all');
+  const done = dayRead(todayKey());
+  // 首頁日期下面那一行：今天的禮儀日
+  const lit = document.getElementById('home-lit');
+  if (lit) {
+    document.getElementById('home-lit-dot').dataset.color = day.color;
+    document.getElementById('home-lit-name').textContent = day.name;
+    lit.hidden = false;
+  }
   document.getElementById('bible-today-dot').dataset.color = day.color;
   document.getElementById('bible-today-ref').textContent = `${day.gospel.label}${done ? ' ✓' : ''}`;
   row.setAttribute('aria-label', `今日福音：${day.name}，${day.gospel.label}${done ? '，已讀' : ''}`);
@@ -1436,7 +1465,6 @@ const LIT_COLOR = { green: '綠色', purple: '紫色', white: '白色', red: '�
 const todayKey = () => dayKey(new Date());
 const keyDate = (key) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d); };
 const shiftKey = (key, n) => { const t = keyDate(key); t.setDate(t.getDate() + n); return dayKey(t); };
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dailyOf(key) {
   if (typeof lectionaryDay !== 'function') return null;
@@ -1450,6 +1478,79 @@ const dailyUnit = (x) => ({
   book: x.book.id, keys: x.acc.keys, title: x.day.name, ref: x.day.gospel.label,
   ranges: x.acc.ranges.map((r) => ({ from: r.from, to: r.to })),
 });
+const dayRead = (key) => prog.days.has(key);
+
+/* 每日福音的「讀完了」是每天各自一個勾：預設沒勾，勾了只算那一天。
+   勾的時候這幾節也算進讀經進度；取消時只拿掉那一下才新加的節，之前就讀過的照舊。 */
+function toggleDay(x, key) {
+  const u = dailyUnit(x);
+  const set = prog.read[u.book];
+  if (dayRead(key)) {
+    for (const k of prog.days.get(key)) set.delete(k);
+    prog.days.delete(key);
+    toast(`已取消：${u.ref}`);
+  } else {
+    const added = u.keys.filter((k) => !set.has(k));
+    for (const k of added) set.add(k);
+    prog.days.set(key, added);
+    addLog(u);
+    toast(`已記下：${dayTitle(keyDate(key))}的福音`);
+  }
+  persist();
+  refresh();
+}
+
+function dayButton(x, key) {
+  const b = btn('', 'btn btn-block bible-done bible-day-done', () => toggleDay(x, key));
+  const paint = () => {
+    const done = dayRead(key);
+    b.textContent = done ? '✓ 這天的福音讀過了' : '讀完了';
+    b.classList.toggle('is-done', done);
+    b.setAttribute('aria-pressed', String(done));
+  };
+  paint();
+  live.push(paint);
+  return b;
+}
+
+// 今日福音頁最上面的一週：日到六，讀過的那天有勾，點一天就換到那天
+function weekStrip(key) {
+  const start = shiftKey(key, -keyDate(key).getDay());
+  const today = todayKey();
+  const go = (d) => () => nav({ screen: 'today', d }, true);
+  const wrap = el('nav', 'bible-week');
+  wrap.setAttribute('aria-label', '這一週的福音');
+  const prev = btn('‹', 'bible-week-nav', go(shiftKey(key, -7)));
+  prev.setAttribute('aria-label', '上一週');
+  const next = btn('›', 'bible-week-nav', go(shiftKey(key, 7)));
+  next.setAttribute('aria-label', '下一週');
+  const days = el('div', 'bible-week-days');
+  const cells = [];
+  for (let i = 0; i < 7; i++) {
+    const k = shiftKey(start, i);
+    const d = keyDate(k);
+    const b = btn('', 'bible-week-day', go(k));
+    b.dataset.d = k;
+    let color = '';
+    try { color = lectionaryDay(k).color; } catch { /* 算不出來就不畫顏色 */ }
+    if (color) b.dataset.color = color;
+    if (k === key) b.setAttribute('aria-current', 'date');
+    if (k === today) b.classList.add('is-today');
+    b.append(el('span', 'bwd-w', DOW[i]), el('span', 'bwd-n', String(d.getDate())), el('span', 'bwd-mark'));
+    cells.push([b, k, `${d.getMonth() + 1}月${d.getDate()}日 星期${DOW[i]}${k === today ? '（今天）' : ''}`]);
+    days.append(b);
+  }
+  const paint = () => {
+    for (const [b, k, label] of cells) {
+      b.classList.toggle('is-read', dayRead(k));
+      b.setAttribute('aria-label', `${label}${dayRead(k) ? '，已讀' : ''}`);
+    }
+  };
+  paint();
+  live.push(paint);
+  wrap.append(prev, days, next);
+  return wrap;
+}
 const litDot = (color) => {
   const d = el('span', 'lit-dot');
   d.dataset.color = color;
@@ -1470,9 +1571,9 @@ function todayCard() {
   const ref = el('span', 'btc-ref', x.day.gospel.label);
   const state = el('span', 'btc-state');
   const paintState = () => {
-    const done = x.acc && stateOf(x.book.id, x.acc.keys) === 'all';
-    state.textContent = done ? '✓ 已讀' : '讀 ›';
-    card.classList.toggle('is-read', !!done);
+    const done = dayRead(key);
+    state.textContent = done ? '✓ 今天讀過了' : '讀 ›';
+    card.classList.toggle('is-read', done);
   };
   paintState();
   live.push(paintState);
@@ -1521,6 +1622,7 @@ function paintToday(host, st) {
   const x = dailyOf(key);
   if (!x) { host.append(el('p', 'empty', '無法算出這一天的福音。')); return; }
   const { day, book, acc } = x;
+  host.append(weekStrip(key));
 
   const head = el('div', 'bible-day-head');
   head.dataset.color = day.color;
@@ -1553,7 +1655,7 @@ function paintToday(host, st) {
     }
   }
   host.append(text);
-  host.append(doneButton(dailyUnit(x), ['讀完了', '✓ 已讀']));
+  host.append(dayButton(x, key));
 
   // 相關：同一件事在別卷福音、這裡說話的人、到整章去讀
   const rel = el('section', 'bible-day-rel');

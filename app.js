@@ -143,6 +143,16 @@ function registerPictureSlots(title, slots, images) {
   composeImages();
   if (current === 'settings') renderSlots();
 }
+// 首頁上讀經、九日敬禮、修和聖事三張卡片的圖：各一個位置，內建的圖在 data/images.json（aside，不拿去別處遞補）。
+// 修和聖事那一頁最上面也用同一張。
+const SECTION_SLOTS = [['section:bible', '讀經'], ['section:novena', '九日敬禮'], ['section:confession', '修和聖事']];
+EXTRA_PICTURES.set('首頁的卡片', { slots: SECTION_SLOTS, images: [] });   // 一載入就登記，設定裡總是排在九日敬禮前面
+function renderSectionPictures() {
+  for (const [key] of SECTION_SLOTS) {
+    const img = document.getElementById(`${key.split(':')[1]}-home-image`);
+    if (img) showPictures(img, null, slotPick(key));
+  }
+}
 const isExtraSlot = (key) => [...EXTRA_PICTURES.values()].some((g) => g.slots.some(([k]) => k === key));
 
 const setById = (id) => SETS.find((x) => x.id === id) || SETS[0];
@@ -467,6 +477,8 @@ function refreshPictures() {
     showPictures($('#done-image'), $('#done-caption'), imageForRole('done', records.length));
   } else if (current === 'novena' && typeof novenaPictures === 'function') {
     novenaPictures();
+  } else if (current === 'confession' && typeof confessionPictures === 'function') {
+    confessionPictures();
   }
 }
 
@@ -950,6 +962,7 @@ function renderHome() {
   renderPicker();
   renderGroupPick();
   showPictures($('#home-image'), $('#home-caption'), imageForRole('home', records.length));
+  renderSectionPictures();
 
   const todayCount = dayCounts().get(dayKey(today)) || 0;
   const state = $('#today-state');
@@ -2248,7 +2261,7 @@ function importRecords(file) {
     }
 
     // 讀經進度：已讀的節取聯集，紀錄去重（檢查都在 bible.js 裡）
-    let read = { verses: 0, logs: 0 };
+    let read = { verses: 0, logs: 0, days: 0 };
     if (parsed && parsed.bible && typeof bibleImport === 'function') read = bibleImport(parsed.bible);
 
     // 修和聖事的告解日期（第 5 版的備份沒有這一項，自然略過；逐筆檢查在 confession.js 裡）
@@ -2263,7 +2276,7 @@ function importRecords(file) {
     renderHistory();
     renderBackupState();
     const parts = [added ? `${added} 筆紀錄` : '', shots ? `${shots} 張聖像` : '',
-                   read.verses ? `讀經 ${read.verses} 節` : read.logs ? '讀經紀錄' : '',
+                   read.verses ? `讀經 ${read.verses} 節` : read.logs ? '讀經紀錄' : read.days ? '每日福音' : '',
                    conf.dates ? `告解 ${conf.dates} 筆` : '',
                    nov.done + nov.runs ? `九日敬禮 ${nov.done + nov.runs} 筆` : ''].filter(Boolean);
     toast(parts.length ? `已匯入 ${parts.join('、')}` : '沒有新的內容可匯入');
@@ -2275,6 +2288,10 @@ function importRecords(file) {
 /* ── 事件綁定 ──────────────────────────────────────── */
 function bind() {
   $('#start-btn').addEventListener('click', startPrayer);
+  // 首頁卡片左邊的圖：點圖和點標題一樣，打開那一部分（圖下面的「換圖」另有作用）
+  for (const fig of document.querySelectorAll('.plate-sec[data-open]')) {
+    fig.querySelector('.car').addEventListener('click', () => document.getElementById(fig.dataset.open).click());
+  }
   $('#prayer-exit').addEventListener('click', () => history.back());
   $('#step-next').addEventListener('click', () => (session.mode === 'guided' ? advance() : finishPrayer()));
   $('#step-prev').addEventListener('click', back);

@@ -1,4 +1,5 @@
-"""九日敬禮的四張聖像（原創向量圖）。用法: python3 scripts/novena-art.py images"""
+"""九日敬禮的四張聖像，和首頁讀經、九日敬禮、修和聖事三張卡片的預設圖（原創向量圖）。
+用法: python3 scripts/novena-art.py images"""
 import math, sys, os
 
 OUT = sys.argv[1]
@@ -279,6 +280,104 @@ def souls():
     write('novena-souls.svg', b)
 
 
-for fn in (spirit, immaculate, auxilium, souls):
+# ── 首頁卡片：讀經（打開的聖經、光芒、基督名號 ☧）──────────────
+def chi_rho(cx, cy, s):
+    g = f'<g transform="translate({cx} {cy}) scale({f(s)})" fill="none" stroke="#E2B865" stroke-linecap="round" stroke-linejoin="round">'
+    g += '<path d="M0,-44V44" stroke-width="7"/>'
+    g += '<path d="M0,-44C24,-44 26,-14 0,-14" stroke-width="7"/>'
+    g += '<path d="M-24,-6L24,38M24,-6L-24,38" stroke-width="6.5"/>'
+    return g + '</g>'
+
+
+def open_book(cx, cy):
+    # 以書脊的中點為 (0,0)：兩頁往外微微翹起，下面一層深紅的封皮，書脊垂下一條紅絲帶
+    g = f'<g transform="translate({cx} {cy})">'
+    g += '<path d="M0,-26C-30,-38 -70,-38 -100,-24L-104,52C-70,40 -30,42 0,56C30,42 70,40 104,52L100,-24C70,-38 30,-38 0,-26Z" fill="#6E1A1E" stroke="url(#gold)" stroke-width="2"/>'
+    for side in (-1, 1):
+        s = side
+        page = (f'M0,-22C{f(s*28)},-34 {f(s*64)},-34 {f(s*94)},-22L{f(s*96)},44C{f(s*66)},34 {f(s*30)},36 0,48Z')
+        g += f'<path d="{page}" fill="url(#page)" stroke="#D8C79F" stroke-width="1"/>'
+        lines = ''
+        for i in range(7):
+            y0 = -14 + i * 8.6
+            lines += f'M{f(s*12)},{f(y0 + 2)}Q{f(s*48)},{f(y0 - 7)} {f(s*84)},{f(y0 - 1)}'
+        g += f'<path d="{lines}" stroke="#BCA97F" stroke-width="1.3" fill="none" stroke-linecap="round" opacity=".75"/>'
+    g += '<path d="M0,-22V48" stroke="#B9A374" stroke-width="1.4"/>'
+    g += '<path d="M-3,46L-6,92L0,84L6,92L3,46Z" fill="#B3262E" stroke="#6E1216" stroke-width=".8"/>'
+    return g + '</g>'
+
+
+def section_bible():
+    cx = 150
+    b = frame_defs('#1E4A3C', '#091B15', '#FFE9B0', (0.5, 0.5), 0.62)
+    b += '<linearGradient id="page" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFBEF"/><stop offset="1" stop-color="#EBDDBB"/></linearGradient></defs>'
+    b += frame_open()
+    b += rays(cx, 236, 34, 34, 300, 3.4, '#FFF0C4', .16, start=180, span=180, alt=230)
+    b += f'<circle cx="{cx}" cy="128" r="58" fill="#FFF1C9" opacity=".12"/>'
+    b += f'<circle cx="{cx}" cy="128" r="48" fill="none" stroke="#FFE3A0" stroke-width="1" opacity=".55"/>'
+    b += chi_rho(cx, 128, .82)
+    b += open_book(cx, 262)
+    b += f'<path d="{star(64, 70, 6)}{star(236, 70, 6)}" fill="url(#gold)"/>'
+    b += frame_close()
+    write('section-bible.svg', b)
+
+
+# ── 首頁卡片：九日敬禮（聖堂裡的奉獻燭架：三層、九盞點亮的燭杯）────────
+def section_novena():
+    cx = 150
+    b = frame_defs('#3B1A33', '#13070F', '#FFDFA0', (0.5, 0.56), 0.6)
+    b += ('<linearGradient id="cup" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7E1420"/><stop offset=".45" stop-color="#D2423F"/><stop offset="1" stop-color="#6A0F1A"/></linearGradient>'
+          '<radialGradient id="cflame" cx=".5" cy=".75" r=".8"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".35" stop-color="#FFF0A8"/><stop offset="1" stop-color="#FF9A2E"/></radialGradient>'
+          '<radialGradient id="halo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFE9A8" stop-opacity=".55"/><stop offset="1" stop-color="#FFE9A8" stop-opacity="0"/></radialGradient>'
+          '<linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8A5A32"/><stop offset="1" stop-color="#4E2F17"/></linearGradient></defs>')
+    b += frame_open()
+    b += rays(cx, 210, 30, 40, 250, 3.2, '#FFEFC2', .1, alt=200)
+    # 上方的小十字架
+    b += f'<path d="M{pt(cx - 4, 46)}H{f(cx + 4)}V60H{f(cx + 15)}V68H{f(cx + 4)}V100H{f(cx - 4)}V68H{f(cx - 15)}V60H{f(cx - 4)}Z" fill="url(#gold)" stroke="#FFF0C4" stroke-width=".6"/>'
+    # 三層燭架，後面的高；每層三盞紅玻璃燭杯
+    rows = ((196, 0), (252, 1), (308, 0))
+    for r, (y, shift) in enumerate(rows):
+        b += f'<rect x="58" y="{y}" width="184" height="12" rx="2" fill="url(#wood)" stroke="#2E1A0C" stroke-width=".8"/>'
+        for j in range(3):
+            x = cx + (j - 1) * 58 + (shift * 0)
+            b += f'<circle cx="{x}" cy="{y - 30}" r="26" fill="url(#halo)"/>'
+            b += f'<path d="{flame(x, y - 30, 22, 5.4)}" fill="url(#cflame)"/>'
+            b += f'<path d="M{pt(x - 15, y - 34)}H{f(x + 15)}L{pt(x + 12, y)}H{f(x - 12)}Z" fill="url(#cup)" stroke="#F2B38A" stroke-width=".8" opacity=".95"/>'
+            b += f'<path d="M{pt(x - 15, y - 34)}H{f(x + 15)}" stroke="#FFD2B0" stroke-width="1.4" opacity=".8"/>'
+            b += f'<path d="M{pt(x - 9, y - 28)}L{pt(x - 7, y - 4)}" stroke="#FFFFFF" stroke-width="2" opacity=".28" stroke-linecap="round"/>'
+    # 燭架的兩根腳
+    b += '<path d="M66,208V344M234,208V344" stroke="url(#wood)" stroke-width="7" stroke-linecap="round"/>'
+    b += frame_close()
+    write('section-novena.svg', b)
+
+
+# ── 首頁卡片：修和聖事（交叉的天國鑰匙、紫色、上方的鴿子之光）────────
+def key(color, edge):
+    # 一把鑰匙，鑰匙齒朝上、柄朝下；以中點為 (0,0)，長 220
+    g = f'<path d="M-5,-96H5V92H-5Z" fill="{color}" stroke="{edge}" stroke-width="1.4"/>'
+    g += f'<path d="M5,-104H30V-92H22V-82H30V-62H22V-70H5Z" fill="{color}" stroke="{edge}" stroke-width="1.4" stroke-linejoin="round"/>'
+    g += f'<path d="M-5,-104H5V-96H-5Z" fill="{color}"/>'
+    g += f'<rect x="-11" y="56" width="22" height="7" rx="2" fill="{color}" stroke="{edge}" stroke-width="1.2"/>'
+    g += f'<path d="M0,74C22,74 30,92 30,104C30,122 14,132 0,132C-14,132 -30,122 -30,104C-30,92 -22,74 0,74Z" fill="{color}" stroke="{edge}" stroke-width="1.6"/>'
+    g += f'<path d="M0,90C10,90 14,98 14,104C14,112 8,118 0,118C-8,118 -14,112 -14,104C-14,98 -10,90 0,90Z" fill="#2A1640" stroke="{edge}" stroke-width="1.2"/>'
+    return g
+
+
+def section_confession():
+    cx = 150
+    b = frame_defs('#4A2468', '#170A24', '#FFE6B4', (0.5, 0.42), 0.6)
+    b += ('<linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".5" stop-color="#CFD3DA"/><stop offset="1" stop-color="#8C93A0"/></linearGradient>'
+          '<radialGradient id="halo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF0C8" stop-opacity=".7"/><stop offset="1" stop-color="#FFF0C8" stop-opacity="0"/></radialGradient></defs>')
+    b += frame_open()
+    b += rays(cx, 120, 36, 26, 300, 3.6, '#FFF0C4', .14, alt=230)
+    b += f'<circle cx="{cx}" cy="120" r="70" fill="url(#halo)"/>'
+    b += f'<g transform="translate({cx} 120) scale(.62)">{dove()}</g>'
+    b += f'<g transform="translate({cx} 262) rotate(-32) scale(.78)">{key("url(#silver)", "#5D6370")}</g>'
+    b += f'<g transform="translate({cx} 262) rotate(32) scale(.78)">{key("url(#goldv)", "#6B4818")}</g>'
+    b += frame_close()
+    write('section-confession.svg', b)
+
+
+for fn in (spirit, immaculate, auxilium, souls, section_bible, section_novena, section_confession):
     fn()
 print('ok')

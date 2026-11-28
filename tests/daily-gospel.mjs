@@ -217,9 +217,14 @@ await page.waitForFunction((d) => document.querySelector('.bible-day-date')?.tex
 ok('後一天再前一天：回到同一天的出處', (await page.textContent('.bible-day-ref')) === today.label);
 ok('並且又是今天（「今天」按鈕停用）', await page.locator('.bible-pager button').nth(1).isDisabled());
 
-// 3. 選節、標已讀、取消
+// 3. 選節、標已讀、取消。今天的福音可能不到四節（如 路 21:34-36）：往後找一天夠長的，做完再回到今天
 const vs = page.locator('.bible-day-text .v[data-i]');
-ok('今天至少有四節可以選', (await vs.count()) >= 4);
+for (let n = 0; n < 14 && (await vs.count()) < 4; n++) {
+  const d = await page.textContent('.bible-day-date');
+  await page.locator('.bible-pager button').nth(2).click();
+  await page.waitForFunction((x) => document.querySelector('.bible-day-date')?.textContent !== x, d);
+}
+ok('找到一天至少有四節可以選', (await vs.count()) >= 4);
 const selKeys = (await vs.evaluateAll((els) => els.map((e) => e.dataset.key))).slice(1, 4);
 await vs.nth(1).click();
 await vs.nth(3).click();
@@ -243,18 +248,23 @@ await page.click('.bible-sel-mark');
 ok('取消已讀：亮的節都熄掉', (await page.locator('.bible-day-text .v.is-read').count()) === 0);
 ok('已讀的節數回到原來', (await readCount()) === readBefore);
 
-// 4. 讀完了
+// 4. 讀完了（回到今天）
+if (!(await page.locator('.bible-pager button').nth(1).isDisabled())) {
+  await page.locator('.bible-pager button').nth(1).click();
+  await page.waitForFunction(() => document.querySelector('.bible-pager button:nth-child(2)')?.disabled);
+}
+ok('回到今天的出處', (await page.textContent('.bible-day-ref')) === today.label);
 ok('「讀完了」按鈕在經文下面', (await page.locator('.bible-done').count()) === 1);
 await page.click('.bible-done');
-await page.waitForFunction(() => document.querySelector('.bible-done')?.textContent === '✓ 已讀');
-ok('按了之後是「✓ 已讀」', (await page.textContent('.bible-done')) === '✓ 已讀');
+await page.waitForFunction(() => document.querySelector('.bible-done')?.textContent === '✓ 這天的福音讀過了');
+ok('按了之後是「✓ 這天的福音讀過了」', (await page.textContent('.bible-done')) === '✓ 這天的福音讀過了');
 
 await page.click('#bible-back');
 await page.waitForSelector('#view-home.active');
 ok('回首頁：#bible-today-ref 以 ✓ 結尾', (await page.textContent('#bible-today-ref')).endsWith(' ✓'));
 await page.click('#bible-open');
 await page.waitForSelector('#bible-today-card');
-ok('回大廳：今日卡片的狀態是「✓ 已讀」', (await page.textContent('#bible-today-card .btc-state')) === '✓ 已讀');
+ok('回大廳：今日卡片的狀態是「✓ 今天讀過了」', (await page.textContent('#bible-today-card .btc-state')) === '✓ 今天讀過了');
 await page.click('#bible-back');
 await page.waitForSelector('#view-home.active');
 

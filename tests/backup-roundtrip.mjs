@@ -114,7 +114,7 @@ ok('a slot with several pictures keeps all of them, in order',
 await page.click('#view-settings [data-go="home"]');
 ok('and the home card shows it at once', /已讀 12／4,780/.test(await page.textContent('#bible-home-line')));
 const home = await page.evaluate(async () => {
-  const imgs = () => [...document.querySelectorAll('#view-home .car img')].filter(i => i.src.startsWith('blob:'));
+  const imgs = () => [...document.querySelectorAll('#prayer-home .car img')].filter(i => i.src.startsWith('blob:'));
   for (let n = 0; n < 80 && !(imgs().length && imgs().every(i => i.naturalWidth)); n++) await new Promise(r => setTimeout(r, 25));
   return { blob: imgs().length === 2, w: Math.min(...imgs().map(i => i.naturalWidth)) };
 });

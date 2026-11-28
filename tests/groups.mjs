@@ -185,13 +185,13 @@ await page.click('#view-settings [data-go="home"]');
 await page.waitForTimeout(250);
 ok('with two groups the home screen offers a choice', await page.isVisible('#group-pick'));
 ok('set to the group just made', (await page.inputValue('#group-select')) === advent);
-ok('and the cover is that group\'s picture alone', (await shown('#view-home')) === 1
+ok('and the cover is that group\'s picture alone', (await shown('#prayer-home')) === 1
    && (await page.getAttribute('#home-image', 'src')).startsWith('blob:'));
 
 await page.selectOption('#group-select', 'default');
 await page.waitForTimeout(300);
 ok('switching to the default group on the home screen brings its cover back',
-   (await shown('#view-home')) === 1 && !(await page.getAttribute('#home-image', 'src')).startsWith('blob:'));
+   (await shown('#prayer-home')) === 1 && !(await page.getAttribute('#home-image', 'src')).startsWith('blob:'));
 ok('the choice is remembered', (await settings()).group === 'default');
 
 // 祈禱中換組

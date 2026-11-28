@@ -30,7 +30,10 @@
   <!-- ── 首頁 ───────────────────────────────────────── -->
   <section id="view-home" class="view" aria-label="首頁">
     <header class="home-head">
-      <h1 class="home-date" id="home-date"></h1>
+      <div class="home-when">
+        <h1 class="home-date" id="home-date"></h1>
+        <p class="home-lit" id="home-lit" hidden><span class="lit-dot" id="home-lit-dot" aria-hidden="true"></span><span id="home-lit-name"></span></p>
+      </div>
       <button type="button" class="icon-btn home-gear" data-go="settings" aria-label="設定">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
@@ -69,14 +72,21 @@
       </div>
     </div>
 
-    <!-- 讀經：與祈禱各自獨立，內容由 bible.js 填 -->
-    <div class="card hub" id="bible-home">
-      <button type="button" class="hub-head" id="bible-open" aria-label="打開讀經">
-        <span class="bible-home-title">讀經</span><span class="hub-chev" aria-hidden="true">›</span>
-      </button>
-      <div class="hub-body">
-        <p class="bible-home-line" id="bible-home-line">瑪竇、馬爾谷、路加、若望福音與宗徒大事錄</p>
-        <button type="button" id="bible-continue" class="hub-act">繼續讀</button>
+    <!-- 讀經、九日敬禮、修和聖事：左邊一張圖（可以換成自己的照片），右邊是標題、一行狀態、一個動作。
+         三個部分各自獨立，內容分別由 bible.js、novena.js、confession.js 填 -->
+    <div class="card hub hub-sec" id="bible-home">
+      <div class="hub-sec-top">
+        <figure class="plate plate-thumb plate-sec" data-open="bible-open">
+          <div class="car"><div class="slide"><img id="bible-home-image" alt=""></div></div>
+        </figure>
+        <div class="hub-sec-info">
+          <button type="button" class="hub-head" id="bible-open" aria-label="打開讀經">
+            <span class="bible-home-title">讀經</span><span class="hub-chev" aria-hidden="true">›</span>
+          </button>
+          <p class="bible-home-line" id="bible-home-line">瑪竇、馬爾谷、路加、若望福音與宗徒大事錄</p>
+          <div class="bible-bar" aria-hidden="true"><span id="bible-home-fill"></span></div>
+          <button type="button" id="bible-continue" class="hub-act">繼續讀</button>
+        </div>
       </div>
       <button type="button" class="bible-today-row" id="bible-today" hidden>
         <span class="lit-dot" id="bible-today-dot" aria-hidden="true"></span>
@@ -84,28 +94,35 @@
         <span class="bible-today-ref" id="bible-today-ref"></span>
         <span class="hub-chev" aria-hidden="true">›</span>
       </button>
-      <div class="bible-bar" aria-hidden="true"><span id="bible-home-fill"></span></div>
     </div>
 
-    <!-- 九日敬禮：內容由 novena.js 填，與讀經、修和聖事各自獨立 -->
-    <div class="card hub" id="novena-home">
-      <button type="button" class="hub-head" id="novena-open" aria-label="打開九日敬禮">
-        <span class="bible-home-title">九日敬禮</span><span class="hub-chev" aria-hidden="true">›</span>
-      </button>
-      <div class="hub-body">
-        <p class="bible-home-line" id="novena-home-line">連續九天的祈禱</p>
-        <button type="button" id="novena-continue" class="hub-act" hidden>念第一天</button>
+    <div class="card hub hub-sec" id="novena-home">
+      <div class="hub-sec-top">
+        <figure class="plate plate-thumb plate-sec" data-open="novena-open">
+          <div class="car"><div class="slide"><img id="novena-home-image" alt=""></div></div>
+        </figure>
+        <div class="hub-sec-info">
+          <button type="button" class="hub-head" id="novena-open" aria-label="打開九日敬禮">
+            <span class="bible-home-title">九日敬禮</span><span class="hub-chev" aria-hidden="true">›</span>
+          </button>
+          <p class="bible-home-line" id="novena-home-line">連續九天的祈禱</p>
+          <button type="button" id="novena-continue" class="hub-act" hidden>念第一天</button>
+        </div>
       </div>
     </div>
 
-    <!-- 修和聖事：與祈禱、讀經各自獨立，內容由 confession.js 填 -->
-    <div class="card hub" id="confession-home">
-      <button type="button" class="hub-head" id="confession-steps" aria-label="準備辦告解">
-        <span class="bible-home-title">修和聖事</span><span class="hub-chev" aria-hidden="true">›</span>
-      </button>
-      <div class="hub-body">
-        <p class="bible-home-line" id="confession-home-line">辦告解前的準備與步驟</p>
-        <button type="button" id="confession-rite" class="hub-act">告明時</button>
+    <div class="card hub hub-sec" id="confession-home">
+      <div class="hub-sec-top">
+        <figure class="plate plate-thumb plate-sec" data-open="confession-steps">
+          <div class="car"><div class="slide"><img id="confession-home-image" alt=""></div></div>
+        </figure>
+        <div class="hub-sec-info">
+          <button type="button" class="hub-head" id="confession-steps" aria-label="準備辦告解">
+            <span class="bible-home-title">修和聖事</span><span class="hub-chev" aria-hidden="true">›</span>
+          </button>
+          <p class="bible-home-line" id="confession-home-line">辦告解前的準備與步驟</p>
+          <button type="button" id="confession-rite" class="hub-act">告明時</button>
+        </div>
       </div>
     </div>
 

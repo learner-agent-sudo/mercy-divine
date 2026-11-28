@@ -230,9 +230,34 @@ function tabsRow(tab) {
   return row;
 }
 
+/* 最上面一列：左邊是一張圖（和首頁修和聖事卡片同一格，可以換成自己的照片），右邊是說明 */
+let pic = null;
+function introRow(panel) {
+  const row = el('div', 'conf-intro');
+  panel.append(row);
+  pic = null;
+  if (typeof showPictures === 'function' && typeof slotPick === 'function') {
+    const fig = el('figure', 'plate plate-thumb plate-sec conf-plate');
+    const car = el('div', 'car');
+    const slide = el('div', 'slide');
+    pic = document.createElement('img');
+    pic.alt = '';
+    slide.append(pic);
+    car.append(slide);
+    fig.append(car);
+    row.append(fig);
+    showPictures(pic, null, slotPick('section:confession'));
+  }
+  row.append(el('p', 'hint conf-intro-text', '點開每一步，看要點。告解室裡照著念的，在「告明時」。'));
+}
+// 圖換了（換圖、加圖、不用、還原）：只換那一張，不重畫整頁
+function confessionPictures() {
+  if (pic && pic.isConnected) showPictures(pic, null, slotPick('section:confession'));
+}
+
 /* 步驟：六張卡片，一開始都收起來 */
 function paintSteps(panel) {
-  panel.append(el('p', 'hint', '點開每一步，看要點。告解室裡照著念的，在「告明時」。'));
+  introRow(panel);
   data.steps.forEach((s, i) => {
     const d = document.createElement('details');
     d.className = 'th-group tl-group conf-step';
@@ -594,6 +619,6 @@ function start() {
   }
 }
 
-Object.assign(window, { confessionShow, renderConfessionHome, confessionExport, confessionImport });
+Object.assign(window, { confessionShow, renderConfessionHome, confessionExport, confessionImport, confessionPictures });
 start();
 })();

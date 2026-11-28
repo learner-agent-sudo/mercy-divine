@@ -122,6 +122,12 @@ img { max-width: 100%; height: auto; display: block; }
   display: flex; justify-content: space-between; align-items: center; margin: 0 0 1rem;
 }
 .home-date { margin: 0; font-size: 1.35rem; font-weight: 600; letter-spacing: .06em; color: var(--fg); }
+.home-when { min-width: 0; }
+/* 日期下面：今天的禮儀日，前面是祭衣顏色的小圓點 */
+.home-lit {
+  display: flex; align-items: center; gap: .45rem; margin: .3rem 0 0;
+  font-size: .86rem; line-height: 1.45; letter-spacing: .04em; color: var(--muted); overflow-wrap: anywhere;
+}
 .home-gear {
   color: var(--muted); width: 44px; height: 44px; min-width: 44px; padding: 0;
   display: grid; place-items: center; flex: none;
@@ -568,6 +574,17 @@ details[open] > .slot-group::after { transform: rotate(90deg); }
 .hub-act:active { transform: scale(.97); }
 .hub .bible-bar { margin-top: .8rem; }
 
+/* 讀經、九日敬禮、修和聖事的卡片：左邊一張圖（可換成自己的照片），右邊由上而下是標題、狀態、動作。
+   選了「不用」圖就收起來，右邊那一欄自動佔滿。 */
+.plate-sec { --pic-max: min(7.6rem, 33vw); flex: 0 0 min(5.6rem, 24vw); width: min(5.6rem, 24vw); }
+.plate-sec .car { cursor: pointer; }
+.hub-sec-top { display: flex; gap: .95rem; align-items: flex-start; }
+.hub-sec-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .45rem; }
+.hub-sec-info .hub-head { margin-top: -.3rem; }
+.hub-sec .bible-home-line { flex: none; width: 100%; }
+.hub-sec .bible-bar { margin-top: .1rem; width: 100%; }
+.hub-sec .hub-act { margin-top: .2rem; }
+
 /* 畫面本身。上方的列固定在頂端，長長的一章讀到哪裡都能退出去。 */
 #view-bible .bar {
   position: sticky; top: 0; z-index: 5;
@@ -738,7 +755,40 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 .bible-today-card.is-read .btc-state { color: var(--gold); }
 
 /* 每日福音的畫面 */
-.bible-day-head { margin: 0 0 .6rem; padding: 0 0 .8rem; border-bottom: 1px solid var(--line); }
+.bible-day-head {
+  margin: 0 0 .9rem; padding: .8rem 1rem .9rem; background: var(--surface);
+  border-radius: var(--radius); box-shadow: var(--shadow); border-left: 4px solid var(--lit, var(--gold));
+}
+.bible-day-head[data-color="white"] { border-left-color: color-mix(in srgb, var(--gold) 55%, #f6f1e4); }
+/* 每日福音的勾還沒打：實心按鈕，一眼看得到；打了就和其他「已讀」一樣 */
+.bible-day-done:not(.is-done) { background: var(--accent); color: var(--accent-ink); border-color: transparent; box-shadow: var(--shadow); }
+
+/* 今日福音頁最上面的一週：讀過的那天有金色的勾，正在看的那天框起來 */
+.bible-week { display: flex; align-items: stretch; gap: .15rem; margin: 0 -.5rem .9rem; }
+.bible-week-nav {
+  font: inherit; font-size: 1.35rem; line-height: 1; color: var(--muted); background: none; border: 0;
+  flex: 0 0 2rem; padding: 0; cursor: pointer; border-radius: .6rem;
+}
+.bible-week-days { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .15rem; }
+.bible-week-day {
+  font: inherit; color: var(--fg); cursor: pointer; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: .2rem;
+  padding: .4rem 0 .4rem; min-height: 3.9rem; background: none; border: 1px solid transparent; border-radius: .75rem;
+}
+.bible-week-day[aria-current="date"] { background: var(--surface); border-color: var(--gold); box-shadow: var(--shadow); }
+.bwd-w { font-size: .7rem; letter-spacing: .04em; color: var(--muted); }
+.bwd-n { font-size: 1rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.bible-week-day.is-today .bwd-w, .bible-week-day.is-today .bwd-n { color: var(--accent); }
+.bwd-mark { width: 1.05rem; height: 1.05rem; border-radius: 50%; display: grid; place-items: center; }
+.bwd-mark::before {
+  content: ""; width: .42rem; height: .42rem; border-radius: 50%; background: var(--lit, var(--line));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 15%, transparent);
+}
+.bible-week-day.is-read .bwd-mark { background: var(--gold); }
+.bible-week-day.is-read .bwd-mark::before {
+  content: "✓"; width: auto; height: auto; background: none; box-shadow: none;
+  color: var(--surface); font-size: .66rem; font-weight: 700; line-height: 1;
+}
 .bible-day-date { display: flex; align-items: center; gap: .45rem; margin: 0; font-size: .85rem; color: var(--muted); letter-spacing: .04em; }
 .bible-day-name { margin: .35rem 0 .1rem; font-size: 1.2rem; line-height: 1.5; letter-spacing: .05em; overflow-wrap: anywhere; }
 .bible-day-ref { margin: 0; font-size: 1.05rem; color: var(--gold); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
@@ -948,6 +998,9 @@ mark { background: color-mix(in srgb, var(--gold) 38%, transparent); color: inhe
 }
 #view-confession .bar-title { color: var(--fg); font-size: .95rem; }
 .conf-panel { min-width: 0; }
+/* 步驟最上面：左邊一張圖（和首頁的修和聖事卡片同一格），右邊是說明 */
+.conf-intro { display: flex; gap: .95rem; align-items: center; margin: 0 0 1rem; }
+.conf-intro-text { flex: 1; min-width: 0; margin: 0; }
 
 .conf-tabs { display: grid; grid-template-columns: repeat(var(--n, 2), 1fr); gap: .35rem; margin: 0 0 1rem; }
 .conf-tab {

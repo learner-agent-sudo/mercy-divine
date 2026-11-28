@@ -28,12 +28,18 @@ anywhere.
 
 ## Using it
 
-The home screen is a card for each part: **祈禱** (the chaplet and the Rosary, with a small
-picture, today's state and the totals), **讀經**, **九日敬禮** and **修和聖事**. Each card's title
-row opens that part, and the small gold button beside its status line does the usual next step
-(繼續讀, 念第 N 天, 告明時). 設定 is the gear at the top right; 補記 and 祈禱紀錄 are at the
-foot of the prayer card. Each prayer shows its own picture: the chaplet's is 耶穌，我信賴祢,
-the Rosary's is 永援聖母 (`rosary:home` in `data/images.json`); 換圖 changes either.
+The home screen starts with the date and, under it, the day in the liturgical year with a dot in
+the colour of the vestments. Then a card for each part: **祈禱** (the chaplet and the Rosary,
+with a small picture, today's state and the totals), **讀經**, **九日敬禮** and **修和聖事**.
+Every card has a picture on the left with **換圖** under it, so each part can show a photo of
+your own; tapping the picture or the title opens that part, and the small gold button under the
+status line does the usual next step (繼續讀, 念第 N 天, 告明時). 設定 is the gear at the top
+right; 補記 and 祈禱紀錄 are at the foot of the prayer card. Each prayer shows its own picture:
+the chaplet's is 耶穌，我信賴祢, the Rosary's is 永援聖母 (`rosary:home` in `data/images.json`).
+The other three cards start with original drawings — an open Bible under the ☧, a church's
+votive rack with nine lit candles, and the crossed keys under the dove (`images/section-*.svg`,
+drawn by `scripts/novena-art.py`); 設定 → 聖像 → 首頁的卡片 has their slots. The 修和聖事
+picture also sits at the top of that part's 步驟 tab.
 
 - **開始祈禱** starts a session. Two modes, switchable at any time with the button in
   the top-right corner:
@@ -112,7 +118,15 @@ with the day's name in the liturgical year (常年期第三十四週星期四, �
 and the colour of the vestments. It opens the passage itself, with the 思高 headings, a
 **讀完了** button, and what goes with it: the same event in the other Gospels (each a chip
 that opens that account, ✓ when read), the people who speak in it, and a link to read it in
-its chapter. ‹ 前一天 / 後一天 › step through the days.
+its chapter. A strip across the top shows the week (日 to 六) with a gold ✓ on the days whose
+Gospel you have read; tap a day to go to it, or ‹ › for the week before or after.
+‹ 前一天 / 後一天 › at the foot step one day at a time.
+
+**讀完了 here is a tick for that day, not for the verses.** Every day starts unticked, even
+when its passage is one you have already read in order (the last week of the year is all
+路 21, for instance). Ticking it also counts the verses in your progress and the log;
+untick it and only the verses that tick added are taken off again — anything you had read
+before stays read. The ticks are in the backup.
 
 The day is worked out on the phone by [`lectionary.js`](lectionary.js), with no network: the
 Roman calendar (Easter, the seasons, the Sunday cycle A/B/C and the weekday year I/II, the
@@ -445,6 +459,7 @@ Five suites cover the things that would hurt most if they broke:
 | `people` | every passage in `data/people.json` exists, each key verse lies inside its passage, and every cross-reference points at a saying that exists |
 | `novena` | the home card, the list and the nine days, the texts verbatim, marking and undoing a day, the gap notice, the intention kept and copied into the finished record, restart, the back button layer by layer, bad storage |
 | `confession` | the home card and its lines, the six steps in order, the three tabs, the 省察 forms, sections and ticks (with counts, kept through a reload), the rite with its gold-bordered words and 我的省察, the 痛悔經 choice, recording and removing a day, the wording of "how long ago", the back button |
+| `daily-tick` | 今日福音's 讀完了 is a tick per day (unticked by default even when the verses were read, undo keeps verses read before), the week strip, the ticks through a reload and a backup, the liturgical day under the date, the pictures on the home cards and the 修和聖事 page |
 
 The suites drive a real browser at phone size and fail on any console error.
 
@@ -471,7 +486,7 @@ bible/                  the Bible text (思高) and its source notice
 images/                 the pictures
 icons/                  app icon
 scripts/make-icons.mjs  regenerates the icons (node scripts/make-icons.mjs)
-scripts/novena-art.py   draws the four novena pictures (python3 scripts/novena-art.py images)
+scripts/novena-art.py   draws the novena and home-card pictures (python3 scripts/novena-art.py images)
 ```
 
 No frameworks and no build step: what is in the repository is exactly what runs.

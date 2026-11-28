@@ -10,7 +10,10 @@
     "passion": "每端小珠（因祂的至悲慘苦難⋯）",
     "holy-god": "結束祈禱（至聖天主⋯）",
     "jesus-king": "信賴禱詞（主耶穌，慈悲的君王⋯）",
-    "done": "誦畢畫面"
+    "done": "誦畢畫面",
+    "section:bible": "首頁讀經卡片（aside：只用在這一格，不拿去別處遞補）",
+    "section:novena": "首頁九日敬禮卡片",
+    "section:confession": "首頁修和聖事卡片，也是修和聖事那一頁最上面的圖"
   },
   "images": [
     { "file": "images/home.jpg",           "caption": "耶穌，我信賴祢", "for": ["home"] },
@@ -21,6 +24,9 @@
     { "file": "images/passion.jpg",        "caption": "至悲慘的苦難",   "for": ["passion"] },
     { "file": "images/holy-god.jpg",       "caption": "慈悲耶穌",       "for": ["holy-god"] },
     { "file": "images/jesus-king.jpg",     "caption": "慈悲的君王",     "for": ["jesus-king"] },
-    { "file": "images/done.jpg",           "caption": "永援聖母",       "for": ["done", "rosary:home"] }
+    { "file": "images/done.jpg",           "caption": "永援聖母",       "for": ["done", "rosary:home"] },
+    { "file": "images/section-bible.svg",      "caption": "讀經",     "for": ["section:bible"],      "aside": true },
+    { "file": "images/section-novena.svg",     "caption": "九日敬禮", "for": ["section:novena"],     "aside": true },
+    { "file": "images/section-confession.svg", "caption": "修和聖事", "for": ["section:confession"], "aside": true }
   ]
 }

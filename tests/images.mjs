@@ -46,8 +46,9 @@ ok('every place an image can go is listed, grouped by prayer',
 ok('every one of the twenty mysteries gets its own slot',
    ['joyful', 'luminous', 'sorrowful', 'glorious'].every((set) =>
      [1, 2, 3, 4, 5].every((n) => slotKeys.includes(`rosary:${set}-${n}`))));
-ok('the two prayers, the four mystery sets and the novenas are separate groups',
-   await page.locator('.slot-group').count() === 7
+ok('the two prayers, the four mystery sets, the home cards and the novenas are separate groups',
+   await page.locator('.slot-group').count() === 8
+   && (await page.locator('.slot-group-name').nth(6).textContent()) === '首頁的卡片'
    && (await page.locator('.slot-group-name').last().textContent()) === '九日敬禮');
 ok('all start on the built-in image', (await page.locator('.slot-state').allTextContents()).every((t) => t === '預設'));
 ok('the rosary borrows the chaplet picture where it has none of its own',
@@ -91,13 +92,13 @@ const added = (sel) => page.evaluate(async (s) => {
   return i ? { blob: true, w: i.naturalWidth, h: i.naturalHeight, n: imgs().length } : { blob: false, n: imgs().length };
 }, sel);
 await page.click('#view-settings [data-go="home"]');
-const home = await added('#view-home');
+const home = await added('#prayer-home');
 ok('chosen picture renders on the home screen, next to the built-in one', home.blob && home.w > 0 && home.n === 2);
 ok('chosen picture was resized to 1600px', Math.max(home.w, home.h) === 1600);
 
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForSelector('#view-home.active');
-ok('chosen picture survives a reload', (await added('#view-home')).blob);
+ok('chosen picture survives a reload', (await added('#prayer-home')).blob);
 
 await page.click('[data-go="settings"]');
 await openSlotGroup(page, 'chaplet:home');
@@ -115,7 +116,7 @@ console.log(`        ${new Set(missed).size} listed file(s) not yet uploaded, ${
 // ── 每套經文各有封面 ──（此時已在首頁）
 // 封面上的每一張，依序
 const cover = () => page.evaluate(async () => {
-  const imgs = [...document.querySelectorAll('#view-home .car img')];
+  const imgs = [...document.querySelectorAll('#prayer-home .car img')];
   for (let n = 0; n < 60 && imgs.some((i) => !i.naturalWidth); n++) await new Promise((r) => setTimeout(r, 25));
   return imgs.map((i) => (i.src.startsWith('blob:') ? `blob:${i.naturalWidth}x${i.naturalHeight}` : i.src.split('/').pop())).join('+');
 });
